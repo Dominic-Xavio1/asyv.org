@@ -23,14 +23,21 @@ export function ThemeProvider({ children }) {
 }
 
 export function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === 'undefined') return 'light'
+  // Initialize as 'light' to ensure server and initial client render match.
+  // We'll read the persisted value and update after mount to avoid hydration
+  // mismatches when localStorage contains a different theme.
+  const [theme, setTheme] = useState('light')
+
+  useEffect(() => {
     try {
-      return localStorage.getItem(THEME_KEY) || 'light'
+      const stored = localStorage.getItem(THEME_KEY)
+      if (stored) {
+        setTheme(stored)
+      }
     } catch (e) {
-      return 'light'
+      // ignore
     }
-  })
+  }, [])
 
   useEffect(() => {
     try {
