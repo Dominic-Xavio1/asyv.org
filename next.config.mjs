@@ -14,7 +14,8 @@ const nextConfig = {
       },
     ],
   },
-  reactCompiler: true,
+  // Temporarily disabled React Compiler to fix hydration mismatch
+  // reactCompiler: true,
 };
 /** @type {import('next').NextConfig} */
 export default nextConfig;

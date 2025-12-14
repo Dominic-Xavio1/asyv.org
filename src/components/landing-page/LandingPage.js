@@ -1,36 +1,17 @@
-// app/page.jsx - PUT THIS IN YOUR app/page.jsx FILE
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronDown } from "lucide-react";
-import { AuthModal } from "./auth-modal/AuthModal";
+// Auth modal removed: navigation will go to /login
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-// ========== IMPORTANT: Files You MUST Create ==========
-
-// 1. Create this file: components/auth-modal/AuthModal.jsx
-// (I'll provide the code below)
-
-// 2. Install Shadcn UI components:
-// Run these commands in your terminal:
-// npx shadcn-ui@latest init
-// npx shadcn-ui@latest add hover-card button card input
-// 3. Create this file: components/ui/eye-catching-button.jsx
-// (Simple version provided below)
-
-// 4. Create these placeholder components if missing:
-// - components/kokonutui/shimmer-text.jsx
-// - components/kokonutui/type-writer.jsx  
-// - components/ui/shadcn-io/typing-text/index.jsx
-// - components/textAnimation.jsx
-
-// ========== Place your images in /public folder ==========
 const image = "/image.jpg";
 const happy = "/happy.jpg";
 const guidance = "/guidance.jpg";   
@@ -45,32 +26,23 @@ const visitation = "/visitation.jpg";
 
 export default function LandingPage({ onAuthSuccess }){
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showAuth, setShowAuth] = useState(false)
-  const [authMode, setAuthMode] = useState("login")
+  // auth modal state removed
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const router = useRouter();
   
-  // Array of images for carousel
   const carouselImages = [
     { src: image, label: "Community Gathering" },
     { src: happy, label: "Joyful Moments" }
   ];
 
   const handleShowAuth = (mode = "login") => {
-    setAuthMode(mode)
-    setShowAuth(true)
+    // Navigate to the login page instead of opening the modal
+    // include query param to indicate signup if needed
+    if (mode === "signup") router.push('/login?mode=signup')
+    else router.push('/login')
   }
 
-  const handleCloseAuth = () => {
-    setShowAuth(false)
-  }
-
-  const handleAuthSuccess = () => {
-    setShowAuth(false)
-    // Navigate to feed after successful auth
-    router.push('/feed')
-    onAuthSuccess?.()
-  }
+  // auth modal handlers removed
 
   useEffect(() => {
     const handleScroll = () => {
@@ -111,7 +83,7 @@ export default function LandingPage({ onAuthSuccess }){
                             <div className="flex h-full">
                               <div className="w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
                                 <Image
-                                  src={ceremony}
+                                  src={ceremony}  
                                   alt="Home"
                                   width={160}
                                   height={216}
@@ -275,20 +247,16 @@ export default function LandingPage({ onAuthSuccess }){
                 <div className="items-center box-border caret-transparent flex">
                   <div className="box-border caret-transparent min-h-0 min-w-0 mr-4">
                     <button
-                      onClick={()=>{
-                        handleShowAuth("signup")
-                      }}
-                      className="bg-green-700 text-white text-sm font-medium box-border caret-transparent px-6 py-2.5 rounded-md hover:bg-green-800 transition-colors">
+                      onClick={() => router.push('/login?mode=signup')}
+                      className="bg-green-700 text-white text-sm font-medium box-border caret-transparent px-6 py-2.5 rounded-md hover:bg-green-800 transition-colors hover:cursor-pointer">
                       Join Community
                     </button>
                   </div>
                   <div className="box-border caret-transparent min-h-0 min-w-0 hover:cursor-pointer">
                     {/* Simple button if EyeCatchingButton_v2 is missing */}
                     <button
-                      onClick={() => {
-                        handleShowAuth("login");
-                      }}
-                      className="border border-gray-300 px-6 py-2.5 rounded-md hover:bg-gray-50 transition-colors"
+                      onClick={() => router.push('/login')}
+                      className="border border-gray-300 px-6 py-2.5 rounded-md hover:bg-gray-50 transition-colors hover:cursor-pointer"
                     >
                       Sign In
                     </button>
@@ -300,7 +268,7 @@ export default function LandingPage({ onAuthSuccess }){
         </div>
       </header>
       
-      {showAuth && (<AuthModal onClose={handleCloseAuth} initialMode={authMode} onSuccess={handleAuthSuccess}/>)}
+      {/* auth modal removed: landing page now navigates to /login */}
       
       <main className="box-border caret-transparent">
         {/* Hero Section */}  
