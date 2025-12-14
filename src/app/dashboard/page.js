@@ -1,42 +1,41 @@
-// app/dashboard/page.jsx - PUT THIS FILE IN app/dashboard/page.jsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Bell, Search, MessageSquare, LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-// import asyv from "next/asyv.png";
-
-// Toggle this to true to use dummy data and bypass backend calls
-const USE_DUMMY = true;
+import { Textarea } from "@/components/ui/textarea";
+import {Separator} from "@/components/ui/separator"
+import {Input} from "@/components/ui/input"
+import {Button} from "@/components/ui/button"
+import toast from 'react-hot-toast';
+const USE_DUMMY = false;
 
 // Updated AnimatedModal Component
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fadeIn"
         onClick={onClose}
       />
       
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-[95vw] sm:max-w-md md:max-w-lg max-h-[80vh] sm:max-h-[90vh] overflow-hidden animate-slideUp sm:animate-scaleIn mx-2 sm:mx-4 mb-2 sm:mb-0">
-        <div className="flex items-center justify-between p-4 md:p-5 border-b border-neutral-200 sticky top-0 bg-white z-10">
-          <h3 className="text-base md:text-lg font-semibold text-neutral-900">{title}</h3>
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-scaleIn mx-auto">
+        <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-gray-700">
+          <h3 className="text-xl font-bold text-neutral-900 dark:text-gray-200">{title}</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-neutral-500 dark:text-gray-400" />
           </button>
         </div>
         
-        <div className="overflow-y-auto" style={{ 
-          maxHeight: 'calc(80vh - 65px)',
-          WebkitOverflowScrolling: 'touch'
-        }}>
-          <div className="p-4 md:p-6">
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+          <div className="p-6">
             {children}
           </div>
         </div>
@@ -45,10 +44,224 @@ const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   );
 };
 
-// Post Form Component
-const PostForm = ({ onClose, onSubmit, userId }) => {
-  const [content, setContent] = useState('');
+const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
+  const [title, setTitle] = useState(existingPost?.title || '');
+  const [content, setContent] = useState(existingPost?.content || '');
   const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(existingPost?.media_url || null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const formData = new FormData();
+      formData.append('created_by', userId);
+      formData.append('title', title);
+      formData.append('content', content);
+      if (image) {
+        formData.append('media_url', image);
+        // Determine media type
+        if (image.type?.startsWith('video/')) {
+          formData.append('media_type', 'video');
+        } else if (image.type?.startsWith('image/')) {
+          formData.append('media_type', 'image');
+        }
+      } else if (existingPost?.media_url && !image) {
+        // Keep existing media URL when editing without changing media
+        formData.append('media_url', existingPost.media_url);
+        formData.append('media_type', existingPost.media_type || 'image');
+      } else {
+        formData.append('media_url', '');
+        formData.append('media_type', '');
+      }
+
+      let response;
+      if (existingPost) {
+        // Update existing post
+        formData.append('id', existingPost.id);
+        response = await fetch('/api/post', {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        // Create new post
+        response = await fetch('/api/post', {
+          method: 'POST',
+          body: formData
+        });
+      }
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save post');
+      }
+
+      if (onSubmit) {
+        onSubmit(result.post || existingPost);
+      }
+      
+      setTitle('');
+      setContent('');
+      setImage(null);
+      setImagePreview(null);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save post:', error);
+      setError(error.message || 'Failed to save post. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+const fetchUserPost =async()=>{
+  const response = await fetch("api/post");
+  const data  =await response.json()
+  console.log("returned response of post ",data)
+}
+fetchUserPost()
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImage(null);
+      setImagePreview(null);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+      
+      <div className="space-y-2">
+        <label htmlFor="post-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Post Title <span className="text-red-500">*</span>
+        </label>
+        <Input
+          id="post-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter a title for your post..."
+          className="w-full"
+          required
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="post-content" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Content <span className="text-red-500">*</span>
+        </label>
+        <Textarea
+          id="post-content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Share your thoughts with the community..."
+          className="w-full min-h-[120px] resize-none"
+          required
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Add Media (Optional) - Image or Video
+        </label>
+        <div className="border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-green-500 dark:hover:border-green-400 transition-colors cursor-pointer bg-neutral-50 dark:bg-gray-800/50">
+          <input
+            type="file"
+            id="post-media"
+            className="hidden"
+            accept="image/*,video/*"
+            onChange={handleImageChange}
+            disabled={loading}
+          />
+          <label htmlFor="post-media" className="cursor-pointer block space-y-2">
+            <p className="text-sm text-neutral-600 dark:text-gray-400">
+              {image ? image.name : imagePreview ? 'Click to change media' : 'Click to upload image or video'}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-gray-500">
+              Supports: JPG, PNG, GIF, MP4, MOV, AVI
+            </p>
+          </label>
+        </div>
+        {imagePreview && (
+          <div className="mt-2">
+            {/* {imagePreview.startsWith('data:video') || (image && image.type?.startsWith('video/')) ? (
+              <video src={imagePreview} controls className="w-full h-48 rounded-lg object-cover" />
+            ) : (
+              <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                <Image
+                  src={imagePreview}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImagePreview(null);
+                    setImage(null);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )} */}
+          </div>
+        )}
+      </div>
+      
+      <Separator />
+
+      <div className="flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={loading}
+          className="px-6"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="bg-green-600 hover:bg-green-700 px-6"
+          disabled={loading}
+        >
+          {loading ? (existingPost ? 'Updating...' : 'Publishing...') : (existingPost ? 'Update Post' : 'Publish Post')}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+
+// ArticleForm Component
+const ArticleForm = ({ onClose, onSubmit }) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [coverImage, setCoverImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -56,156 +269,288 @@ const PostForm = ({ onClose, onSubmit, userId }) => {
     setLoading(true);
     
     try {
-      const fakePost = {
-        id: Date.now(),
-        title: null,
-        content,
-        date: new Date().toLocaleDateString(),
-        author: userId,
-        type: 'post'
-      };
-      onSubmit(fakePost);
+      onSubmit({ title, content, coverImage, type: 'article' });
+      setTitle('');
       setContent('');
-      setImage(null);
+      setCoverImage(null);
       onClose();
     } catch (error) {
-      console.error('Failed to create post:', error);
-      alert('Failed to create post');
+      console.error('Failed to create article:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
-          What's on your mind?
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Article Title
         </label>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Share your thoughts with the community..."
-          className="w-full px-3 md:px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-base"
-          rows="4"
+        <Input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter a compelling title..."
+          className="w-full"
           required
           disabled={loading}
         />
       </div>
 
-      <div className="border-2 border-dashed border-neutral-200 rounded-lg p-4 text-center hover:border-green-300 transition-colors cursor-pointer">
-        <input
-          type="file"
-          id="post-image"
-          className="hidden"
-          accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Cover Image
+        </label>
+        <div className="border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-orange-500 dark:hover:border-orange-400 transition-colors cursor-pointer bg-neutral-50 dark:bg-gray-800/50">
+          <input
+            type="file"
+            id="article-cover"
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => setCoverImage(e.target.files[0])}
+            disabled={loading}
+          />
+          <label htmlFor="article-cover" className="cursor-pointer block space-y-2">
+            <Upload className="w-10 h-10 mx-auto text-neutral-400 dark:text-gray-500" />
+            <p className="text-sm text-neutral-600 dark:text-gray-400">
+              {coverImage ? coverImage.name : 'Upload cover image'}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-gray-500">
+              Recommended: 1200x630px
+            </p>
+          </label>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Content
+        </label>
+        <Textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Write your article content here..."
+          className="w-full min-h-[200px] resize-none"
+          rows="6"
+          required
           disabled={loading}
         />
-        <label htmlFor="post-image" className="cursor-pointer block">
-          <FileImage className="w-8 h-8 md:w-12 md:h-12 mx-auto text-neutral-400 mb-2" />
-          <p className="text-sm text-neutral-600">
-            {image ? image.name : 'Click to upload image (optional)'}
-          </p>
-        </label>
+        <p className="text-xs text-neutral-500 dark:text-gray-500">
+          Minimum 300 characters recommended
+        </p>
       </div>
-      
-      <div className="flex gap-3 pt-4">
-        <button
+
+      <Separator />
+
+      <div className="flex justify-end gap-3">
+        <Button
           type="button"
+          variant="outline"
           onClick={onClose}
-          className="flex-1 px-4 py-3 text-base border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
           disabled={loading}
+          className="px-6"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className="flex-1 px-4 py-3 text-base bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium disabled:opacity-50"
+          className="bg-orange-500 hover:bg-orange-600 px-6"
           disabled={loading}
         >
-          {loading ? 'Publishing...' : 'Publish'}
-        </button>
+          {loading ? 'Publishing...' : 'Publish Article'}
+        </Button>
       </div>
     </form>
   );
 };
 
-// ArticleForm Component
-const ArticleForm = ({ onClose, onSubmit }) => {
+// OpportunityForm Component
+const OpportunityForm = ({ onClose, onSubmit, userId }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [coverImage, setCoverImage] = useState(null);
+  const [media, setMedia] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleMediaChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setMedia(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setMedia(null);
+      setMediaPreview(null);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({ title, content, coverImage, type: 'article' });
-    setTitle('');
-    setContent('');
-    setCoverImage(null);
-    onClose();
+    setLoading(true);
+    setError('');
+    
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const formData = new FormData();
+      formData.append('created_by', userId);
+      formData.append('title', title);
+      formData.append('content', content);
+      if (media) {
+        formData.append('media_url', media);
+        if (media.type?.startsWith('video/')) {
+          formData.append('media_type', 'video');
+        } else if (media.type?.startsWith('image/')) {
+          formData.append('media_type', 'image');
+        }
+      }
+
+      const response = await fetch('/api/opportunity', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create opportunity');
+      }
+
+      if (onSubmit) {
+        onSubmit(result.opportunity);
+      }
+      
+      setTitle('');
+      setContent('');
+      setMedia(null);
+      setMediaPreview(null);
+      onClose();
+      toast.success('Opportunity posted successfully!');
+    } catch (error) {
+      console.error('Failed to create opportunity:', error);
+      setError(error.message || 'Failed to create opportunity. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
-          Article Title
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+      
+      <div className="space-y-2">
+        <label htmlFor="opportunity-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Opportunity Title <span className="text-red-500">*</span>
         </label>
-        <input
+        <Input
+          id="opportunity-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter article title..."
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          placeholder="Enter opportunity title..."
+          className="w-full"
           required
+          disabled={loading}
         />
       </div>
 
-      <div className="border-2 border-dashed border-neutral-200 rounded-lg p-4 text-center hover:border-green-300 transition-colors cursor-pointer">
-        <input
-          type="file"
-          id="article-cover"
-          className="hidden"
-          accept="image/*"
-          onChange={(e) => setCoverImage(e.target.files[0])}
-        />
-        <label htmlFor="article-cover" className="cursor-pointer block">
-          <Upload className="w-8 h-8 md:w-10 md:h-10 mx-auto text-neutral-400 mb-2" />
-          <p className="text-sm text-neutral-600">
-            {coverImage ? coverImage.name : 'Upload cover image'}
-          </p>
+      <div className="space-y-2">
+        <label htmlFor="opportunity-content" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Description <span className="text-red-500">*</span>
         </label>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
-          Content
-        </label>
-        <textarea
+        <Textarea
+          id="opportunity-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your article..."
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
-          rows="6"
+          placeholder="Describe the opportunity..."
+          className="w-full min-h-[120px] resize-none"
           required
+          disabled={loading}
         />
       </div>
 
-      <div className="flex gap-3 pt-4">
-        <button
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Add Media (Optional) - Image or Video
+        </label>
+        <div className="border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-orange-500 dark:hover:border-orange-400 transition-colors cursor-pointer bg-neutral-50 dark:bg-gray-800/50">
+          <input
+            type="file"
+            id="opportunity-media"
+            className="hidden"
+            accept="image/*,video/*"
+            onChange={handleMediaChange}
+            disabled={loading}
+          />
+          <label htmlFor="opportunity-media" className="cursor-pointer block space-y-2">
+            <Upload className="w-10 h-10 mx-auto text-neutral-400 dark:text-gray-500" />
+            <p className="text-sm text-neutral-600 dark:text-gray-400">
+              {media ? media.name : 'Click to upload image or video'}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-gray-500">
+              Supports: JPG, PNG, GIF, MP4, MOV, AVI
+            </p>
+          </label>
+        </div>
+        {mediaPreview && (
+          <div className="mt-2">
+            {mediaPreview.startsWith('data:video') || (media && media.type?.startsWith('video/')) ? (
+              <video src={mediaPreview} controls className="w-full h-48 rounded-lg object-cover" />
+            ) : (
+              <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                <Image
+                  src={mediaPreview}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMediaPreview(null);
+                    setMedia(null);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      <div className="flex justify-end gap-3">
+        <Button
           type="button"
+          variant="outline"
           onClick={onClose}
-          className="flex-1 px-4 py-3 text-base border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
+          disabled={loading}
+          className="px-6"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className="flex-1 px-4 py-3 text-base bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
+          className="bg-orange-500 hover:bg-orange-600 px-6"
+          disabled={loading}
         >
-          Publish
-        </button>
+          {loading ? 'Posting...' : 'Post Opportunity'}
+        </Button>
       </div>
     </form>
   );
@@ -216,77 +561,106 @@ const ChatGroupForm = ({ onClose, onSubmit }) => {
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({ groupName, description, isPrivate, type: 'group' });
-    setGroupName('');
-    setDescription('');
-    setIsPrivate(false);
-    onClose();
+    setLoading(true);
+    
+    try {
+      onSubmit({ groupName, description, isPrivate, type: 'group' });
+      setGroupName('');
+      setDescription('');
+      setIsPrivate(false);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create group:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Group Name
         </label>
-        <input
+        <Input
           type="text"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
-          placeholder="Enter group name..."
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          placeholder="Enter a unique group name..."
+          className="w-full"
           required
+          disabled={loading}
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Description
         </label>
-        <textarea
+        <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What is this group about?"
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+          placeholder="Describe the purpose of this group..."
+          className="w-full min-h-[100px] resize-none"
           rows="3"
           required
+          disabled={loading}
         />
+        <p className="text-xs text-neutral-500 dark:text-gray-500">
+          Tell members what this group is about
+        </p>
       </div>
 
-      <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-        <input
-          type="checkbox"
-          id="private-group"
-          checked={isPrivate}
-          onChange={(e) => setIsPrivate(e.target.checked)}
-          className="w-4 h-4 text-green-600 border-neutral-300 rounded focus:ring-green-500"
-        />
-        <label htmlFor="private-group" className="text-sm text-neutral-700 cursor-pointer">
-          Make this group private (invite-only)
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Privacy Settings
         </label>
+        <div className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-gray-800/50 rounded-lg border border-neutral-200 dark:border-gray-700">
+          <input
+            type="checkbox"
+            id="private-group"
+            checked={isPrivate}
+            onChange={(e) => setIsPrivate(e.target.checked)}
+            className="w-4 h-4 text-green-600 dark:text-green-500 border-neutral-300 dark:border-gray-600 rounded focus:ring-green-500 dark:focus:ring-green-600"
+            disabled={loading}
+          />
+          <label htmlFor="private-group" className="text-sm text-neutral-700 dark:text-gray-300 cursor-pointer flex-1">
+            <div className="font-medium">Private Group</div>
+            <div className="text-xs text-neutral-500 dark:text-gray-500 mt-1">
+              Only invited members can join and see group content
+            </div>
+          </label>
+        </div>
       </div>
 
-      <div className="flex gap-3 pt-4">
-        <button
+      <Separator />
+
+      <div className="flex justify-end gap-3">
+        <Button
           type="button"
+          variant="outline"
           onClick={onClose}
-          className="flex-1 px-4 py-3 text-base border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
+          disabled={loading}
+          className="px-6"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className="flex-1 px-4 py-3 text-base bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+          className="bg-green-600 hover:bg-green-700 px-6"
+          disabled={loading}
         >
-          Create
-        </button>
+          {loading ? 'Creating...' : 'Create Group'}
+        </Button>
       </div>
     </form>
   );
 };
+
 
 // ProfileForm Component
 const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
@@ -306,7 +680,7 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
         <div className="relative group">
           <div className="relative w-20 h-20 rounded-full overflow-hidden">
             <Image
-              src="https://api.dicebear.com/9.x/personas/svg?seed=Adrian"
+              src="/images/avatar.jpg"
               alt="avatar"
               width={80}
               height={80}
@@ -324,11 +698,11 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
             onChange={(e) => setAvatar(e.target.files[0])}
           />
         </div>
-        <p className="text-xs text-neutral-500 mt-2">Click to change avatar</p>
+        <p className="text-xs text-neutral-500 dark:text-gray-400 mt-2">Click to change avatar</p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
+        <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
           Username
         </label>
         <input
@@ -336,20 +710,20 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Enter your username..."
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
+        <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
           Bio
         </label>
         <textarea
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           placeholder="Tell us about yourself..."
-          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+          className="w-full px-3 md:px-4 py-3 text-base border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
           rows="3"
         />
       </div>
@@ -358,13 +732,13 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 px-4 py-3 text-base border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium"
+          className="flex-1 px-4 py-3 text-base border border-neutral-300 dark:border-gray-600 text-neutral-700 dark:text-gray-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-gray-800 transition-colors font-medium"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="flex-1 px-4 py-3 text-base bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium"
+          className="flex-1 px-4 py-3 text-base bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors font-medium"
         >
           Save
         </button>
@@ -374,7 +748,7 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
 };
 
 // Content Card Component
-const ContentCard = ({ item, onDelete }) => {
+const ContentCard = ({ item, onDelete, onEdit }) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const getIcon = () => {
@@ -389,35 +763,48 @@ const ContentCard = ({ item, onDelete }) => {
   const Icon = getIcon();
 
   return (
-    <div className="bg-white rounded-lg border border-neutral-200 p-4 hover:shadow-md transition-all duration-300 group">
+    <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-4 hover:shadow-md dark:hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-green-50 text-green-700">
+          <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400">
             <Icon className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-medium text-neutral-900 group-hover:text-green-700 transition-colors">
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors">
               {item.title || item.groupName || 'New Post'}
             </h4>
-            <p className="text-xs text-neutral-500">{item.date}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {item.created_at ? new Date(item.created_at).toLocaleDateString() : item.date}
+            </p>
           </div>
         </div>
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-neutral-100 rounded transition-colors"
+            className="p-1 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded transition-colors"
           >
-            <MoreVertical className="w-5 h-5 text-neutral-400" />
+            <MoreVertical className="w-5 h-5 text-neutral-400 dark:text-gray-500" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-10">
-              <button className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </button>
+            <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-900 rounded-lg shadow-lg dark:shadow-xl border border-neutral-200 dark:border-gray-700 py-1 z-10">
+              {onEdit && (
+                <button 
+                  onClick={() => {
+                    onEdit(item);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+              )}
               <button
-                onClick={() => onDelete(item.id)}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                onClick={() => {
+                  onDelete(item.id);
+                  setShowMenu(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -426,9 +813,20 @@ const ContentCard = ({ item, onDelete }) => {
           )}
         </div>
       </div>
-      <p className="text-sm text-neutral-600 line-clamp-2">
+      <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
         {item.content || item.description || 'No description'}
       </p>
+      {/* {item.media_url && (
+        <div className="mt-3 rounded-lg overflow-hidden">
+          <Image
+            src={item?.media_url}
+            alt="Post media"
+            width={500}
+            height={300}
+            className="w-full h-48 object-cover"
+          />
+        </div>
+      )} */}
     </div>
   );
 };
@@ -437,10 +835,12 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [activeModal, setActiveModal] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const router = useRouter();
 
   const [userContent, setUserContent] = useState({
@@ -460,48 +860,97 @@ export default function Dashboard() {
     { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
   ];
-
   useEffect(() => {
-    // If using dummy mode, populate with local dummy user and posts
-    if (USE_DUMMY) {
-      const dummyUser = { id: 1, full_name: 'Demo User', username: 'demo.user' };
-      const dummyPosts = [
-        { id: 101, content: 'Welcome to the demo dashboard!', date: new Date().toLocaleDateString(), type: 'post' },
-        { id: 102, content: 'This is a sample post to help you explore the UI.', date: new Date().toLocaleDateString(), type: 'post' }
-      ];
-      setCurrentUser(dummyUser);
-      setPosts(dummyPosts);
-      setProfile({
-        username: dummyUser.full_name,
-        bio: 'Community member'
+    // Check user role
+    if (typeof window !== 'undefined') {
+      const fullInfo = localStorage.getItem('fullInfo');
+      if (fullInfo) {
+        try {
+          const user = JSON.parse(fullInfo);
+          setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
+          setCurrentUser(user);
+        } catch (e) {
+          console.error('Error parsing user info:', e);
+        }
+      }
+    }
+  }, []);
+// console.log("Current user data ",currentUser?.id)
+  useEffect(()=>{
+  const fetchPosts = async () => {
+    try {
+      const response = await fetch('/api/post/owner',{
+        method:"POST",
+        headers:{
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: currentUser?.id }),
       });
-      setLoading(false);
+      const data = await response.json();
+      
+      if (data.success && data.posts) {
+        setPosts(data.posts);
+        console.log("fetched posts:", data.posts);
+      } else {
+        console.error('Failed to fetch posts:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      toast.error(error.message);
+    }
+  };
+  fetchPosts().finally(() => setLoading(false));
+  },[currentUser])
+
+
+  // Delete post
+  const handleDeletePost = async (postId) => {
+    if (!confirm('Are you sure you want to delete this post?')) {
       return;
     }
 
-    // Check authentication for non-dummy mode
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        router.push('/');
-        return;
-      }
-
-      const user = JSON.parse(storedUser);
-      setCurrentUser(user);
-      setProfile({
-        username: user.full_name || 'User',
-        bio: 'Community member'
+    try {
+      const response = await fetch(`/api/post?id=${postId}`, {
+        method: 'DELETE'
       });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setPosts(posts.filter(post => post.id !== postId));
+        toast.success('Post deleted successfully');
+      } else {
+        throw new Error(result.error || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error(error.message || 'Failed to delete post');
     }
+  };
 
-    setLoading(false);
-  }, [router]);
+  // Handle post submission (create or update)
+  const handlePostSubmit = async (postData) => {
+    try {
+      await fetchPosts(); // Refresh posts after creation/update
+      if (editingPost) {
+        toast.success('Post updated successfully');
+        setEditingPost(null);
+      } else {
+        toast.success('Post created successfully');
+      }
+    } catch (error) {
+      console.error('Error refreshing posts:', error);
+    }
+  };
 
   const handleCreateContent = (data) => {
+    // #region agent log
+    const timestamp = Date.now();
+    fetch('http://127.0.0.1:7242/ingest/a5c05f7c-9e65-48f3-bf13-130a70f52554',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.js:759',message:'handleCreateContent called',data:{timestamp,dataType:data.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const newItem = {
       ...data,
-      id: Date.now(),
+      id: timestamp,  
       date: new Date().toLocaleDateString()
     };
 
@@ -530,31 +979,33 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
-      localStorage.removeItem('auth');
-      localStorage.removeItem('userInfo');
+        localStorage.removeItem("token")
+      localStorage.removeItem("user")
+        localStorage.removeItem("fullInfo")
+        localStorage.removeItem("second_name")
+        localStorage.removeItem("theme");
     }
-    router.push('/');
+    router.push('/login');
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-gray-900" suppressHydrationWarning>
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white border-r border-neutral-200 flex-col z-40">
-        <div className="p-6 border-b border-neutral-200">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-neutral-200 dark:border-gray-700 flex-col z-80">
+        <div className="p-6 border-b border-neutral-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10">
               <Image 
-                src='/asyv.png'
+                src='/agahozo.png'
                 alt="ASYV Logo" 
-                width={40}
-                height={40}
+                width={60}
+                height={80}
                 className="object-contain"
               />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-neutral-900">ASYV</h1>
-              <p className="text-xs text-neutral-500">Community</p>
+              <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-200">ASYV</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Community</p>
             </div>
           </div>
         </div>
@@ -571,15 +1022,15 @@ export default function Dashboard() {
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === item.id
-                  ? 'bg-green-50 text-green-700 shadow-sm'
-                  : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
               }`}
             >
               <item.icon className="w-5 h-5" />
               <span className="flex-1 text-left">
                 {item.label}
                 {item.label === "Feed" && (
-                  <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400" />
+                  <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
                 )}
               </span>
               {item.badge && (
@@ -591,14 +1042,14 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-neutral-200 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition-all duration-200">
+        <div className="p-4 border-t border-neutral-200 dark:border-gray-700 space-y-1">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200">
             <Settings className="w-5 h-5" />
             <span>Settings</span>
           </button>
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-neutral-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
           >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>
@@ -610,12 +1061,12 @@ export default function Dashboard() {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col">
-            <div className="p-5 border-b border-neutral-200 flex items-center justify-between">
+          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10">
                   <Image 
-                    src={asyv} 
+                    src='/asyv.png'
                     alt="ASYV Logo" 
                     width={40}
                     height={40}
@@ -623,12 +1074,12 @@ export default function Dashboard() {
                   />
                 </div>
                 <div>
-                  <h1 className="text-base font-semibold text-neutral-900">ASYV</h1>
-                  <p className="text-xs text-neutral-500">Community</p>
+                  <h1 className="text-base font-semibold text-gray-800 dark:text-gray-200">ASYV</h1>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Community</p>
                 </div>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-neutral-500" />
+              <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
 
@@ -645,8 +1096,8 @@ export default function Dashboard() {
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                     activeTab === item.id
-                      ? 'bg-green-50 text-green-700 shadow-sm'
-                      : 'text-neutral-600 hover:bg-neutral-50'
+                      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800'
                   }`}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -660,14 +1111,14 @@ export default function Dashboard() {
               ))}
             </nav>
 
-            <div className="p-3 border-t border-neutral-200 space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-all duration-200">
+            <div className="p-3 border-t border-neutral-200 dark:border-gray-700 space-y-1">
+              <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 transition-all duration-200">
                 <Settings className="w-5 h-5" />
                 <span>Settings</span>
               </button>
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-neutral-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
               >
                 <LogOut className="w-5 h-5" />
                 <span>Logout</span>
@@ -680,143 +1131,62 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen">
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-neutral-200">
-          <div className="flex items-center justify-between px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0"
-              >
-                <Menu className="w-5 h-5 text-neutral-700" />
-              </button>
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg md:text-xl font-semibold text-neutral-900 truncate">
-                  Welcome, <span className="bg-gradient-to-r from-green-600 via-orange-500 to-green-600 bg-clip-text text-transparent">{profile.username.split(' ')[0]}</span>
-                </h2>
-                <p className="text-xs sm:text-sm text-neutral-500 truncate hidden sm:block">{profile.bio}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <button className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
-                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-700" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
-              </button>
-              
-              {/* Profile Dropdown */}
-              <div className="relative">
-                <div className="relative w-10 h-10">
-                  <Image
-                    src="/asyv.png"
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    alt="avatar" 
-                    width={40}
-                    height={40}
-                    className="rounded-full cursor-pointer hover:scale-115 transition-transform"
-                  />
-                </div>
-                
-                {showProfileMenu && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowProfileMenu(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
-                      <div className="px-4 py-3 border-b border-neutral-100">
-                        <p className="text-sm font-medium text-neutral-900 truncate">{profile.username}</p>
-                        <p className="text-xs text-neutral-500 mt-1 truncate">{profile.bio}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          setActiveModal('profile');
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Edit Profile
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          setActiveTab('home');
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Settings
-                      </button>
-                      <div className="border-t border-neutral-100 mt-2 pt-2">
-                        <button 
-                          onClick={handleLogout}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
+   
 
         {/* Dashboard Content */}
-        <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6">
+        <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-22">
           {/* Create Buttons */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
             <button
               onClick={() => setActiveModal('post')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white rounded-lg border-2 border-dashed border-neutral-200 hover:border-green-500 hover:bg-green-50 transition-all duration-300 group"
+              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
             >
-              <div className="p-2 rounded-lg bg-green-100 text-green-700 group-hover:bg-green-700 group-hover:text-white transition-all duration-300 flex-shrink-0">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
                 <MessageSquare className="w-5 h-5" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-neutral-900 group-hover:text-green-700">Create Post</p>
-                <p className="text-xs text-neutral-500 hidden sm:block">Share thoughts</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">Create Post</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share thoughts</p>
               </div>
             </button>
 
-            <button
-              onClick={() => setActiveModal('article')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white rounded-lg border-2 border-dashed border-neutral-200 hover:border-orange-500 hover:bg-orange-50 transition-all duration-300 group"
-            >
-              <div className="p-2 rounded-lg bg-orange-100 text-orange-700 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-neutral-900 group-hover:text-orange-600">Write Article</p>
-                <p className="text-xs text-neutral-500 hidden sm:block">Share story</p>
-              </div>
-            </button>
-
+            {isCrcOrSuperuser ? (
+              <button
+                onClick={() => setActiveModal('opportunity')}
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
+              >
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Post Opportunity</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share opportunity</p>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveModal('article')}
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
+              >
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Write Article</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share story</p>
+                </div>
+              </button>
+            )}
             <button
               onClick={() => setActiveModal('group')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white rounded-lg border-2 border-dashed border-neutral-200 hover:border-green-500 hover:bg-green-50 transition-all duration-300 group"
+              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
             >
-              <div className="p-2 rounded-lg bg-green-100 text-green-700 group-hover:bg-green-700 group-hover:text-white transition-all duration-300 flex-shrink-0">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
                 <Users className="w-5 h-5" />
               </div>
               <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-neutral-900 group-hover:text-green-700">New Group</p>
-                <p className="text-xs text-neutral-500 hidden sm:block">Start chat</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setActiveModal('profile')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white rounded-lg border-2 border-dashed border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50 transition-all duration-300 group"
-            >
-              <div className="p-2 rounded-lg bg-neutral-100 text-neutral-700 group-hover:bg-neutral-700 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                <Edit2 className="w-5 h-5" />
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-neutral-900 group-hover:text-neutral-700">Edit Profile</p>
-                <p className="text-xs text-neutral-500 hidden sm:block">Update info</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">New Group</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Start chat</p>
               </div>
             </button>
           </div>
@@ -824,15 +1194,15 @@ export default function Dashboard() {
           {/* User Content Sections */}
           <div className="space-y-4 sm:space-y-6">
             {/* My Posts */}
-            <div className="bg-white rounded-lg border border-neutral-200 p-3 sm:p-4 md:p-6">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-700" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
                   My Posts ({posts.length})
                 </h3>
                 <button
                   onClick={() => setActiveModal('post')}
-                  className="text-xs sm:text-sm font-medium text-green-700 hover:text-green-800 transition-colors flex items-center gap-1"
+                  className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400 transition-colors flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">New Post</span>
@@ -841,41 +1211,43 @@ export default function Dashboard() {
               </div>
               {loading ? (
                 <div className="text-center py-8">
-                  <p className="text-neutral-500">Loading posts...</p>
+                  <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
                 </div>
               ) : posts.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {posts.map((post) => (
                     <ContentCard 
-                      key={post.id} 
-                      item={post} 
-                      onDelete={(id) => {
-                        setPosts(posts.filter(p => p.id !== id));
-                      }} 
+                      key={post.created_at} 
+                      item={{...post, type: 'post'}} 
+                      onDelete={handleDeletePost}
+                      onEdit={(post) => {
+                        setEditingPost(post);
+                        setActiveModal('post');
+                      }}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 sm:py-12 text-neutral-500">
+                <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
                   <MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No posts yet. Create your first post!</p>
                 </div>
               )}
             </div>
 
-            {/* My Articles */}
-            <div className="bg-white rounded-lg border border-neutral-200 p-3 sm:p-4 md:p-6">
+            {/* My Articles / Opportunities */}
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                  My Articles ({userContent.articles.length})
+                  {isCrcOrSuperuser ? `My Opportunities (${userContent.articles.length})` : `My Articles (${userContent.articles.length})`}
                 </h3>
                 <button
-                  onClick={() => setActiveModal('article')}
-                  className="text-xs sm:text-sm font-medium text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1"
+                  onClick={() => isCrcOrSuperuser ? setActiveModal('opportunity') : setActiveModal('article')}
+                  className="text-xs sm:text-sm font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">New Article</span>
+                  <span className="hidden sm:inline">{isCrcOrSuperuser ? 'New Opportunity' : 'New Article'}</span>
                   <span className="sm:hidden">New</span>
                 </button>
               </div>
@@ -886,23 +1258,23 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 sm:py-12 text-neutral-500">
+                <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
                   <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No articles yet. Write your first article!</p>
+                  <p className="text-sm">{isCrcOrSuperuser ? 'No opportunities yet. Post your first opportunity!' : 'No articles yet. Write your first article!'}</p>
                 </div>
               )}
             </div>
 
             {/* My Groups */}
-            <div className="bg-white rounded-lg border border-neutral-200 p-3 sm:p-4 md:p-6">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-neutral-900 flex items-center gap-2">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
                   My Groups ({userContent.groups.length})
                 </h3>
                 <button
                   onClick={() => setActiveModal('group')}
-                  className="text-xs sm:text-sm font-medium text-green-700 hover:text-green-800 transition-colors flex items-center gap-1"
+                  className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400 transition-colors flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">New Group</span>
@@ -916,7 +1288,7 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 sm:py-12 text-neutral-500">
+                <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
                   <Users className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No groups yet. Create your first group!</p>
                 </div>
@@ -929,19 +1301,48 @@ export default function Dashboard() {
       {/* Modals */}
       <AnimatedModal
         isOpen={activeModal === 'post'}
-        onClose={() => setActiveModal(null)}
-        title="Create New Post"
+        onClose={() => {
+          setActiveModal(null);
+          setEditingPost(null);
+        }}
+        title={editingPost ? "Edit Post" : "Create New Post"}
       >
-        <PostForm onClose={() => setActiveModal(null)} onSubmit={(post) => setPosts([post, ...posts])} userId={currentUser?.id} />
+        <PostForm 
+          onClose={() => {
+            setActiveModal(null);
+            setEditingPost(null);
+          }} 
+          onSubmit={handlePostSubmit} 
+          userId={currentUser?.id}
+          existingPost={editingPost}
+        />
       </AnimatedModal>
 
-      <AnimatedModal
-        isOpen={activeModal === 'article'}
-        onClose={() => setActiveModal(null)}
-        title="Write New Article"
-      >
-        <ArticleForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
-      </AnimatedModal>
+      {isCrcOrSuperuser ? (
+        <AnimatedModal
+          isOpen={activeModal === 'opportunity'}
+          onClose={() => setActiveModal(null)}
+          title="Post New Opportunity"
+        >
+          <OpportunityForm 
+            onClose={() => setActiveModal(null)} 
+            onSubmit={(opportunity) => {
+              handleCreateContent({ ...opportunity, type: 'article' });
+              // Refresh opportunities in feed
+              window.location.reload();
+            }} 
+            userId={currentUser?.id}
+          />
+        </AnimatedModal>
+      ) : (
+        <AnimatedModal
+          isOpen={activeModal === 'article'}
+          onClose={() => setActiveModal(null)}
+          title="Write New Article"
+        >
+          <ArticleForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
+        </AnimatedModal>
+      )}
 
       <AnimatedModal
         isOpen={activeModal === 'group'}
@@ -959,46 +1360,6 @@ export default function Dashboard() {
         <ProfileForm onClose={() => setActiveModal(null)} onSubmit={handleUpdateProfile} currentProfile={profile} />
       </AnimatedModal>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-        
-        .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

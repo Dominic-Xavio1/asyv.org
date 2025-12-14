@@ -116,14 +116,8 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* Global light/dark defaults using Tailwind utilities */
   body {
-    @apply bg-white text-gray-800 antialiased;
-  }
-
-  /* Ensure common elements inherit the global text color */
-  p, h1, h2, h3, h4, h5, h6, a, span, label, li {
-    color: inherit;
+    @apply bg-background text-foreground;
   }
 }
 /* Add these to your existing globals.css */
@@ -165,9 +159,9 @@
 .animate-slideInLeft { animation: slideInLeft 0.3s ease-out; }
 
 /* Force a consistent dark background color when the .dark class is present */
-/* Dark mode defaults */
 html.dark body {
-  @apply bg-gray-900 text-gray-200;
+  background-color: #111827; /* Tailwind bg-gray-900 */
+  color: #f9fafb; /* near white text */
 }
 
 /* Smooth theme transitions */
@@ -175,6 +169,26 @@ html, body {
   transition: background-color 200ms ease, color 200ms ease;
 }
 
-/* Note: avoid !important overrides. Components should use `dark:` variants.
-  If you still see white backgrounds in dark mode, update that component to
-  include `dark:bg-gray-800` or similar. */
+/* Helpful overrides: make common white backgrounds / light text adapt in dark mode
+   This covers many components that use `bg-white`, `bg-white/95`, `text-gray-800`,
+   and light borders without changing every component. Use cautiously. */
+.dark .bg-white { background-color: #111827 !important; }
+.dark .bg-white\/95 { background-color: rgba(17,24,39,0.95) !important; }
+.dark .bg-white\/50 { background-color: rgba(17,24,39,0.5) !important; }
+.dark .text-gray-800 { color: #f3f4f6 !important; }
+.dark .text-gray-700 { color: #e5e7eb !important; }
+.dark .border-gray-200 { border-color: rgba(255,255,255,0.06) !important; }
+.dark .bg-gray-50 { background-color: rgba(255,255,255,0.02) !important; }
+
+/* Hide global navigation when a page sets this attribute (used by /login layout) */
+body[data-hide-nav="true"] nav {
+  display: none !important;
+}
+
+/* Ensure login route can occupy full viewport */
+body[data-hide-nav="true"] .login-fullscreen {
+  min-height: 100vh;
+  width: 100vw;
+  margin: 0 !important;
+  padding: 0 !important;
+}
