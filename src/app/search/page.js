@@ -1,84 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, Calendar, User, Filter, ChevronRight, ChevronLeft, Grid, List } from 'lucide-react';
 
-const articles = [
-  {
-    id: 1,
-    title: "The Only Rule in Street Photography",
-    author: "Nick Bedford",
-    date: "February 14, 2019",
-    excerpt: "Exploring the fundamental principles that guide street photographers in capturing authentic moments.",
-    category: "Photography",
-    readTime: "5 min read",
-  },
-  {
-    id: 2,
-    title: "Cabramatta: A Moment In Time",
-    author: "Markus Andersen",
-    date: "January 13, 2017",
-    excerpt: "A visual journey through Cabramatta capturing the essence of community and urban life.",
-    category: "Documentary",
-    readTime: "8 min read",
-  },
-  {
-    id: 3,
-    title: "The Storytellers Kit – Daniel Schaefer",
-    author: "Bellamy",
-    date: "November 3, 2014",
-    excerpt: "An in-depth look at Daniel Schaefer's approach to storytelling through street photography.",
-    category: "Interview",
-    readTime: "12 min read",
-  },
-  {
-    id: 4,
-    title: "The Clock of Life in Street Photography",
-    author: "Shaun La",
-    date: "June 12, 2004",
-    excerpt: "How timing and patience create powerful narratives in street photography.",
-    category: "Technique",
-    readTime: "6 min read",
-  },
-  {
-    id: 5,
-    title: "Urban Geometry: Lines and Light",
-    author: "Maria Chen",
-    date: "March 22, 2021",
-    excerpt: "Finding geometric patterns in everyday urban environments.",
-    category: "Composition",
-    readTime: "4 min read",
-  },
-  {
-    id: 6,
-    title: "The Decisive Moment Revisited",
-    author: "Robert Cartier",
-    date: "August 5, 2018",
-    excerpt: "Modern interpretation of Henri Cartier-Bresson's famous concept.",
-    category: "Philosophy",
-    readTime: "7 min read",
-  }
-];
+// Users will be fetched from `/api/users`
 
-const categories = [
-  "All Categories",
-  "Photography",
-  "Documentary",
-  "Interview",
-  "Technique",
-  "Composition",
-  "Philosophy",
-  "Gear",
-  "Inspiration"
-];
+// placeholder while interests load
+const DEFAULT_INTEREST = 'All interests';
 
 export default function SearchResultsPage() {
-  const [searchQuery, setSearchQuery] = useState("street photography");
-  const [selectedCategory, setSelectedCategory] = useState("Photography");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedInterest, setSelectedInterest] = useState(DEFAULT_INTEREST);
   const [viewMode, setViewMode] = useState('list');
   const [resultsCount, setResultsCount] = useState(1535);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [interests, setInterests] = useState([DEFAULT_INTEREST]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -89,12 +27,64 @@ export default function SearchResultsPage() {
   };
 
   const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
+    setSelectedInterest(category);
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
     }, 300);
   };
+
+  // Fetch users from API and parse interests
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to fetch users');
+        const data = await res.json();
+        const parsed = (data.users || []).map(u => {
+          let parsedInterests = [];
+          try {
+            if (typeof u.interests === 'string') parsedInterests = JSON.parse(u.interests);
+            else parsedInterests = u.interests || [];
+          } catch (e) {
+            parsedInterests = [];
+          }
+          return { ...u, interests: parsedInterests };
+        });
+        if (!mounted) return;
+        setUsers(parsed);
+
+        // extract unique interests
+        const all = new Set();
+        parsed.forEach(u => (u.interests || []).forEach(i => all.add(i)));
+        setInterests([DEFAULT_INTEREST, ...Array.from(all).sort()]);
+        setResultsCount(parsed.length);
+      } catch (err) {
+        console.error('Error loading users', err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false };
+  }, []);
+
+  const filteredUsers = useMemo(() => {
+    let list = users;
+    if (selectedInterest && selectedInterest !== DEFAULT_INTEREST) {
+      list = list.filter(u => (u.interests || []).includes(selectedInterest));
+    }
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(u => (u.full_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [users, selectedInterest, searchQuery]);
+
+  // keep resultsCount in sync
+  useEffect(() => setResultsCount(filteredUsers.length), [filteredUsers]);
 
   const handleLoadMore = () => {
     setIsLoading(true);
@@ -135,7 +125,7 @@ export default function SearchResultsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                Q Street photography
+                People
               </h1>
               <div className="md:hidden flex items-center gap-2">
                 <button
@@ -158,36 +148,9 @@ export default function SearchResultsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="Search articles..."
+                  placeholder="Search users..."
                 />
               </form>
-            </div>
-          </div>
-
-          {/* Categories Filter */}
-          <div className="mt-4 overflow-x-auto">
-            <div className="flex items-center gap-2 min-w-max">
-              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                {selectedCategory === "All Categories" ? "All categories" : "1 category selected"}
-              </span>
-              <div className="flex gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => handleCategorySelect(category)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                      selectedCategory === category
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-              <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 hidden md:inline-flex">
-                <Filter size={20} />
-              </button>
             </div>
           </div>
         </div>
@@ -220,61 +183,30 @@ export default function SearchResultsPage() {
         {/* Divider */}
         <div className="border-t border-gray-200 dark:border-gray-700 mb-8" />
 
-        {/* Articles List */}
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-8'}>
-          {articles.map((article) => (
-            <article
-              key={article.id}
-              className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg dark:hover:shadow-xl transition-all duration-300 ${
-                viewMode === 'list' ? 'flex flex-col md:flex-row' : ''
-              }`}
-            >
-              {viewMode === 'list' && (
-                <div className="md:w-48 h-48 md:h-auto relative flex-shrink-0">
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700" />
-                </div>
-              )}
-              
-              {viewMode === 'grid' && (
-                <div className="h-48 relative">
-                  <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700" />
-                </div>
-              )}
-              
-              <div className="p-6 flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
-                    {article.category}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">• {article.readTime}</span>
-                </div>
-                
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 hover:text-green-600 dark:hover:text-green-400 transition-colors cursor-pointer">
-                  {article.title}
-                </h2>
-                
-                <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                  {article.excerpt}
-                </p>
-                
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      <User size={16} />
-                      <span>{article.author}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      <Calendar size={16} />
-                      <span>{article.date}</span>
-                    </div>
+        {/* User Results */}
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+          {filteredUsers.map((u) => (
+            <div key={u.id} className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 p-4 ${viewMode === 'list' ? 'flex items-start gap-4' : ''}`}>
+              <div className="flex-shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u.profile_image || '/placeholder.svg'} alt={u.full_name || u.username} className="h-20 w-20 rounded-full object-cover" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{u.full_name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">@{u.username}</p>
                   </div>
-                  <button className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium text-sm flex items-center gap-1 self-start sm:self-center">
-                    Read more
-                    <ChevronRight size={16} />
-                  </button>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{u.location}</div>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 mt-2 mb-3 line-clamp-2">{u.bio}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(u.interests || []).slice(0, 6).map((i) => (
+                    <button key={i} onClick={() => handleCategorySelect(i)} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm rounded-full text-gray-700 dark:text-gray-300">{i}</button>
+                  ))}
                 </div>
               </div>
-            </article>
+            </div>
           ))}
         </div>
 
@@ -290,7 +222,7 @@ export default function SearchResultsPage() {
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-gray-600 dark:text-gray-400">
-              Showing 1-{articles.length} of {formatNumber(resultsCount)} results
+              Showing 1-{filteredUsers.length} of {formatNumber(resultsCount)} results
             </div>
             
             <div className="flex items-center gap-2">

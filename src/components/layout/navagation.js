@@ -24,13 +24,16 @@ import {
   DialogTitle,
   DialogTrigger,  
 } from "@/components/ui/dialog"
+import { chatDarkModeStore } from '../../stores/userStore';
 import DialogDemo from "@/components/ui/dialogeDemo"
+import toast from 'react-hot-toast'
 import {useRouter} from 'next/navigation'
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const router = useRouter();
+  const {visible,setVisible,clearVisible} = chatDarkModeStore();
   const { logout } = useAuth()
   const { theme, toggle } = useTheme()
   useEffect(() => {
@@ -43,6 +46,21 @@ export default function Navbar() {
       console.error("Error loading user from localStorage:", err);
     }
   }, []);
+  const [userProfileImage,setUserProfileImage]=useState(null);
+  useEffect(()=>{
+    const fullInformation = localStorage.getItem("fullInfo");
+    if(fullInformation){
+      setUserProfileImage(JSON.parse(fullInformation));
+    }
+    console.log("user profile image",userProfileImage)
+  },[])
+  const getProfileImageSrc = (img) => {
+    if (!img) return null;
+    if (img.startsWith('/') || img.startsWith('http')) return img;
+    if (img.includes('uploads')) return img.startsWith('/') ? img : `/${img}`;
+    if (img.startsWith('profiles') || img.startsWith('profile')) return `/uploads/${img}`;
+    return `/uploads/profiles/${img}`;
+  }
   useEffect(() => {
     const findUserProfile = async () => {
       try {
@@ -71,6 +89,18 @@ export default function Navbar() {
               profile_image_url: userProfile.profile_image_url,
             };
             localStorage.setItem("user", JSON.stringify(updatedUser));
+            // Also update fullInfo if present so components that read it get the new image
+            try {
+              const full = localStorage.getItem('fullInfo');
+              if (full) {
+                const parsed = JSON.parse(full);
+                parsed.image_url = userProfile.profile_image_url;
+                localStorage.setItem('fullInfo', JSON.stringify(parsed));
+                setUserProfileImage(parsed);
+              }
+            } catch (e) {
+              console.error('Error updating fullInfo in localStorage:', e);
+            }
           }
         }
       } catch (err) {
@@ -88,6 +118,12 @@ export default function Navbar() {
           setCurrentUser(JSON.parse(user));
         } else {
           setCurrentUser(null);
+        }
+        const fullInformation = localStorage.getItem('fullInfo');
+        if (fullInformation) {
+          setUserProfileImage(JSON.parse(fullInformation));
+        } else {
+          setUserProfileImage(null);
         }
       } catch (err) {
         console.error("Error updating user from storage:", err);
@@ -168,11 +204,6 @@ switch(label){
                 <Icon className="h-4 w-4" />
                 <span className="font-medium text-sm lg:text-base cursor-pointer"
                 >{label}</span>
-                {label === 'Dashboard' && (
-                  <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full" >
-                    3
-                  </span>
-                )}
               </div>
               </Link>
             ))}
@@ -180,7 +211,10 @@ switch(label){
 
           {/* Desktop User Actions */}
           <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
-            <ProfileDropdown theme={theme} toggleTheme={toggle} onLogout={logout} />
+            <ProfileDropdown theme={theme} toggleTheme={toggle} onLogout={()=>{
+              logout()
+              toast.success("Logged out successfully")
+              }} />
           </div>
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
@@ -287,8 +321,6 @@ switch(label){
                     </motion.div>
                   ))}
                 </div>
-
-                {/* User Section */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex items-center space-x-3">
                     <img
@@ -329,7 +361,10 @@ switch(label){
         <DropdownMenuTrigger asChild>
           <Button className="relative h-10 w-10 rounded-full p-0" variant="ghost">
             <Avatar>
-              <AvatarImage alt="user" src={currentUser?.profile_image_url || '/default.png'} />
+              <AvatarImage alt="user" src={
+                // prefer currentUser (from API) then local fullInfo image, normalized
+                currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png')
+              } />
               <AvatarFallback>{currentUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
@@ -339,7 +374,7 @@ switch(label){
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage alt="user" src={currentUser?.profile_image_url|| '/default.png'}  />
+                <AvatarImage alt="user" src={ currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png') }  />
                 <AvatarFallback>{currentUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col space-y-1">
@@ -365,6 +400,10 @@ switch(label){
           <DropdownMenuItem>
             <Settings className="mr-2 h-4 w-4" />
             Account Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Settings className="mr-2 h-4 w-4" />
+            {userProfileImage?.is_crc || userProfileImage?.is_superuser ? <p>You are admin</p> : <p>You are a normal user</p>}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400 cursor-pointer">
