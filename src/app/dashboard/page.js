@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {Separator} from "@/components/ui/separator"
 import {Input} from "@/components/ui/input"
 import {Button} from "@/components/ui/button"
+import Link from "next/link"
 import toast from 'react-hot-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { set } from 'zod';
@@ -907,11 +908,11 @@ export default function Dashboard() {
 
   const menuItems = [
     { id: 'home', icon: Home, label: 'Dashboard' },
-    { id: 'messages', icon: MessageSquare, label: 'Messages', badge: 12 },
+    { id: 'chat', icon: MessageSquare, label: 'Messages', badge: 12 },
     { id: 'community', icon: Users, label: 'Community' },
     { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
-    {id:"manageuser",icon:UserCog,label:"Manage Users"}
+    {id:"management",icon:UserCog,label:"Manage Users"}
   ];
   useEffect(() => {
     // Check user role
@@ -1081,6 +1082,21 @@ export default function Dashboard() {
       toast.error(error.message || 'Failed to delete opportunity');
     }
   };
+function handleNavigate(word){
+  switch(word){
+    case "feed":
+      return "/feed";
+    case "dashboard":
+      return "/dashboard";
+    case 'management':
+      return "/management";
+    case "chat":
+      return "/chat";
+    default:
+      return "/";
+  }
+}
+
 
   const handleCreateContent = (data) => {
     // #region agent log
@@ -1151,14 +1167,17 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => (
+          {menuItems.map((item) => {
+          if(item.id=="management"&& !isCrcOrSuperuser){
+return null;
+          }
+          
+            return (
+              <Link href={handleNavigate(item.id)}>
             <button
               key={item.id}
               onClick={() => {
                 setActiveTab(item.id);
-                if (item.label === "Feed") {
-                  router.push('/feed');
-                }
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === item.id
@@ -1172,9 +1191,6 @@ export default function Dashboard() {
                 {item.label === "Feed" && (
                   <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
                 )}
-                {item.id==="manageuser" && isCrcOrSuperuser? (
-                  <p>{item.label}</p>
-                ):(<></>)}
               </span>
               {item.badge && (
                 <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
@@ -1182,7 +1198,8 @@ export default function Dashboard() {
                 </span>
               )}
             </button>
-          ))}
+            </Link>
+          )})}
         </nav>
 
         <div className="p-4 border-t border-neutral-200 dark:border-gray-700 space-y-1">
@@ -1199,8 +1216,6 @@ export default function Dashboard() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
