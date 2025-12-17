@@ -1,27 +1,42 @@
 import pool from "../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 
-// Fetch all private conversations for a given user id (path param kept for backwards compatibility)
-export async function GET(request, { params }) {
-  try {
-    const { userid } = params;
-
-    if (!userid) {
+export async function GET(request) {
+  try { 
+    const { searchParams } = new URL(request.url);
+  const userId = searchParams.get('userid'); 
+  console.log("UserId from query string:", userId);
+    if (!userId) {
       return NextResponse.json(
-        { success: false, message: "userid path parameter is required" },
+        { success: false, message: "id path parameter is required" },
         { status: 400 }
       );
     }
 
-    const response = await pool.query(
-      "SELECT id, user1_id, user2_id, created_at FROM private_conversation WHERE user1_id = $1 OR user2_id = $1 ORDER BY created_at DESC",
-      [userid]
-    );
+const response = await pool.query(`
+  SELECT 
+      pc.id,
+      pc.user1_id,
+      pc.user2_id,
+      pc.created_at,
+      u.id AS other_user_id,
+      u.first_name,
+      u.rwandan_name
+  FROM private_conversation pc
+  JOIN api_user u 
+    ON u.id = CASE 
+                WHEN pc.user1_id = $1 THEN pc.user2_id
+                ELSE pc.user1_id
+              END
+  WHERE pc.user1_id = $1 OR pc.user2_id = $1
+  ORDER BY pc.created_at DESC
+`, [userId]);
+
     const data = response.rows;
     return NextResponse.json(
       {
         success: true,
-        data,
+        data:data,
         message: "Private chats fetched successfully",
       },
       { status: 200 }

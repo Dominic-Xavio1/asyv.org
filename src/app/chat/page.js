@@ -1,6 +1,7 @@
 "use client"
 import { Label } from "@/components/ui/label"
 import { useState, useMemo, useEffect, useCallback } from "react"
+import { useTheme } from '@/lib/theme'
 import { io } from "socket.io-client"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -60,7 +61,8 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [chats, setChats] = useState([])
   const [messages, setMessages] = useState([])
-  const [darkMode, setDarkMode] = useState(true)
+  // Use global theme hook so chat follows the app-wide theme toggle
+  const { theme, toggle } = useTheme()
   const [isLoadingChats, setIsLoadingChats] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
 
@@ -82,22 +84,26 @@ export default function ChatPage() {
       const currentUserId = String(currentUser.id)
       const user1Id = String(conversation.user1_id)
       const user2Id = String(conversation.user2_id)
-      const otherUserId = user1Id === currentUserId ? user2Id : user1Id
+      const otherUserId = conversation.other_user_id ? String(conversation.other_user_id) : (user1Id === currentUserId ? user2Id : user1Id)
 
-      // For now we don't have full profile info here, so we show a simple placeholder name.
+      // Build a friendly display name from available fields
+      const first = conversation.first_name || conversation.name || conversation.username || null
+      const rwandan = conversation.rwandan_name || conversation.last_name || null
+      const displayName = first ? (rwandan ? `${first} ${rwandan}` : first) : `User ${otherUserId}`
+
       const otherUser = {
         id: otherUserId,
-        name: `User ${otherUserId}`,
-        avatar: "/professional-man.jpg",
-        status: "online",
+        name: displayName,
+        avatar: conversation.avatar || conversation.profile_image || "/professional-man.jpg",
+        status: conversation.status || "online",
       }
 
       return {
         id: String(conversation.id),
         user: otherUser,
-        lastMessage: "",
+        lastMessage: conversation.last_message || "",
         timestamp: formatTime(conversation.created_at),
-        unread: 0,
+        unread: conversation.unread || 0,
       }
     },
     [currentUser]
@@ -114,7 +120,6 @@ export default function ChatPage() {
     if (chat?.id) {
       loadMessagesForConversation(chat.id)
     }
-    // Clear search when selecting a chat for better UX
     setSearchQuery("")
     
     // Mark chat as read
@@ -165,29 +170,8 @@ export default function ChatPage() {
     [mapMessageToUi]
   )
 
-  // Initialize dark mode from localStorage or system preference
-  useEffect(() => {
-    const storedDarkMode = localStorage.getItem("darkMode")
-    if (storedDarkMode !== null) {
-      setDarkMode(storedDarkMode === "true")
-    } else {
-      setDarkMode(window.matchMedia("(prefers-color-scheme: dark)").matches)
-    }
-  }, [])
-
-  // Update dark mode class on body
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
-    localStorage.setItem("darkMode", darkMode.toString())
-  }, [darkMode])
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode)
-  }
+  // No local dark mode state: `useTheme` manages document class and persistence
+  const toggleDarkMode = () => toggle()
 
   // Load current user from localStorage (set during login)
   useEffect(() => {
@@ -210,29 +194,6 @@ export default function ChatPage() {
     if (!currentUser?.id || !user?.id) return
 
     try {
-      // if (socket) {
-      //   socket.emit(
-      //     "create_private_conversation",
-      //     { user1Id: currentUser.id, user2Id: user.id },
-      //     async (response) => {
-      //       if (!response?.success || !response.conversation) {
-      //         console.error("Failed to create conversation via socket", response?.error)
-      //         return
-      //       }
-      //       const conversation = response.conversation
-      //       const mapped = mapConversationToChat(conversation)
-      //       if (!mapped) return
-
-      //       setChats((prev) => {
-      //         const exists = prev.some((c) => String(c.id) === String(mapped.id))
-      //         return exists ? prev : [mapped, ...prev]
-      //       })
-
-      //       handleChatSelect(mapped)
-      //     }
-      //   )
-      // } else {
-        // Fallback HTTP
         const res = await fetch("/api/privatechat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -270,9 +231,9 @@ export default function ChatPage() {
     const loadConversations = async () => {
       setIsLoadingChats(true)
       try {
-        const res = await fetch(`/api/privatechat?userId=${currentUser.id}`)
-        const data = await res.json()
-
+        const res = await fetch(`/api/privatechat/userid?userid=${currentUser.id}`)
+        const data = await res.json();
+console.log("fetched conversation are ",data.data)
         if (data?.success && Array.isArray(data.data)) {
           const mapped = data.data
             .map(mapConversationToChat)
@@ -417,36 +378,37 @@ export default function ChatPage() {
   }
 
   // Theme classes
-  const bgColor = darkMode ? "bg-gray-900" : "bg-gray-50"
-  const cardBg = darkMode ? "bg-gray-800" : "bg-white"
-  const borderColor = darkMode ? "border-gray-800" : "border-gray-200"
-  const textColor = darkMode ? "text-white" : "text-gray-900"
-  const textMuted = darkMode ? "text-gray-100" : "text-gray-900"
-  const hoverBg = darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
-  const onlineStatus = darkMode ? "border-gray-900" : "border-white"
-  const messageBgOwn = darkMode ? "bg-green-600" : "bg-green-600"
-  const messageBgOther = darkMode ? "bg-gray-800" : "bg-gray-100"
+  const isDark = theme === 'dark'
+  const bgColor = isDark ? "bg-gray-900" : "bg-gray-50"
+  const cardBg = isDark ? "bg-gray-800" : "bg-white"
+  const borderColor = isDark ? "border-gray-800" : "border-gray-200"
+  const textColor = isDark ? "text-white" : "text-gray-900"
+  const textMuted = isDark ? "text-gray-100" : "text-gray-900"
+  const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-100"
+  const onlineStatus = isDark ? "border-gray-900" : "border-white"
+  const messageBgOwn = isDark ? "bg-green-600" : "bg-green-600"
+  const messageBgOther = isDark ? "bg-gray-800" : "bg-gray-100"
 
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} transition-colors duration-300 mt-20`}>
       {/* Theme Toggle */}
-      <div className="fixed top-4 right-4 z-50">
+      {/* <div className="fixed top-4 right-4 z-50">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleDarkMode}
-          className={`rounded-full ${darkMode ? 'bg-gray-800 text-yellow-300 hover:bg-gray-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          className={`rounded-full ${isDark ? 'bg-gray-800 text-yellow-300 hover:bg-gray-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
         >
-          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
-      </div>
+      </div> */}
 
       <div className="flex max-h-[650px] pt-4 px-4">
         <aside className="hidden lg:flex w-64 mr-4">
           <Card className={`flex-1 ${cardBg} ${borderColor} border flex flex-col`}>
             <div className="p-4 border-b">
               <div className="flex items-center gap-2 mb-2">
-                <Users className={`h-5 w-5 ${darkMode ? 'text-green-600' : 'text-green-600'}`} />
+                <Users className="h-5 w-5 text-green-600" />
                 <h2 className={`text-lg font-semibold ${textColor}`}>Online Users</h2>
               </div>
               <p className={`text-sm ${textMuted}`}>{onlineUsers.length} active now</p>
@@ -462,7 +424,7 @@ export default function ChatPage() {
                       <div className="relative">
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                          <AvatarFallback className={darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
+                          <AvatarFallback className={isDark ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
                             {user.name.split(" ").map((n) => n[0]).join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -470,7 +432,7 @@ export default function ChatPage() {
                       </div>
                       <div className="flex-1 text-left">
                         <p className={`text-sm font-medium ${textColor}`}>{user.name}</p>
-                        <p className={`text-xs ${darkMode ? 'text-green-600' : 'text-green-600'}`}>Active now</p>
+                        <p className="text-xs text-green-600">Active now</p>
                       </div>
                     </div>
                   </Card>
@@ -491,7 +453,7 @@ export default function ChatPage() {
             <div className="lg:hidden border-b">
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Users className={`h-5 w-5 ${darkMode ? 'text-green-600' : 'text-green-600'}`} />
+                  <Users className="h-5 w-5 text-green-600" />
                   <h3 className={`text-sm font-semibold ${textColor}`}>Online Users</h3>
                 </div>
                 <ScrollArea className="w-full" orientation="horizontal">
@@ -506,7 +468,7 @@ export default function ChatPage() {
                           <div className="relative">
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                              <AvatarFallback className={darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
+                              <AvatarFallback className={isDark ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
                                 {user.name.split(" ").map((n) => n[0]).join("")}
                               </AvatarFallback>
                             </Avatar>
@@ -528,7 +490,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2">
                 <Input
                   placeholder="Search by name or message..."
-                  className={`pl-9 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} ${darkMode ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted} max-w-[250px]`}
+                  className={`pl-9 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${isDark ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted} max-w-[250px]`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -569,7 +531,7 @@ export default function ChatPage() {
                       onClick={() => handleChatSelect(chat)}
                       className={`mb-2 p-3 ${hoverBg} transition-all duration-200 max-w-[300px] cursor-pointer ${cardBg} ${
                         selectedChat.id === chat.id 
-                          ? `${darkMode ? 'border-l-4 border-green-600' : 'border-l-4 border-green-600'} shadow-sm` 
+                          ? `border-l-4 border-green-600 shadow-sm` 
                           : ''
                       }`}
                     >
@@ -577,7 +539,7 @@ export default function ChatPage() {
                         <div className="relative">
                           <Avatar className="h-12 w-12">
                             <AvatarImage src={chat.user.avatar || "/default.png"} alt={chat.user.name} />
-                            <AvatarFallback className={darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
+                            <AvatarFallback className={isDark ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
                               {chat.user.name.split(" ").map((n) => n[0]).join("")}
                             </AvatarFallback>
                           </Avatar>
@@ -589,7 +551,7 @@ export default function ChatPage() {
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex items-center gap-2">
                               <p className={`text-sm font-semibold ${textColor} truncate`}>
-                                {chat.user.name}{console.log("chat I am inspecting ",chat)}
+                                {chat.user.name}
                               </p>
                               {searchQuery && chat.user.name.toLowerCase().includes(searchQuery.toLowerCase()) && (
                                 <Badge className="bg-orange-500 text-white text-xs px-1 py-0 h-4">
@@ -600,7 +562,7 @@ export default function ChatPage() {
                             <div className="flex flex-col items-end gap-1">
                               <span className={`text-xs ${textMuted}`}>{chat.timestamp}</span>
                               {chat.unread > 0 && (
-                                <Badge className={`${darkMode ? 'bg-green-600' : 'bg-green-600'} text-white text-xs px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center`}>
+                                <Badge className={`bg-green-600 text-white text-xs px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center`}>
                                   {chat.unread}
                                 </Badge>
                               )}
@@ -673,7 +635,7 @@ export default function ChatPage() {
                   <div className="relative">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={selectedChat?.user?.avatar || "/placeholder.svg"} alt={selectedChat?.user?.name} />
-                      <AvatarFallback className={darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
+                        <AvatarFallback className={isDark ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
                         {selectedChat?.user?.name?.split(" ").map((n) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
@@ -683,7 +645,7 @@ export default function ChatPage() {
                   </div>
                   <div>
                     <h2 className={`font-semibold ${textColor}`}>{selectedChat?.user?.name}</h2>
-                    <p className={`text-sm ${darkMode ? 'text-green-600' : 'text-green-600'}`}>
+                    <p className="text-sm text-green-600">
                       {selectedChat?.user?.status === "online" ? "Active now" : "Offline"}
                     </p>
                   </div>
@@ -692,21 +654,21 @@ export default function ChatPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={darkMode ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
+                    className={isDark ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
                   >
                     <Phone className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={darkMode ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
+                    className={isDark ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
                   >
                     <Video className="h-5 w-5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={darkMode ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
+                    className={isDark ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
                   >
                     <MoreVertical className="h-5 w-5" />
                   </Button>
@@ -720,7 +682,7 @@ export default function ChatPage() {
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${textMuted}`} />
                 <Input
                   placeholder="Search in conversation..."
-                  className={`pl-9 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} ${darkMode ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted}`}
+                  className={`pl-9 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${isDark ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted}`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -744,7 +706,7 @@ export default function ChatPage() {
             <ScrollArea className="flex-1 p-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
               <div className="space-y-4 max-w-4xl mx-auto">
                 <div className="flex justify-center">
-                  <Badge variant="secondary" className={`${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+                  <Badge variant="secondary" className={`${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
                     Today, Jan 24
                   </Badge>
                 </div>
@@ -764,7 +726,7 @@ export default function ChatPage() {
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={selectedChat?.user?.avatar || "/placeholder.svg"} 
                           alt={selectedChat?.user?.name} />
-                          <AvatarFallback className={darkMode ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
+                          <AvatarFallback className={isDark ? "bg-gray-700 text-white" : "bg-gray-200 text-gray-700"}>
                             {selectedChat?.user?.name?.split(" ").map((n) => n[0]).join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -773,7 +735,7 @@ export default function ChatPage() {
                         className={`max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-200 hover:scale-[1.02] ${
                           message.isOwn
                             ? `${messageBgOwn} text-white rounded-br-sm`
-                            : `${messageBgOther} ${textColor} rounded-bl-sm ${darkMode ? 'border border-gray-700' : 'border border-gray-200'}`
+                            : `${messageBgOther} ${textColor} rounded-bl-sm ${isDark ? 'border border-gray-700' : 'border border-gray-200'}`
                         }`}
                       >
                         {searchQuery && message.text.toLowerCase().includes(searchQuery.toLowerCase()) ? (
@@ -809,7 +771,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={darkMode ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
+                  className={isDark ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
                   title="Attach image"
                 >
                   <ImageIcon className="h-5 w-5" />
@@ -817,7 +779,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={darkMode ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
+                  className={isDark ? 'text-gray-400 hover:text-green-600 hover:bg-gray-800' : 'text-gray-600 hover:text-green-600 hover:bg-gray-100'}
                   title="Attach file"
                 >
                   <FileText className="h-5 w-5" />
@@ -825,7 +787,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={darkMode ? 'text-gray-400 hover:text-orange-500 hover:bg-gray-800' : 'text-gray-600 hover:text-orange-600 hover:bg-gray-100'}
+                  className={isDark ? 'text-gray-400 hover:text-orange-500 hover:bg-gray-800' : 'text-gray-600 hover:text-orange-600 hover:bg-gray-100'}
                   title="Attach video"
                 >
                   <Film className="h-5 w-5" />
@@ -833,7 +795,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={darkMode ? 'text-gray-400 hover:text-orange-500 hover:bg-gray-800' : 'text-gray-600 hover:text-orange-600 hover:bg-gray-100'}
+                  className={isDark ? 'text-gray-400 hover:text-orange-500 hover:bg-gray-800' : 'text-gray-600 hover:text-orange-600 hover:bg-gray-100'}
                   title="Record audio"
                 >
                   <Mic className="h-5 w-5" />
@@ -843,7 +805,7 @@ export default function ChatPage() {
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     placeholder="Type a message..."
-                    className={`pr-10 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} ${darkMode ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted} focus-visible:ring-green-600`}
+                    className={`pr-10 ${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${isDark ? 'border-gray-600' : 'border-gray-300'} ${textColor} placeholder:${textMuted} focus-visible:ring-green-600`}
                     onKeyPress={(e) => {
                       if (e.key === "Enter" && messageInput.trim()) {
                         handleSendMessage()
@@ -853,7 +815,7 @@ export default function ChatPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 ${darkMode ? 'text-gray-400 hover:text-orange-500' : 'text-gray-600 hover:text-orange-600'}`}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400 hover:text-orange-500' : 'text-gray-600 hover:text-orange-600'}`}
                     title="Add emoji"
                   >
                     <Smile className="h-5 w-5" />
