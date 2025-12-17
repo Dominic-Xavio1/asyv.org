@@ -1,15 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle } from 'lucide-react';
+import { MessageCircle, Share2,ThumbsUp, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import defaultAvatar from '../../../public/default.png';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 const dummyArticles = [
   { id: 1, title: 'Building Sustainable Communities Through Education', views: 856, discussions: 42 },
   { id: 2, title: 'The Power of Mentorship in Youth Development', views: 734, discussions: 38 },
   { id: 3, title: 'Creating Inclusive Spaces for Growth', views: 612, discussions: 29 },
 ];
-
 const dummyTrendingNews = [
   { 
     id: 1, 
@@ -30,70 +43,240 @@ const dummyTrendingNews = [
 ];
 
 // Comment Section Component
-const CommentSection = ({ postId, isOpen, comments }) => {
+const CommentSection = ({ postId, isOpen, comments: initialComments, currentUserId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
+  const [comments, setComments] = useState(initialComments || []);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && postId) {
+      fetchComments();
+    }
+  }, [isOpen, postId]);
+
+  const fetchComments = async () => {
+    if (!postId) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/comment?postId=${postId}`);
+      const data = await response.json();
+      if (data.success && data.comments) {
+        setComments(data.comments);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !currentUserId || submitting) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newComment.trim(),
+          postId: postId,
+          userId: currentUserId
+        })
+      });
+
+      const data = await response.json();
+      if (data.success && data.comment) {
+        setComments([...comments, data.comment]);
+        setNewComment('');
+        if (onCommentAdded) {
+          onCommentAdded();
+        }
+      } else {
+        alert(data.error || 'Failed to post comment');
+      }
+    } catch (error) {
+      console.error('Error posting comment:', error);
+      alert('Failed to post comment. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
     <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-gray-700 space-y-4">
-      <div className="space-y-3">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-3">
-            <div className="relative w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">
-              <Image 
-                src={comment.avatar} 
-                alt={comment.author}
-                width={32}
-                height={32}
-                className="object-cover"
-              />
-            </div>
-            <div className="flex-1">
-              <div className="bg-neutral-50 dark:bg-gray-800 rounded-lg p-3">
-                <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">{comment.author}</p>
-                <p className="text-sm text-neutral-700 dark:text-gray-300 mt-1">{comment.text}</p>
+      {loading ? (
+        <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">Loading comments...</div>
+      ) : comments.length > 0 ? (
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {comments.map((comment) => (
+            <Card key={comment.id} className="flex gap-3">
+              <div className="flex ">
+              <div className="relative rounded-full flex-shrink-0 overflow-hidden">
+                <Avatar className="w-[70px] h-[70px] object-cover">
+                  <AvatarImage src={comment.profile_image || defaultAvatar} 
+                  alt={comment.full_name || comment.username} />
+                </Avatar>
               </div>
-              <p className="text-xs text-neutral-500 dark:text-gray-400 mt-1 ml-3">{comment.time}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+              <div className="flex-1">
+                <div className="bg-neutral-50 dark:bg-gray-800 rounded-lg p-3">
+                  <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">
+                    {comment.full_name || comment.username || 'Unknown User'}
+                  </p>
+                  <p className="text-sm text-neutral-700 dark:text-gray-300 mt-1">{comment.content}</p>
+                </div>
+                <p className="text-xs text-neutral-500 dark:text-gray-400 mt-1 ml-3">
+                  {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">No comments yet. Be the first to comment!</div>
+      )}
       
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
-        />
-        <button className="px-4 py-2 bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors text-sm font-medium">
-          Post
-        </button>
-      </div>
+      {currentUserId && (
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Add a Comment</CardTitle>
+            <CardDescription>Share your thoughts on this post</CardDescription>
+            <CardContent>
+<form onSubmit={handleSubmitComment} className="flex gap-2">
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Write a comment..."
+            className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+            disabled={submitting}
+          />
+          <button 
+            type="submit"
+            disabled={!newComment.trim() || submitting}
+            className="px-4 py-2 bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Posting...' : 'Post'}
+          </button>
+        </form>
+            </CardContent>
+          </CardHeader>
+        </Card>
+      )}
     </div>
   );
 };
 
-// Simple PostCard component if missing
-const SimplePostCard = ({ post }) => {
-  const [isLiked, setIsLiked] = useState(post.isLiked);
-  const [likes, setLikes] = useState(post.likes);
+const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) => {
+  const [isLiked, setIsLiked] = useState(post.isLiked || false);
+  const [likes, setLikes] = useState(post.likes || 0);
+  const [commentCount, setCommentCount] = useState(post.comments || 0);
   const [showComments, setShowComments] = useState(false);
+  const [liking, setLiking] = useState(false);
 
-  const handleLike = () => {
+  useEffect(() => {
+    if (post.id) {
+      fetchLikeStatus();
+      fetchCommentCount();
+    }
+  }, [post.id, currentUserId]);
+
+  const fetchLikeStatus = async () => {
+    if (!post.id) return;
+    try {
+      const url = currentUserId 
+        ? `/api/like?postId=${post.id}&userId=${currentUserId}`
+        : `/api/like?postId=${post.id}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success) {
+        setLikes(data.likeCount || 0);
+        setIsLiked(data.isLiked || false);
+      }
+    } catch (error) {
+      console.error('Error fetching like status:', error);
+    }
+  };
+
+  const fetchCommentCount = async () => {
+    if (!post.id) return;
+    try {
+      const response = await fetch(`/api/comment?postId=${post.id}`);
+      const data = await response.json();
+      if (data.success && data.comments) {
+        setCommentCount(data.comments.length);
+      }
+    } catch (error) {
+      console.error('Error fetching comment count:', error);
+    }
+  };
+
+
+  const handleLike = async () => {
+    if (!currentUserId || liking) return;
+    
+    setLiking(true);
+    const previousLiked = isLiked;
+    const previousLikes = likes;
     setIsLiked(!isLiked);
-    setLikes(isLiked ? likes - 1 : likes + 1);
+    setLikes(previousLiked ? likes - 1 : likes + 1);
+    
+    try {
+      const response = await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId: post.id,
+          userId: currentUserId
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setLikes(data.likeCount);
+        setIsLiked(data.isLiked);
+        if (onLikeUpdate) {
+          onLikeUpdate(post.id, data.likeCount, data.isLiked);
+        }
+      } else {
+        setIsLiked(previousLiked);
+        setLikes(previousLikes);
+        alert(data.error || 'Failed to like post');
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
+      setIsLiked(previousLiked);
+      setLikes(previousLikes);
+      alert('Failed to like post. Please try again.');
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleCommentAdded = () => {
+    setCommentCount(commentCount + 1);
+    if (onCommentUpdate) {
+      onCommentUpdate(post.id, commentCount + 1);
+    }
   };
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm">
       <div className="p-4">
         <div className="flex items-center gap-3 mb-3">
-          <div className="relative w-10 h-10 rounded-full overflow-hidden">
+          <div className="relative w-10 h-10 rounded-full overflow-auto">
             <Image
-              src={post.authorAvatar}
+              src={post.authorAvatar?post.authorAvatar:'/default.png'}
               alt={post.authorName}
               width={40}
               height={40}
@@ -127,7 +310,9 @@ const SimplePostCard = ({ post }) => {
             <video
               src={post.video}
               controls
-              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              className="w-full h-full  aspect-video object-cover"
             >
               Your browser does not support the video tag.
             </video>
@@ -142,24 +327,24 @@ const SimplePostCard = ({ post }) => {
           ))}
         </div>
         
-        <div className="flex items-center justify-between border-t border-b border-neutral-100 dark:border-gray-800 py-2">
+        <div className="flex items-center justify-start gap-4 border-t border-b border-neutral-100 dark:border-gray-800 py-2">
           <button 
             onClick={handleLike}
-            className={`flex items-center gap-2 ${isLiked ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'} hover:text-red-500 dark:hover:text-red-400 transition-colors`}
+            disabled={!currentUserId || liking}
+            className={`flex items-center border bg-green-800 border-gray-100 py-1 px-2 rounded-sm gap-2 ${isLiked ? 'text-red-500 dark:text-red-400' : 'text-gray-200 dark:text-gray-400'} hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-            <span className="text-gray-800 dark:text-gray-200">{likes}</span>
+            <ThumbsUp className={`w4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+            <span className="text-gray-200 dark:text-gray-200">{likes}</span>
           </button>
-          
           <button 
             onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
+            className="flex items-center gap-2 text-gray-200 border borde-gray-100 py-1 px-2 rounded-sm bg-green-800 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-gray-800 dark:text-gray-200">{post.comments}</span>
+            <MessageCircle className="w-4 h-4 rounded-sm" />
+            <span className="text-gray-200 dark:text-gray-200">{commentCount}</span>
           </button>
           
-          <button className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
+          <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-800 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
             <Share2 className="w-5 h-5" />
             <span className="text-gray-800 dark:text-gray-200">{post.shares}</span>
           </button>
@@ -170,10 +355,8 @@ const SimplePostCard = ({ post }) => {
         <CommentSection 
           postId={post.id}
           isOpen={showComments}
-          comments={[
-            { id: 1, author: 'John Doe', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', text: 'This is amazing!', time: '1 hour ago' },
-            { id: 2, author: 'Jane Smith', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', text: 'So inspiring!', time: '2 hours ago' }
-          ]}
+          currentUserId={currentUserId}
+          onCommentAdded={handleCommentAdded}
         />
       )}
     </div>
@@ -189,34 +372,40 @@ export default function SocialFeed() {
   const [sortBy, setSortBy] = useState('newest');
   const [auth, setAuth] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // Get auth from localStorage (client-side only)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedAuth = localStorage.getItem('auth');
       const storedUser = localStorage.getItem('userInfo');
+      const fullInfo = localStorage.getItem('fullInfo');
+      
       if (storedAuth) {
         setAuth(JSON.parse(storedAuth));
       }
       if (storedUser) {
         setUserInfo(JSON.parse(storedUser));
       }
+      if (fullInfo) {
+        try {
+          const user = JSON.parse(fullInfo);
+          setCurrentUserId(user.id);
+        } catch (e) {
+          console.error('Error parsing fullInfo:', e);
+        }
+      }
     }
   }, []);
-
-  // Fetch posts and opportunities from backend
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        // Fetch posts (now includes user info from JOIN)
         const postsResponse = await fetch('/api/post');
         const postsData = await postsResponse.json();
-        
         if (postsData.success && postsData.posts) {
-          // Posts already include user info from the JOIN query
           const postsWithUsers = postsData.posts.map((post) => {
             return {
               id: post.id,
@@ -242,7 +431,7 @@ export default function SocialFeed() {
           setPosts([]);
         }
 
-        // Fetch opportunities
+        // Fetch opportunities (only approved ones)
         const opportunitiesResponse = await fetch('/api/opportunity');
         const opportunitiesData = await opportunitiesResponse.json();
         
@@ -304,7 +493,7 @@ export default function SocialFeed() {
                     opportunities.map((opportunity, index) => (
                       <div
                         key={opportunity.id}
-                        className="p-3 border-b border-neutral-100 dark:border-gray-800 hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
+                        className="p-3 border-b border-neutral-100 dark:border-gray-800 hover:bg-green-50 dark:hover:bg-gray-800 transition-colors group"
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
@@ -318,14 +507,44 @@ export default function SocialFeed() {
                             <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors line-clamp-2">
                               {opportunity.title}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                              {opportunity.content}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {new Date(opportunity.created_at).toLocaleDateString()}
+                            {opportunity.op_type && (
+                              <span className="inline-block mt-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded text-xs font-medium">
+                                {opportunity.op_type}
                               </span>
-                            </div>
+                            )}
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">
+                              {opportunity.description}
+                            </p>
+                            {opportunity.organization && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                <span className="font-medium">Org:</span> {opportunity.organization}
+                              </p>
+                            )}
+                            {opportunity.location && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <span className="font-medium">Location:</span> {opportunity.location}
+                              </p>
+                            )}
+                            {opportunity.deadline && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                <span className="font-medium">Deadline:</span> {new Date(opportunity.deadline).toLocaleDateString()}
+                              </p>
+                            )}
+                            {opportunity.link && (
+                              <a
+                                href={opportunity.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-2 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+                              >
+                                <ChevronRight className="w-3 h-3" />
+                                View Details / Apply
+                              </a>
+                            )}
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                              {opportunity.post_time ? new Date(opportunity.post_time).toLocaleDateString() : 'Recently'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -396,17 +615,19 @@ export default function SocialFeed() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search posts, users, or tags..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 dark:border-gray-700 rounded-sm focus:outline-none focus:ring-1 focus:ring-orange-500 dark:focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
                 />
               </div>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2.5 border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm w-full sm:w-48"
-              >
-                <option value="newest">Newest First</option>
-                <option value="popular">Most Popular</option>
-              </select>
+                 <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-48 h-11">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Posts */}
@@ -441,6 +662,7 @@ export default function SocialFeed() {
                   <SimplePostCard
                     key={post.id}
                     post={post}
+                    currentUserId={currentUserId}
                   />
                 ))}
               </div>

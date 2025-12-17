@@ -45,12 +45,9 @@ export function DialogDemo({ open, setOpen }) {
   const [currentUser, setCurrentUsers] = useState(null);
   const [existingProfile, setExistingProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  
   useEffect(() => {
     setCurrentUsers(JSON.parse(localStorage.getItem("user")));
   }, [])
-  
-  console.log("currentUser from demo ", currentUser)
   let fullInfo;
   useEffect(() => {
     const stored = localStorage.getItem("fullInfo");
@@ -84,8 +81,9 @@ export function DialogDemo({ open, setOpen }) {
      const getProfiles = async ()=>{
       const res = await fetch('/api/users');
       const data = await res.json()
-const userProfile = data.find(user => user.created_by === currentUser.id);
-
+      console.log("all profiles data:", data);
+      console.log("current user id:", currentUser?.id);
+const userProfile = data.users.find(user => user.created_by === currentUser?.id);
 if (userProfile) {
   setFormData({
     fullName: userProfile.full_name || fullInfo?.rwandan_name || "",
@@ -121,7 +119,7 @@ if (userProfile) {
 }
      }
      getProfiles();
-  },[])
+  },[currentUser])
   useEffect(() => {
     const fetchExistingProfile = async () => {
       if (!open || !currentUser?.id) return;

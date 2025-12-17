@@ -178,7 +178,7 @@ const loginUser = async()=>{
                         }}
                         className="w-full bg-green-700 dark:bg-green-600 hover:bg-green-800 dark:hover:bg-green-700 text-white text-sm sm:text-base py-2.5 sm:py-3 h-auto hover:cursor-pointer"
                       >
-                        {isLoading?<>Loading... <Spinner className="size-4 sm:size-6 text-yellow-500 ml-2" /></>:<>Sign In</>}
+                        {isLoading?<><Spinner className="size-4 sm:size-6 text-yellow-500 ml-2" />Loading... </>:<>Sign In</>}
                       </Button>
                     </Field>
                   </motion.div>

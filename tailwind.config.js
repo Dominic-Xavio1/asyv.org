@@ -1,4 +1,5 @@
-const {heroui} = require('@heroui/theme');
+// const {heroui} = require('@heroui/theme');
+import {heroui} from '@heroui/theme';
 // tailwind.config.mjs
 import defaultTheme from 'tailwindcss/defaultTheme'
 import animatePlugin from 'tailwindcss-animate'
@@ -10,7 +11,8 @@ export default {
     "./app/**/*.{js,jsx,ts,tsx}",
     "./pages/**/*.{js,jsx,ts,tsx}",
     "./components/**/*.{js,jsx,ts,tsx}",
-    "./node_modules/@heroui/theme/dist/components/(toast|spinner).js"
+    "./node_modules/@heroui/theme/dist/components/*.{js,ts,jsx,tsx}",
+    "./node_modules/@heroui/theme/dist/components/{spinner,toast}.js"
   ],
   darkMode: ["class"],
   theme: {
@@ -78,7 +80,20 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      pop: {
+        "0%": { transform: "scale(1)" },
+        "50%": { transform: "scale(1.3)" },
+        "100%": { transform: "scale(1)" },
+      },
+      bubble: {
+        "0%": { transform: "translate(0,0) scale(1)", opacity: "1" },
+        "100%": { transform: "translate(var(--x), var(--y)) scale(0)", opacity: "0" },
+      },
     },
-  },
+    animation: {
+      pop: "pop 0.3s ease-out",
+      bubble: "bubble 0.6s ease-out forwards",
+    },
+    },
   plugins: [animatePlugin,heroui()],
 }

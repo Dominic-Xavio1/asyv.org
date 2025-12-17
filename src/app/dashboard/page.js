@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Search, MessageSquare, LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage } from 'lucide-react';
+import { Bell, Search, MessageSquare,UserCog, LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage,Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,8 @@ import {Separator} from "@/components/ui/separator"
 import {Input} from "@/components/ui/input"
 import {Button} from "@/components/ui/button"
 import toast from 'react-hot-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { set } from 'zod';
 const USE_DUMMY = false;
 
 // Updated AnimatedModal Component
@@ -22,8 +24,7 @@ const AnimatedModal = ({ isOpen, onClose, children, title }) => {
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fadeIn"
         onClick={onClose}
       />
-      
-      <div className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-scaleIn mx-auto">
+      <div className="relative bg-white dark:bg-gray-900 sm:rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-scaleIn mx-auto">
         <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-gray-700">
           <h3 className="text-xl font-bold text-neutral-900 dark:text-gray-200">{title}</h3>
           <button
@@ -51,7 +52,14 @@ const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
   const [imagePreview, setImagePreview] = useState(existingPost?.media_url || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v'];
+  const lowerUrl = url.toLowerCase();
+  
+  return videoExtensions.some(ext => lowerUrl.endsWith(ext));
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -68,14 +76,12 @@ const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
       formData.append('content', content);
       if (image) {
         formData.append('media_url', image);
-        // Determine media type
         if (image.type?.startsWith('video/')) {
           formData.append('media_type', 'video');
         } else if (image.type?.startsWith('image/')) {
           formData.append('media_type', 'image');
         }
       } else if (existingPost?.media_url && !image) {
-        // Keep existing media URL when editing without changing media
         formData.append('media_url', existingPost.media_url);
         formData.append('media_type', existingPost.media_type || 'image');
       } else {
@@ -85,14 +91,12 @@ const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
 
       let response;
       if (existingPost) {
-        // Update existing post
         formData.append('id', existingPost.id);
         response = await fetch('/api/post', {
           method: 'PUT',
           body: formData
         });
       } else {
-        // Create new post
         response = await fetch('/api/post', {
           method: 'POST',
           body: formData
@@ -100,7 +104,7 @@ const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
       }
 
       const result = await response.json();
-
+      toast.success(existingPost ? 'Post updated successfully!' : 'Post Created successfully!'); 
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to save post');
       }
@@ -205,7 +209,7 @@ fetchUserPost()
         </div>
         {imagePreview && (
           <div className="mt-2">
-            {/* {imagePreview.startsWith('data:video') || (image && image.type?.startsWith('video/')) ? (
+            {isVideoUrl(imagePreview) ? (
               <video src={imagePreview} controls className="w-full h-48 rounded-lg object-cover" />
             ) : (
               <div className="relative w-full h-48 rounded-lg overflow-hidden">
@@ -227,7 +231,7 @@ fetchUserPost()
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            )} */}
+            )}
           </div>
         )}
       </div>
@@ -366,28 +370,16 @@ const ArticleForm = ({ onClose, onSubmit }) => {
 };
 
 // OpportunityForm Component
-const OpportunityForm = ({ onClose, onSubmit, userId }) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [media, setMedia] = useState(null);
-  const [mediaPreview, setMediaPreview] = useState(null);
+const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null }) => {
+  const [title, setTitle] = useState(existingOpportunity?.title || '');
+  const [opType, setOpType] = useState(existingOpportunity?.op_type || '');
+  const [description, setDescription] = useState(existingOpportunity?.description || '');
+  const [deadline, setDeadline] = useState(existingOpportunity?.deadline ? existingOpportunity.deadline.split('T')[0] : '');
+  const [link, setLink] = useState(existingOpportunity?.link || '');
+  const [organization, setOrganization] = useState(existingOpportunity?.organization || '');
+  const [location, setLocation] = useState(existingOpportunity?.location || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const handleMediaChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setMedia(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMediaPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setMedia(null);
-      setMediaPreview(null);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -399,43 +391,58 @@ const OpportunityForm = ({ onClose, onSubmit, userId }) => {
         throw new Error('User ID is required');
       }
 
-      const formData = new FormData();
-      formData.append('created_by', userId);
-      formData.append('title', title);
-      formData.append('content', content);
-      if (media) {
-        formData.append('media_url', media);
-        if (media.type?.startsWith('video/')) {
-          formData.append('media_type', 'video');
-        } else if (media.type?.startsWith('image/')) {
-          formData.append('media_type', 'image');
-        }
+      if (!title || !opType || !description) {
+        throw new Error('Title, Opportunity Type, and Description are required');
       }
 
-      const response = await fetch('/api/opportunity', {
-        method: 'POST',
-        body: formData
-      });
+      const formData = new FormData();
+      formData.append('user_id', userId);
+      formData.append('title', title);
+      formData.append('op_type', opType);
+      formData.append('description', description);
+      if (deadline) formData.append('deadline', deadline);
+      if (link) formData.append('link', link);
+      if (organization) formData.append('organization', organization);
+      if (location) formData.append('location', location);
+      formData.append('approved', 'true'); // Auto-approve for CRC/superuser
+
+      let response;
+      if (existingOpportunity) {
+        formData.append('id', existingOpportunity.id);
+        response = await fetch('/api/opportunity', {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        response = await fetch('/api/opportunity', {
+          method: 'POST',
+          body: formData
+        });
+      }
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create opportunity');
+        throw new Error(result.error || 'Failed to save opportunity');
       }
 
       if (onSubmit) {
         onSubmit(result.opportunity);
       }
       
+      // Reset form
       setTitle('');
-      setContent('');
-      setMedia(null);
-      setMediaPreview(null);
+      setOpType('');
+      setDescription('');
+      setDeadline('');
+      setLink('');
+      setOrganization('');
+      setLocation('');
       onClose();
-      toast.success('Opportunity posted successfully!');
+      toast.success(existingOpportunity ? 'Opportunity updated successfully!' : 'Opportunity posted successfully!');
     } catch (error) {
-      console.error('Failed to create opportunity:', error);
-      setError(error.message || 'Failed to create opportunity. Please try again.');
+      console.error('Failed to save opportunity:', error);
+      setError(error.message || 'Failed to save opportunity. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -451,7 +458,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId }) => {
       
       <div className="space-y-2">
         <label htmlFor="opportunity-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Opportunity Title <span className="text-red-500">*</span>
+          Opportunity Title 
         </label>
         <Input
           id="opportunity-title"
@@ -459,77 +466,120 @@ const OpportunityForm = ({ onClose, onSubmit, userId }) => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter opportunity title..."
-          className="w-full"
+          className="w-full mt-2"
           required
           disabled={loading}
         />
       </div>
-
+<div className="space-y-2">
+        <label htmlFor="opportunity-type" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Opportunity Type 
+        </label>
+        <select
+          id="opportunity-type"
+          value={opType}
+          onChange={(e) => setOpType(e.target.value)}
+          className="w-full px-3 py-2 border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 dark:focus:ring-orange-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 mt-2"
+          required
+          disabled={loading}
+        >
+          <option value="">Select type...</option>
+          <option value="job">Job</option>
+          <option value="internship">Internship</option>
+          <option value="scholarship">Scholarship</option>
+          <option value="volunteer">Volunteer</option>
+          <option value="event">Event</option>
+          <option value="other">Other</option>
+        </select>
+      </div> 
+{/* 
+<Select value={opType} onValueChange={setOpType}>
+                <SelectTrigger className="w-full sm:w-48 h-11">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
+                </SelectContent>
+              </Select> */}
       <div className="space-y-2">
-        <label htmlFor="opportunity-content" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Description <span className="text-red-500">*</span>
+        <label htmlFor="opportunity-description" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Description
         </label>
         <Textarea
-          id="opportunity-content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Describe the opportunity..."
-          className="w-full min-h-[120px] resize-none"
+          id="opportunity-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe the opportunity in detail..."
+          className="w-full min-h-[120px] resize-none mt-2"
           required
           disabled={loading}
         />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Add Media (Optional) - Image or Video
-        </label>
-        <div className="border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-orange-500 dark:hover:border-orange-400 transition-colors cursor-pointer bg-neutral-50 dark:bg-gray-800/50">
-          <input
-            type="file"
-            id="opportunity-media"
-            className="hidden"
-            accept="image/*,video/*"
-            onChange={handleMediaChange}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label htmlFor="opportunity-deadline" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+            Deadline (Optional)
+          </label>
+          <Input
+            id="opportunity-deadline"
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="w-full"
             disabled={loading}
           />
-          <label htmlFor="opportunity-media" className="cursor-pointer block space-y-2">
-            <Upload className="w-10 h-10 mx-auto text-neutral-400 dark:text-gray-500" />
-            <p className="text-sm text-neutral-600 dark:text-gray-400">
-              {media ? media.name : 'Click to upload image or video'}
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-gray-500">
-              Supports: JPG, PNG, GIF, MP4, MOV, AVI
-            </p>
-          </label>
         </div>
-        {mediaPreview && (
-          <div className="mt-2">
-            {mediaPreview.startsWith('data:video') || (media && media.type?.startsWith('video/')) ? (
-              <video src={mediaPreview} controls className="w-full h-48 rounded-lg object-cover" />
-            ) : (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden">
-                <Image
-                  src={mediaPreview}
-                  alt="Preview"
-                  fill
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMediaPreview(null);
-                    setMedia(null);
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+
+        <div className="space-y-2">
+          <label htmlFor="opportunity-location" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+            Location (Optional)
+          </label>
+          <Input
+            id="opportunity-location"
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g., Kigali, Rwanda"
+            className="w-full"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="opportunity-organization" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Organization (Optional)
+        </label>
+        <Input
+          id="opportunity-organization"
+          type="text"
+          value={organization}
+          onChange={(e) => setOrganization(e.target.value)}
+          placeholder="Organization name..."
+          className="w-full"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="opportunity-link" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Application Link (Optional)
+        </label>
+        <Input
+          id="opportunity-link"
+          type="url"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="https://example.com/apply"
+          className="w-full"
+          disabled={loading}
+        />
+        <p className="text-xs text-neutral-500 dark:text-gray-500">
+          Link where users can apply or find more information
+        </p>
       </div>
 
       <Separator />
@@ -549,7 +599,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId }) => {
           className="bg-orange-500 hover:bg-orange-600 px-6"
           disabled={loading}
         >
-          {loading ? 'Posting...' : 'Post Opportunity'}
+          {loading ? (existingOpportunity ? 'Updating...' : 'Posting...') : (existingOpportunity ? 'Update Opportunity' : 'Post Opportunity')}
         </Button>
       </div>
     </form>
@@ -839,8 +889,10 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
+  const [editingOpportunity, setEditingOpportunity] = useState(null);
   const router = useRouter();
 
   const [userContent, setUserContent] = useState({
@@ -859,6 +911,7 @@ export default function Dashboard() {
     { id: 'community', icon: Users, label: 'Community' },
     { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
+    {id:"manageuser",icon:UserCog,label:"Manage Users"}
   ];
   useEffect(() => {
     // Check user role
@@ -875,9 +928,27 @@ export default function Dashboard() {
       }
     }
   }, []);
-// console.log("Current user data ",currentUser?.id)
+
+
   useEffect(()=>{
+    if (!currentUser?.id) return;
+    const fetchAll = async () => {
+      try {
+        await fetchPosts();
+        if (isCrcOrSuperuser) {
+          await fetchOpportunities();
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAll();
+  },[currentUser, isCrcOrSuperuser])
+
+  // Move fetchPosts to component scope so other handlers can refresh posts
   const fetchPosts = async () => {
+    if (!currentUser?.id) return;
     try {
       const response = await fetch('/api/post/owner',{
         method:"POST",
@@ -887,20 +958,17 @@ export default function Dashboard() {
         body: JSON.stringify({ userId: currentUser?.id }),
       });
       const data = await response.json();
-      
       if (data.success && data.posts) {
         setPosts(data.posts);
         console.log("fetched posts:", data.posts);
       } else {
-        console.error('Failed to fetch posts:', data);
+        console.log('Failed to fetch posts:', data);
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast.error(error.message);
     }
   };
-  fetchPosts().finally(() => setLoading(false));
-  },[currentUser])
 
 
   // Delete post
@@ -928,18 +996,89 @@ export default function Dashboard() {
     }
   };
 
-  // Handle post submission (create or update)
   const handlePostSubmit = async (postData) => {
     try {
-      await fetchPosts(); // Refresh posts after creation/update
+      await fetchPosts();
       if (editingPost) {
         toast.success('Post updated successfully');
         setEditingPost(null);
       } else {
         toast.success('Post created successfully');
       }
+      // Optionally, if a single post object is provided, prepend it for instant UI feedback
+      if (postData && postData.id) {
+        setPosts((prev) => {
+          // if exists replace, else add to start
+          const exists = prev.find(p => p.id === postData.id);
+          if (exists) return prev.map(p => p.id === postData.id ? postData : p);
+          return [postData, ...prev];
+        });
+      }
     } catch (error) {
       console.error('Error refreshing posts:', error);
+    }
+  };
+  const fetchOpportunities = async () => {
+    try{
+      if(!currentUser?.id) return;
+      const response = await fetch('/api/opportunity/owner',{
+        method:"POST",
+        headers:{
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ owner_id: currentUser?.id }),
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch opportunities');
+      }
+      // backend may return an array `opportunities` or a single `opportunity` (legacy)
+      const payload = data.opportunities ?? data.opportunity ?? [];
+      const opsArray = Array.isArray(payload) ? payload : [payload];
+      setOpportunities(opsArray);
+    }
+    catch(err){
+      console.error('Error fetching opportunities:', err);
+      toast.error('Failed to fetch opportunities');
+    }
+  }
+  const handleOpportunitySubmit = async (opportunityData) => {
+    try {
+      await fetchOpportunities(); // Refresh opportunities after creation/update
+      if (editingOpportunity) {
+        toast.success('Opportunity updated successfully');
+        setEditingOpportunity(null);
+      } else {
+        toast.success('Opportunity posted successfully');
+      }
+    } catch (error) {
+      console.error('Error refreshing opportunities:', error);
+    }
+  };
+
+  // Delete opportunity
+  const handleDeleteOpportunity = async (opportunityId) => {
+    if (!confirm('Are you sure you want to delete this opportunity?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/opportunity?id=${opportunityId}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      
+      if (result.success) {
+        setOpportunities(opportunities.filter(opp => opp.id !== opportunityId));
+        toast.success('Opportunity deleted successfully');
+      } else {
+        throw new Error(result.error || 'Failed to delete opportunity');
+      }
+    } catch (error) {
+      console.error('Error deleting opportunity:', error);
+      toast.error(error.message || 'Failed to delete opportunity');
     }
   };
 
@@ -978,6 +1117,7 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
+    toast.success('Logged out successfully!');
     if (typeof window !== 'undefined') {
         localStorage.removeItem("token")
       localStorage.removeItem("user")
@@ -1032,6 +1172,9 @@ export default function Dashboard() {
                 {item.label === "Feed" && (
                   <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
                 )}
+                {item.id==="manageuser" && isCrcOrSuperuser? (
+                  <p>{item.label}</p>
+                ):(<></>)}
               </span>
               {item.badge && (
                 <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
@@ -1234,34 +1377,79 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
-            {/* My Articles / Opportunities */}
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                  {isCrcOrSuperuser ? `My Opportunities (${userContent.articles.length})` : `My Articles (${userContent.articles.length})`}
+                  {isCrcOrSuperuser ? `My Opportunities (${opportunities.length})` : `My Articles (${userContent.articles.length})`}
                 </h3>
-                <button
-                  onClick={() => isCrcOrSuperuser ? setActiveModal('opportunity') : setActiveModal('article')}
-                  className="text-xs sm:text-sm font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">{isCrcOrSuperuser ? 'New Opportunity' : 'New Article'}</span>
-                  <span className="sm:hidden">New</span>
-                </button>
+                {isCrcOrSuperuser && (
+                  <button
+                    onClick={() => {
+                      setEditingOpportunity(null);
+                      setActiveModal('opportunity');
+                    }}
+                    className="text-xs sm:text-sm font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">New Opportunity</span>
+                    <span className="sm:hidden">New</span>
+                  </button>
+                )}
+                {!isCrcOrSuperuser && (
+                  <button
+                    onClick={() => setActiveModal('article')}
+                    className="text-xs sm:text-sm font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">New Article</span>
+                    <span className="sm:hidden">New</span>
+                  </button>
+                )}
               </div>
-              {userContent.articles.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {userContent.articles.map((article) => (
-                    <ContentCard key={article.id} item={article} onDelete={(id) => handleDeleteContent(id, 'article')} />
-                  ))}
-                </div>
+              {isCrcOrSuperuser ? (
+                loading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400">Loading opportunities...</p>
+                  </div>
+                ) : (Array.isArray(opportunities) && opportunities.filter(opp => opp.user_id === currentUser?.id).length > 0) ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {opportunities.filter(opp => opp.user_id === currentUser?.id).map((opportunity) => (
+                      <ContentCard 
+                        key={opportunity.id} 
+                        item={{
+                          ...opportunity,
+                          type: 'opportunity',
+                          title: opportunity.title,
+                          content: opportunity.description
+                        }} 
+                        onDelete={handleDeleteOpportunity}
+                        onEdit={(opp) => {
+                          setEditingOpportunity(opp);
+                          setActiveModal('opportunity');
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
+                    <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No opportunities yet. Post your first opportunity!</p>
+                  </div>
+                )
               ) : (
-                <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
-                  <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">{isCrcOrSuperuser ? 'No opportunities yet. Post your first opportunity!' : 'No articles yet. Write your first article!'}</p>
-                </div>
+                userContent.articles.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {userContent.articles.map((article) => (
+                      <ContentCard key={article.id} item={article} onDelete={(id) => handleDeleteContent(id, 'article')} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
+                    <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No articles yet. Write your first article!</p>
+                  </div>
+                )
               )}
             </div>
 
@@ -1321,17 +1509,20 @@ export default function Dashboard() {
       {isCrcOrSuperuser ? (
         <AnimatedModal
           isOpen={activeModal === 'opportunity'}
-          onClose={() => setActiveModal(null)}
-          title="Post New Opportunity"
+          onClose={() => {
+            setActiveModal(null);
+            setEditingOpportunity(null);
+          }}
+          title={editingOpportunity ? "Edit Opportunity" : "Post New Opportunity"}
         >
           <OpportunityForm 
-            onClose={() => setActiveModal(null)} 
-            onSubmit={(opportunity) => {
-              handleCreateContent({ ...opportunity, type: 'article' });
-              // Refresh opportunities in feed
-              window.location.reload();
+            onClose={() => {
+              setActiveModal(null);
+              setEditingOpportunity(null);
             }} 
+            onSubmit={handleOpportunitySubmit} 
             userId={currentUser?.id}
+            existingOpportunity={editingOpportunity}
           />
         </AnimatedModal>
       ) : (
