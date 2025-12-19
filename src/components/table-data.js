@@ -32,80 +32,81 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const data = [
-  {
-    id: "1",
-    fullName: "Savio Dominic",
-    email: "savio@example.com",
-    grade: "Grade 12",
-    status: "active",
-    family: "Nyang'oro",
-    joinDate: "2023-01-15"
-  },
-  {
-    id: "2",
-    fullName: "Abe Johnson",
-    email: "abe45@example.com",
-    grade: "Grade 11",
-    status: "inactive",
-    family: "Kamere",
-    joinDate: "2022-09-10"
-  },
-  {
-    id: "3",
-    fullName: "Monica Serrat",
-    email: "monserrat44@example.com",
-    grade: "Grade 10",
-    status: "active",
-    family: "Simba",
-    joinDate: "2023-03-22"
-  },
-  {
-    id: "4",
-    fullName: "Silas Brown",
-    email: "silas22@example.com",
-    grade: "Grade 12",
-    status: "pending",
-    family: "Twiga",
-    joinDate: "2023-05-18"
-  },
-  {
-    id: "5",
-    fullName: "Carmella Jones",
-    email: "carmella@example.com",
-    grade: "Grade 9",
-    status: "active",
-    family: "Chui",
-    joinDate: "2022-11-30"
-  },
-  {
-    id: "6",
-    fullName: "Ken Tanaka",
-    email: "ken99@example.com",
-    grade: "Alumni",
-    status: "alumni",
-    family: "Tembo",
-    joinDate: "2021-08-05"
-  },
-  {
-    id: "7",
-    fullName: "Sarah Chen",
-    email: "sarah.chen@example.com",
-    grade: "Grade 11",
-    status: "active",
-    family: "Kifaru",
-    joinDate: "2023-02-14"
-  },
-  {
-    id: "8",
-    fullName: "David Omondi",
-    email: "david.om@example.com",
-    grade: "Grade 10",
-    status: "inactive",
-    family: "Ndovu",
-    joinDate: "2022-12-01"
-  }
-]
+// const data = [
+//   {
+//     id: "1",
+//     fullName: "Savio Dominic",
+//     email: "savio@example.com",
+//     grade: "Grade 12",
+//     status: "active",
+//     family: "Nyang'oro",
+//     joinDate: "2023-01-15"
+//   },
+//   {
+//     id: "2",
+//     fullName: "Abe Johnson",
+//     email: "abe45@example.com",
+//     grade: "Grade 11",
+//     status: "inactive",
+//     family: "Kamere",
+//     joinDate: "2022-09-10"
+//   },
+//   {
+//     id: "3",
+//     fullName: "Monica Serrat",
+//     email: "monserrat44@example.com",
+//     grade: "Grade 10",
+//     status: "active",
+//     family: "Simba",
+//     joinDate: "2023-03-22"
+//   },
+//   {
+//     id: "4",
+//     fullName: "Silas Brown",
+//     email: "silas22@example.com",
+//     grade: "Grade 12",
+//     status: "pending",
+//     family: "Twiga",
+//     joinDate: "2023-05-18"
+//   },
+//   {
+//     id: "5",
+//     fullName: "Carmella Jones",
+//     email: "carmella@example.com",
+//     grade: "Grade 9",
+//     status: "active",
+//     family: "Chui",
+//     joinDate: "2022-11-30"
+//   },
+//   {
+//     id: "6",
+//     fullName: "Ken Tanaka",
+//     email: "ken99@example.com",
+//     grade: "Alumni",
+//     status: "alumni",
+//     family: "Tembo",
+//     joinDate: "2021-08-05"
+//   },
+//   {
+//     id: "7",
+//     fullName: "Sarah Chen",
+//     email: "sarah.chen@example.com",
+//     grade: "Grade 11",
+//     status: "active",
+//     family: "Kifaru",
+//     joinDate: "2023-02-14"
+//   },
+//   {
+//     id: "8",
+//     fullName: "David Omondi",
+//     email: "david.om@example.com",
+//     grade: "Grade 10",
+//     status: "inactive",
+//     family: "Ndovu",
+//     joinDate: "2022-12-01"
+//   }
+// ]
+// const data = []
 
 export const columns = [
   {
@@ -184,7 +185,7 @@ export const columns = [
           className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <GraduationCap className="mr-2 h-4 w-4" />
-          Grade
+          Is_student
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
@@ -197,7 +198,7 @@ export const columns = [
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: "Is_student",
     cell: ({ row }) => {
       const status = row.getValue("status")
       return (
@@ -205,8 +206,8 @@ export const columns = [
           {status === "active" && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
               <CheckCircle className="h-3 w-3" />
-              Active
-            </div>
+              IS_ALUMNI
+            </div>  
           )}
           {status === "inactive" && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
@@ -240,7 +241,7 @@ export const columns = [
           className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <Users className="mr-2 h-4 w-4" />
-          Family
+          Phone Number
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       )
@@ -301,6 +302,28 @@ export const columns = [
 ]
 
 export function DataTableDemo({ className }) {
+  const [data,setData] = React.useState([]);
+React.useEffect(()=>{
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/manage');
+      const jsonData = await response.json();
+      // Transform data to include fullName and grade fields
+      const transformedData = jsonData.map(user => ({
+        ...user,
+        fullName: `${user.first_name} ${user.rwandan_name}`,
+        grade: user.is_student ? "Student" : "Not a student",
+        status: user.is_alumni ? "alumni" : (user.is_student ? "active" : "inactive"),
+        family: user.phone
+      }));
+      setData(transformedData);
+    }
+    catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  fetchData();
+}, [])
   const [sorting, setSorting] = React.useState([])
   const [columnFilters, setColumnFilters] = React.useState([])
   const [columnVisibility, setColumnVisibility] = React.useState({})

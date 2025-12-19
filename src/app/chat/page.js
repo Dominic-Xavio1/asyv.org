@@ -65,6 +65,16 @@ export default function ChatPage() {
   const { theme, toggle } = useTheme()
   const [isLoadingChats, setIsLoadingChats] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+const today = new Date();
+
+const formatted = today.toLocaleDateString("en-US", {
+  month: "short",
+  day: "numeric",
+});
+
+const result = `Today, ${formatted}`;
+
+console.log(result); 
 
   const formatTime = (dateString) => {
     if (!dateString) return ""
@@ -403,7 +413,7 @@ console.log("fetched conversation are ",data.data)
         </Button>
       </div> */}
 
-      <div className="flex max-h-[650px] pt-4 px-4">
+      <div className="flex max-h-[650px] pt-4 px-4">  
         <aside className="hidden lg:flex w-64 mr-4">
           <Card className={`flex-1 ${cardBg} ${borderColor} border flex flex-col`}>
             <div className="p-4 border-b">
@@ -701,13 +711,12 @@ console.log("fetched conversation are ",data.data)
                 </p>
               )}
             </div>
-
             {/* Messages */}
             <ScrollArea className="flex-1 p-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
               <div className="space-y-4 max-w-4xl mx-auto">
                 <div className="flex justify-center">
                   <Badge variant="secondary" className={`${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
-                    Today, Jan 24
+                    {result}
                   </Badge>
                 </div>
 
@@ -766,8 +775,8 @@ console.log("fetched conversation are ",data.data)
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="px-4 py-2 border-t">
-              <div className="flex items-center gap-2 max-w-4xl mx-auto">
+            <div className="px-4 py-2 border-t mt-[325px]">
+              <div className="flex items-center gap-2 max-w-4xl mx-auto py-4">
                 <Button
                   variant="ghost"
                   size="icon"
