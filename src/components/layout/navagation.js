@@ -36,6 +36,7 @@ export default function Navbar() {
   const {visible,setVisible,clearVisible} = chatDarkModeStore();
   const { logout } = useAuth()
   const { theme, toggle } = useTheme()
+
   useEffect(() => {
     try {
       const user = localStorage.getItem("user");
@@ -65,38 +66,54 @@ export default function Navbar() {
     const findUserProfile = async () => {
       try {
         const userEmail = currentUser?.email;
-        if (!userEmail) return;
+        // Only fetch if we have an email and don't already have the profile image
+        if (!userEmail || currentUser?.profile_image_url) return;
 
         const response = await fetch("/api/users");
         const data = await response.json();
-
+console.log("data which I am fetching ",data);
         if (data.users && Array.isArray(data.users)) {
-          // Find the profile matching current user's email
           const userProfile = data.users.find(
             (user) => user.email === userEmail
           );
 
-          if (userProfile && userProfile.profile_image_url) {
+          // Only update state if the profile image exists and differs from current
+          if (
+            userProfile &&
+            userProfile.profile_image &&
+            userProfile.profile_image !== currentUser?.profile_image_url
+          ) {
+            console.log("user profile image which I am setting ",userProfile.profile_image);
             // Update currentUser with profile image from database
             setCurrentUser((prev) => ({
               ...prev,
-              profile_image_url: userProfile.profile_image_url,
+              profile_image_url: userProfile.profile_image,
             }));
-            
-            // Also update localStorage
-            const updatedUser = {
-              ...currentUser,
-              profile_image_url: userProfile.profile_image_url,
-            };
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+
+            // Also update localStorage safely (only if different)
+            try {
+              const stored = localStorage.getItem("user");
+              if (!stored || JSON.parse(stored)?.profile_image_url !== userProfile.profile_image) {
+                const updatedUser = {
+                  ...currentUser,
+                  profile_image_url: userProfile.profile_image,
+                };
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+              }
+            } catch (e) {
+              console.error('Error saving user to localStorage:', e);
+            }
+
             // Also update fullInfo if present so components that read it get the new image
             try {
               const full = localStorage.getItem('fullInfo');
               if (full) {
                 const parsed = JSON.parse(full);
-                parsed.image_url = userProfile.profile_image_url;
-                localStorage.setItem('fullInfo', JSON.stringify(parsed));
-                setUserProfileImage(parsed);
+                if (parsed.image_url !== userProfile.profile_image) {
+                  parsed.image_url = userProfile.profile_image;
+                  localStorage.setItem('fullInfo', JSON.stringify(parsed));
+                  setUserProfileImage(parsed);
+                }
               }
             } catch (e) {
               console.error('Error updating fullInfo in localStorage:', e);
@@ -109,7 +126,8 @@ export default function Navbar() {
     };
 
     findUserProfile();
-  }, [currentUser?.email])
+    // depend on email and profile_image_url explicitly to avoid unnecessary loops
+  }, [currentUser?.email, currentUser?.profile_image_url])
   useEffect(() => {
     const handleStorageChange = () => {
       try {
@@ -175,7 +193,6 @@ switch(label){
       transition: { delay: i * 0.1 }
     })
   };
-
   return (
     <>
       <nav className="fixed top-0 left-0 pt-2 right-0 z-50 bg-white backdrop-blur-md dark:bg-gray-800/95 border-b border-gray-200 dark:border-gray-700 shadow-sm ">
@@ -359,12 +376,14 @@ switch(label){
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className="relative h-10 w-10 rounded-full p-0" variant="ghost">
+          <Button className="relative h-10 w-10 rounded-full p-0" variant="outline">
             <Avatar>
               <AvatarImage alt="user" src={
                 // prefer currentUser (from API) then local fullInfo image, normalized
                 currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png')
-              } />
+              } 
+              className="object-cover"
+              />
               <AvatarFallback>{currentUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
@@ -400,10 +419,6 @@ switch(label){
           <DropdownMenuItem>
             <Settings className="mr-2 h-4 w-4" />
             Account Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            {userProfileImage?.is_crc || userProfileImage?.is_superuser ? <p>You are admin</p> : <p>You are a normal user</p>}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400 cursor-pointer">

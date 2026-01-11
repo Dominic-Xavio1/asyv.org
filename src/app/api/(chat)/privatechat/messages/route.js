@@ -1,14 +1,16 @@
-import pool from "../../../../../../connection/databaseConnection";
+import pool from "../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 
 // Get all messages for a private conversation
-export async function GET(request, { params }) {
+export async function GET(request) {
   try {
-    const { conversationId } = params;
+    const {searchParams} = new URL(request.url);
+    const conversationId = searchParams.get("conversationId");
 
     if (!conversationId) {
       return NextResponse.json(
-        { success: false, message: "conversationId path parameter is required" },
+        { success: false, message: "conversationId path parameter is required",
+         },
         { status: 400 }
       );
     }

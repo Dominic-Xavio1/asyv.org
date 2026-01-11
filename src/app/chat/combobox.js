@@ -59,7 +59,8 @@ export default function ComboboxPopover({
     const list = Array.isArray(filtered) && filtered.length ? filtered : users
     if (!query.trim()) return list
     const q = query.toLowerCase()
-    return list.filter(u => u.name.toLowerCase().includes(q))
+    console.log("list to filter ",list);
+    return list.filter(u => u.username.toLowerCase().includes(q))
   }, [filtered, users, query])
 
   const onItemSelectRequest = (user) => {

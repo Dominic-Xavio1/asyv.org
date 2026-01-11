@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, MessageSquare,UserCog, LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage,Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,9 +11,8 @@ import {Input} from "@/components/ui/input"
 import {Button} from "@/components/ui/button"
 import Link from "next/link"
 import toast from 'react-hot-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { set } from 'zod';
-const USE_DUMMY = false;
+import GroupImageDropzone from './GroupImageDropzone'
+import MemberSelector from './MemberSelector'
 
 // Updated AnimatedModal Component
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
@@ -608,24 +607,68 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
 };
 
 // ChatGroupForm Component
-const ChatGroupForm = ({ onClose, onSubmit }) => {
+const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const imageDropzoneRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!userId) {
+      toast.error('User ID is required');
+      return;
+    }
+
+    if (selectedMembers.length === 0) {
+      toast.error('Please select at least one member');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      onSubmit({ groupName, description, isPrivate, type: 'group' });
+      const formData = new FormData();
+      formData.append('name', groupName);
+      formData.append('description', description);
+      formData.append('members', JSON.stringify(selectedMembers));
+      formData.append('created_by', userId);
+      
+      const imageFile = imageDropzoneRef.current?.getFile();
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+
+      const response = await fetch('/api/group-conversation', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to create group');
+      }
+
+      toast.success('Group created successfully!');
+      
+      // Call onSubmit with the created group data
+      if (onSubmit) {
+        onSubmit(data.data);
+      }
+
+      // Reset form
       setGroupName('');
       setDescription('');
-      setIsPrivate(false);
+      setSelectedMembers([]);
+      imageDropzoneRef.current?.reset();
+      
       onClose();
     } catch (error) {
       console.error('Failed to create group:', error);
+      toast.error(error.message || 'Failed to create group');
     } finally {
       setLoading(false);
     }
@@ -650,6 +693,13 @@ const ChatGroupForm = ({ onClose, onSubmit }) => {
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Group Image (Optional)
+        </label>
+        <GroupImageDropzone ref={imageDropzoneRef} />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Description
         </label>
         <Textarea
@@ -668,24 +718,12 @@ const ChatGroupForm = ({ onClose, onSubmit }) => {
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Privacy Settings
+          Select Members
         </label>
-        <div className="flex items-center gap-3 p-4 bg-neutral-50 dark:bg-gray-800/50 rounded-lg border border-neutral-200 dark:border-gray-700">
-          <input
-            type="checkbox"
-            id="private-group"
-            checked={isPrivate}
-            onChange={(e) => setIsPrivate(e.target.checked)}
-            className="w-4 h-4 text-green-600 dark:text-green-500 border-neutral-300 dark:border-gray-600 rounded focus:ring-green-500 dark:focus:ring-green-600"
-            disabled={loading}
-          />
-          <label htmlFor="private-group" className="text-sm text-neutral-700 dark:text-gray-300 cursor-pointer flex-1">
-            <div className="font-medium">Private Group</div>
-            <div className="text-xs text-neutral-500 dark:text-gray-500 mt-1">
-              Only invited members can join and see group content
-            </div>
-          </label>
-        </div>
+        <MemberSelector
+          selectedMembers={selectedMembers}
+          onSelectionChange={setSelectedMembers}
+        />
       </div>
 
       <Separator />
@@ -703,7 +741,7 @@ const ChatGroupForm = ({ onClose, onSubmit }) => {
         <Button
           type="submit"
           className="bg-green-600 hover:bg-green-700 px-6"
-          disabled={loading}
+          disabled={loading || selectedMembers.length === 0}
         >
           {loading ? 'Creating...' : 'Create Group'}
         </Button>
@@ -816,16 +854,31 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-4 hover:shadow-md dark:hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors">
-              {item.title || item.groupName || 'New Post'}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {item.type === 'group' && item.image ? (
+            <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-neutral-200 dark:border-gray-700">
+              <Image
+                src={item.image}
+                alt={item.name || 'Group'}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="p-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 flex-shrink-0">
+              <Icon className="w-5 h-5" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors truncate">
+              {item.title || item.name || item.groupName || 'New Post'}
             </h4>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {item.created_at ? new Date(item.created_at).toLocaleDateString() : item.date}
+              {item.type === 'group' && item.members && (
+                <span className="ml-2">• {Array.isArray(item.members) ? item.members.length : 0} members</span>
+              )}
             </p>
           </div>
         </div>
@@ -905,7 +958,6 @@ export default function Dashboard() {
     username: 'User',
     bio: 'Community member'
   });
-
   const menuItems = [
     { id: 'home', icon: Home, label: 'Dashboard' },
     { id: 'chat', icon: MessageSquare, label: 'Messages', badge: 12 },
@@ -1098,11 +1150,40 @@ function handleNavigate(word){
 }
 
 
-  const handleCreateContent = (data) => {
+  const fetchGroups = async () => {
+    try {
+      if (!currentUser?.id) return;
+      const response = await fetch(`/api/group-conversation?userId=${currentUser.id}`);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        // Only show groups created by current user
+        const myGroups = data.data.filter(group => String(group.created_by) === String(currentUser.id));
+        setUserContent(prev => ({ ...prev, groups: myGroups }));
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchGroups();
+    }
+  }, [currentUser]);
+
+  const handleCreateContent = async (data) => {
     // #region agent log
     const timestamp = Date.now();
     fetch('http://127.0.0.1:7242/ingest/a5c05f7c-9e65-48f3-bf13-130a70f52554',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.js:759',message:'handleCreateContent called',data:{timestamp,dataType:data.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
+    
+    // For groups, data is already the created group from API
+    if (data.id && data.name) {
+      // This is a group from API
+      await fetchGroups(); // Refresh groups list
+      return;
+    }
+
     const newItem = {
       ...data,
       id: timestamp,  
@@ -1113,18 +1194,43 @@ function handleNavigate(word){
       setUserContent(prev => ({ ...prev, posts: [newItem, ...prev.posts] }));
     } else if (data.type === 'article') {
       setUserContent(prev => ({ ...prev, articles: [newItem, ...prev.articles] }));
-    } else if (data.type === 'group') {
-      setUserContent(prev => ({ ...prev, groups: [newItem, ...prev.groups] }));
+    }
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    if (!confirm('Are you sure you want to delete this group?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/group-conversation/${groupId}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        await fetchGroups(); // Refresh groups list
+        toast.success('Group deleted successfully');
+      } else {
+        throw new Error(result.message || 'Failed to delete group');
+      }
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast.error(error.message || 'Failed to delete group');
     }
   };
 
   const handleDeleteContent = (id, type) => {
+    if (type === 'group') {
+      handleDeleteGroup(id);
+      return;
+    }
+    
     if (type === 'post') {
       setUserContent(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== id) }));
     } else if (type === 'article') {
       setUserContent(prev => ({ ...prev, articles: prev.articles.filter(a => a.id !== id) }));
-    } else if (type === 'group') {
-      setUserContent(prev => ({ ...prev, groups: prev.groups.filter(g => g.id !== id) }));
     }
   };
 
@@ -1173,9 +1279,11 @@ return null;
           }
           
             return (
-              <Link href={handleNavigate(item.id)}>
-            <button
+              <Link 
               key={item.id}
+              href={handleNavigate(item.id)}>
+            <button
+             
               onClick={() => {
                 setActiveTab(item.id);
               }}
@@ -1555,7 +1663,11 @@ return null;
         onClose={() => setActiveModal(null)}
         title="Create Chat Group"
       >
-        <ChatGroupForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
+        <ChatGroupForm 
+          onClose={() => setActiveModal(null)} 
+          onSubmit={handleCreateContent}
+          userId={currentUser?.id}
+        />
       </AnimatedModal>
 
       <AnimatedModal
