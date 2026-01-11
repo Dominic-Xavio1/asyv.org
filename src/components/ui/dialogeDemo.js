@@ -81,8 +81,6 @@ export function DialogDemo({ open, setOpen }) {
      const getProfiles = async ()=>{
       const res = await fetch('/api/users');
       const data = await res.json()
-      console.log("all profiles data:", data);
-      console.log("current user id:", currentUser?.id);
 const userProfile = data.users.find(user => user.created_by === currentUser?.id);
 if (userProfile) {
   setFormData({
