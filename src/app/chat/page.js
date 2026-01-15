@@ -1162,7 +1162,7 @@ export default function ChatPage() {
                       onClick={() => handleChatSelect(chat)}
                       className={`p-3 ${hoverBg} transition-all duration-200 cursor-pointer ${cardBg} border ${borderColor} ${
                         selectedChat?.id === chat.id 
-                          ? `ring-2 ring-green-500 ring-offset-2 ${isDark ? 'ring-offset-gray-800' : 'ring-offset-white'}` 
+                          ? `ring-1 ring-green-500 ring-offset-2 ${isDark ? 'ring-offset-gray-800' : 'ring-offset-white'}` 
                           : ''
                       }`}
                     >
@@ -1189,32 +1189,11 @@ export default function ChatPage() {
                                 <div className="flex items-center gap-2">
                                   <div className="relative inline-block group">
                                     <p className={`text-sm font-semibold ${textColor} truncate cursor-default`}>{chat.user.name}</p>
-                                    {chat.isGroup && chat.description && (
-                                      <div className="absolute left-0 -top-12 w-64 p-3 bg-white dark:bg-gray-800 border rounded shadow-lg opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 z-50">
-                                        <p className="text-xs text-muted text-gray-700 dark:text-gray-200">{chat.description}</p>
-                                      </div>
-                                    )}
                                   </div>
                                   {chat.type === 'group' && (
-                                    <div className="relative ml-2 inline-block group">
-                                      {/* <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-full px-2 py-0.5 cursor-pointer">
-                                        {chat.user.memberCount} members
-                                      </span> */}
-                                      <div className="absolute top-0 left-full ml-2 w-48 p-2 bg-white dark:bg-gray-800 border rounded shadow-lg opacity-0 -translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50">
-                                        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-                                          {chat.user.members && chat.user.members.length > 0 ? (
-                                            chat.user.members.slice(0, 20).map((m) => (
-                                              <div key={m.id} className="flex items-center gap-2">
-                                                <img src={m.avatar} alt={m.name} className="h-6 w-6 rounded-full object-cover" />
-                                                <span className="text-xs truncate">{m.name}</span>
-                                              </div>
-                                            ))
-                                          ) : (
-                                            <div className="text-xs text-muted">No members</div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
+                                    <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-sm px-2 py-1">
+                                      {chat.user.memberCount} members
+                                    </span>
                                   )}
                                 </div>
                                 {searchQuery && chat.user.name.toLowerCase().includes(searchQuery.toLowerCase()) && (
