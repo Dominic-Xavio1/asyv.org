@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import pool from "../../connection/databaseConnection";
 import { setupOnlineUsersHandlers } from "../../services/online-users/onlineUsersSocket";
 import { handleUserOnline } from "../../services/online-users/onlineUsersSocket";
+import { setupGroupMessagesHandlers } from "../../services/group-messages/groupMessagesSocket";
 import redisClient from "../../services/redis/redisClient";
 
 const SOCKET_PATH = "/api/socketio";
@@ -37,6 +38,9 @@ export default async function handler(req, res) {
     io.on("connection", async (socket) => {
       // Setup online users tracking handlers
       setupOnlineUsersHandlers(socket, io);
+
+      // Setup group messages handlers
+      setupGroupMessagesHandlers(socket, io);
 
       // Join a personal room so we can notify this user about new conversations
       socket.on("join_user", async ({ userId }) => {
@@ -194,6 +198,83 @@ export default async function handler(req, res) {
           }
         }
       );
+
+      // Delete private message
+      socket.on("delete_private_message", async ({ conversationId, messageId }, callback) => {
+        try {
+          const convId = String(conversationId);
+          const msgId = String(messageId);
+
+          // Verify message exists and belongs to the user
+          const msgCheck = await pool.query(
+            `SELECT m.id, m.conversation_id, m.sender_id, c.user1_id, c.user2_id
+             FROM private_message m
+             JOIN private_conversation c ON m.conversation_id = c.id
+             WHERE m.id = $1 AND c.id = $2`,
+            [msgId, convId]
+          );
+
+          if (msgCheck.rows.length === 0) {
+            callback?.({ success: false, error: "Message not found" });
+            return;
+          }
+
+          const message = msgCheck.rows[0];
+          
+          // Delete the message
+          await pool.query(
+            `DELETE FROM private_message WHERE id = $1`,
+            [msgId]
+          );
+
+          // Broadcast deletion to everyone in the conversation
+          io.to(`conversation_${convId}`).emit("message_deleted", { messageId: msgId, conversationId: convId });
+
+          callback?.({ success: true });
+        } catch (err) {
+          console.error("Error deleting private message:", err);
+          callback?.({
+            success: false,
+            error: err.message || "Failed to delete message",
+          });
+        }
+      });
+
+      // Delete group message
+      socket.on("delete_group_message", async ({ groupId, messageId }, callback) => {
+        try {
+          const grpId = String(groupId);
+          const msgId = String(messageId);
+
+          // Verify message exists and belongs to the group
+          const msgCheck = await pool.query(
+            `SELECT id, group_id FROM group_message WHERE id = $1 AND group_id = $2`,
+            [msgId, grpId]
+          );
+
+          if (msgCheck.rows.length === 0) {
+            callback?.({ success: false, error: "Message not found" });
+            return;
+          }
+
+          // Delete the message
+          await pool.query(
+            `DELETE FROM group_message WHERE id = $1`,
+            [msgId]
+          );
+
+          // Broadcast deletion to everyone in the group
+          io.to(`group_${grpId}`).emit("group_message_deleted", { messageId: msgId, groupId: grpId });
+
+          callback?.({ success: true });
+        } catch (err) {
+          console.error("Error deleting group message:", err);
+          callback?.({
+            success: false,
+            error: err.message || "Failed to delete message",
+          });
+        }
+      });
     });
   }
 

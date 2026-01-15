@@ -118,8 +118,8 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
           {comments.map((comment) => (
             <Card key={comment.id} className="flex gap-3">
               <div className="flex ">
-              <div className="relative rounded-full flex-shrink-0 overflow-hidden">
-                <Avatar className="w-[70px] h-[70px] object-cover">
+              <div className="relative flex-shrink-0 overflow-hidden">
+                <Avatar className="w-[40px] h-[40px] ml-4 object-cover">
                   <AvatarImage src={comment.profile_image || defaultAvatar} 
                   alt={comment.full_name || comment.username} />
                 </Avatar>
@@ -280,7 +280,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
               alt={post.authorName}
               width={40}
               height={40}
-              className="object-cover"
+              className="object-cover"  
             />
           </div>
           <div>

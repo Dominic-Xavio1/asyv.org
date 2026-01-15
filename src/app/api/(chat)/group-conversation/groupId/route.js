@@ -13,12 +13,14 @@ async function ensureUploadDir() {
   }
 }
 
-/**
+/** 
  * PUT /api/group-conversation/[groupId]
  * Update a group conversation
  */
-export async function PUT(request, { params }) {
+export async function PUT(request) {
   try {
+    const url = new URL(request.url);
+    const params = Object.fromEntries(url.searchParams.entries());
     const { groupId } = params;
     const formData = await request.formData();
 
@@ -119,7 +121,7 @@ export async function PUT(request, { params }) {
       [
         name || group.name,
         description !== null ? description : group.description,
-        JSON.stringify(membersArray),
+        membersArray, 
         imageUrl !== undefined ? imageUrl : group.image,
         groupId,
       ]
@@ -159,6 +161,8 @@ export async function PUT(request, { params }) {
  */
 export async function DELETE(request, { params }) {
   try {
+    const url = new URL(request.url);
+    const params = Object.fromEntries(url.searchParams.entries());
     const { groupId } = params;
 
     if (!groupId) {
