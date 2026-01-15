@@ -58,7 +58,7 @@ const response = await pool.query(`
 // POST /api/(chat)/privatechat/[userid] with JSON: { conversationId, content, media_url }
 export async function POST(request, { params }) {
   try {
-    const { userid: senderId } = params;
+    const { userid: senderId } = await params;
     const data = await request.json();
     const { conversationId, content, media_url } = data;
 

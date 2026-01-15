@@ -607,16 +607,49 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
 };
 
 // ChatGroupForm Component
-const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
-  const [groupName, setGroupName] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState([]);
+const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
+  const [groupName, setGroupName] = useState(existingGroup?.name || '');
+  const [description, setDescription] = useState(existingGroup?.description || '');
+  const [selectedMembers, setSelectedMembers] = useState(existingGroup?.members ? existingGroup.members.map(String) : []);
   const [loading, setLoading] = useState(false);
+  const [limitNotified, setLimitNotified] = useState(false);
+  const [existingImage, setExistingImage] = useState(existingGroup?.image || null);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const imageDropzoneRef = useRef(null);
+  const wordLimit = 70; // raised to 70 per previous changes
+
+  useEffect(() => {
+    // When editing an existing group, populate fields
+    if (existingGroup) {
+      setGroupName(existingGroup.name || '');
+      setDescription(existingGroup.description || '');
+      setSelectedMembers(existingGroup.members ? existingGroup.members.map(String) : []);
+      setExistingImage(existingGroup.image || null);
+      setRemoveExistingImage(false);
+      imageDropzoneRef.current?.reset?.();
+    }
+  }, [existingGroup]);
+
+  const handleTextLimit = (e) => {
+    const value = e.target.value || '';
+    const words = value.trim().length === 0 ? [] : value.trim().split(/\s+/);
+
+    if (words.length <= wordLimit) {
+      setDescription(value);
+      if (limitNotified) setLimitNotified(false);
+    } else {
+      const limited = words.slice(0, wordLimit).join(' ');
+      setDescription(limited);
+      if (!limitNotified) {
+        toast.error(`Description cannot exceed ${wordLimit} words`);
+        setLimitNotified(true);
+      }
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!userId) {
       toast.error('User ID is required');
       return;
@@ -628,33 +661,52 @@ const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
     }
 
     setLoading(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('name', groupName);
       formData.append('description', description);
       formData.append('members', JSON.stringify(selectedMembers));
-      formData.append('created_by', userId);
-      
+
+      // For creation include created_by
+      if (!existingGroup) {
+        formData.append('created_by', userId);
+      }
+
       const imageFile = imageDropzoneRef.current?.getFile();
       if (imageFile) {
         formData.append('image', imageFile);
       }
 
-      const response = await fetch('/api/group-conversation', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to create group');
+      // If editing and user removed existing image
+      if (existingGroup && removeExistingImage && !imageFile) {
+        formData.append('removeImage', 'true');
       }
 
-      toast.success('Group created successfully!');
-      
-      // Call onSubmit with the created group data
+      let response, data;
+      if (existingGroup && existingGroup.id) {
+        response = await fetch(`/api/group-conversation/groupId?groupId=${existingGroup.id}`, {
+          method: 'PUT',
+          body: formData,
+        });
+        data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to update group');
+        }
+        toast.success('Group updated successfully!');
+      } else {
+        response = await fetch('/api/group-conversation', {
+          method: 'POST',
+          body: formData,
+        });
+        data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to create group');
+        }
+        toast.success('Group created successfully!');
+      }
+
+      // Call onSubmit with the created/updated group data
       if (onSubmit) {
         onSubmit(data.data);
       }
@@ -663,12 +715,14 @@ const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
       setGroupName('');
       setDescription('');
       setSelectedMembers([]);
+      setExistingImage(null);
+      setRemoveExistingImage(false);
       imageDropzoneRef.current?.reset();
-      
+
       onClose();
     } catch (error) {
-      console.error('Failed to create group:', error);
-      toast.error(error.message || 'Failed to create group');
+      console.error('Failed to save group:', error);
+      toast.error(error.message || 'Failed to save group');
     } finally {
       setLoading(false);
     }
@@ -695,7 +749,22 @@ const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Group Image (Optional)
         </label>
-        <GroupImageDropzone ref={imageDropzoneRef} />
+        {/* Show existing image when editing */}
+        {existingImage && !removeExistingImage && (
+          <div className="flex items-center gap-3">
+            <div className="w-24 h-24 rounded overflow-hidden border border-neutral-200 dark:border-gray-700">
+              <img src={existingImage} alt="group" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <Button variant="outline" onClick={() => setRemoveExistingImage(true)} className="mr-2">Remove Image</Button>
+              <Button variant="ghost" onClick={() => imageDropzoneRef.current?.reset()}>Change</Button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2">
+          <GroupImageDropzone ref={imageDropzoneRef} />
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -704,16 +773,22 @@ const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
         </label>
         <Textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={handleTextLimit}
           placeholder="Describe the purpose of this group..."
           className="w-full min-h-[100px] resize-none"
           rows="3"
           required
           disabled={loading}
+          aria-describedby="group-description-help"
         />
-        <p className="text-xs text-neutral-500 dark:text-gray-500">
-          Tell members what this group is about
-        </p>
+        <div className="flex items-center justify-between">
+          <p id="group-description-help" className="text-xs text-neutral-500 dark:text-gray-500">
+            Tell members what this group is about
+          </p>
+          <p className={`text-xs ${description.trim().length === 0 ? 'text-neutral-500 dark:text-gray-500' : (description.trim().split(/\s+/).length >= wordLimit ? 'text-red-500' : (description.trim().split(/\s+/).length >= Math.ceil(wordLimit*0.9) ? 'text-yellow-500' : 'text-neutral-500 dark:text-gray-500'))}`}>
+            {description.trim().length === 0 ? `0 / ${wordLimit} words` : `${description.trim().split(/\s+/).length} / ${wordLimit} words`}
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -743,7 +818,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId }) => {
           className="bg-green-600 hover:bg-green-700 px-6"
           disabled={loading || selectedMembers.length === 0}
         >
-          {loading ? 'Creating...' : 'Create Group'}
+          {loading ? (existingGroup ? 'Saving...' : 'Creating...') : (existingGroup ? 'Save Changes' : 'Create Group')}
         </Button>
       </div>
     </form>
@@ -920,17 +995,6 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
       <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
         {item.content || item.description || 'No description'}
       </p>
-      {/* {item.media_url && (
-        <div className="mt-3 rounded-lg overflow-hidden">
-          <Image
-            src={item?.media_url}
-            alt="Post media"
-            width={500}
-            height={300}
-            className="w-full h-48 object-cover"
-          />
-        </div>
-      )} */}
     </div>
   );
 };
@@ -947,6 +1011,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [groupSearchTerm, setGroupSearchTerm] = useState('');
+  // const [textLimit,setTextLimit]=useState('');
+
   const router = useRouter();
 
   const [userContent, setUserContent] = useState({
@@ -1203,7 +1271,7 @@ function handleNavigate(word){
     }
 
     try {
-      const response = await fetch(`/api/group-conversation/${groupId}`, {
+      const response = await fetch(`/api/group-conversation/groupId?groupId=${groupId}`, {
         method: 'DELETE'
       });
       
@@ -1579,12 +1647,44 @@ return null;
             {/* My Groups */}
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
-                  My Groups ({userContent.groups.length})
-                </h3>
+                <div className="flex-1">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
+                    My Groups ({userContent.groups.length})
+                  </h3>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const term = groupSearchTerm.trim();
+                    if (!term) return;
+                    // Try exact then includes
+                    const found = userContent.groups.find(g => g.name && g.name.toLowerCase() === term.toLowerCase()) || userContent.groups.find(g => g.name && g.name.toLowerCase().includes(term.toLowerCase()));
+                    if (found) {
+                      setEditingGroup(found);
+                      setActiveModal('group');
+                      setGroupSearchTerm('');
+                    } else {
+                      // Prefill create modal with name
+                      setEditingGroup({ name: term, members: [String(currentUser?.id)], description: '' });
+                      setActiveModal('group');
+                      setGroupSearchTerm('');
+                      toast.error('Group not found — creating a new group.');
+                    }
+                  }} className="mt-2 max-w-md">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={groupSearchTerm}
+                        onChange={(e) => setGroupSearchTerm(e.target.value)}
+                        placeholder="Search groups by name or create new..."
+                        className="w-full pl-3 pr-12 py-2 border border-neutral-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+                      />
+                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-3 py-1 rounded text-xs">Search</button>
+                    </div>
+                  </form>
+                </div>
+
                 <button
-                  onClick={() => setActiveModal('group')}
+                  onClick={() => { setEditingGroup(null); setActiveModal('group'); }}
                   className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-500 hover:text-green-800 dark:hover:text-green-400 transition-colors flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1595,7 +1695,7 @@ return null;
               {userContent.groups.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {userContent.groups.map((group) => (
-                    <ContentCard key={group.id} item={group} onDelete={(id) => handleDeleteContent(id, 'group')} />
+                    <ContentCard key={group.id} item={group} onDelete={(id) => handleDeleteContent(id, 'group')} onEdit={(g) => { setEditingGroup(g); setActiveModal('group'); }} />
                   ))}
                 </div>
               ) : (
@@ -1660,13 +1760,14 @@ return null;
 
       <AnimatedModal
         isOpen={activeModal === 'group'}
-        onClose={() => setActiveModal(null)}
-        title="Create Chat Group"
+        onClose={() => { setActiveModal(null); setEditingGroup(null); }}
+        title={editingGroup ? "Edit Chat Group" : "Create Chat Group"}
       >
         <ChatGroupForm 
-          onClose={() => setActiveModal(null)} 
+          onClose={() => { setActiveModal(null); setEditingGroup(null); }} 
           onSubmit={handleCreateContent}
           userId={currentUser?.id}
+          existingGroup={editingGroup}
         />
       </AnimatedModal>
 

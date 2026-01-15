@@ -36,8 +36,13 @@ import {
   Users,
   Plus,
   Loader2,
+  Download,
+  Trash2,
+  Play,
+  Pause,
 } from "lucide-react"
 import ComboboxPopover from "./combobox"
+import GroupMessageInput from "./GroupMessageInput"
 import dynamic from 'next/dynamic';
 
 const EmojiPicker = dynamic(
@@ -60,6 +65,8 @@ export default function ChatPage() {
   const [isLoadingChats, setIsLoadingChats] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
+  const [typingUsers, setTypingUsers] = useState([])
+  const typingTimeoutRef = useRef(null)
   
   // Refs for scroll behavior
   const messagesEndRef = useRef(null)
@@ -171,18 +178,27 @@ export default function ChatPage() {
 
     if (chat?.id) {
       const conversationId = String(chat.id)
+      const isGroupChat = chat.isGroup || chat.type === 'group'
       
       if (socket) {
         if (socket.connected) {
-          socket.emit("join_conversation", { conversationId })
+          if (isGroupChat) {
+            socket.emit("join_group", { groupId: conversationId })
+          } else {
+            socket.emit("join_conversation", { conversationId })
+          }
         } else {
           socket.once("connect", () => {
-            socket.emit("join_conversation", { conversationId })
+            if (isGroupChat) {
+              socket.emit("join_group", { groupId: conversationId })
+            } else {
+              socket.emit("join_conversation", { conversationId })
+            }
           })
         }
       }
 
-      loadMessagesForConversation(conversationId)
+      loadMessagesForConversation(conversationId, isGroupChat)
     }
     
     setSearchQuery("")
@@ -211,11 +227,18 @@ export default function ChatPage() {
   )
 
   const loadMessagesForConversation = useCallback(
-    async (conversationId) => {
+    async (conversationId, isGroupChat = false) => {
       if (!conversationId) return
       setIsLoadingMessages(true)
       try {
-        const res = await fetch(`/api/privatechat/messages?conversationId=${conversationId}`)
+        let endpoint
+        if (isGroupChat) {
+          endpoint = `/api/group-conversation/${conversationId}/messages`
+        } else {
+          endpoint = `/api/privatechat/messages?conversationId=${conversationId}`
+        }
+        
+        const res = await fetch(endpoint)
         const data = await res.json()
         if (data?.success && Array.isArray(data.data)) {
           const mapped = data.data
@@ -333,13 +356,7 @@ export default function ChatPage() {
         })
 
         setChats(allChats)
-
-        if (allChats.length > 0 && !selectedChat) {
-          const first = allChats[0]
-          setSelectedChat(first)
-          setShowConversation(true)
-          await loadMessagesForConversation(first.id)
-        }
+        // Don't auto-select first chat - let user choose
       } catch (err) {
         console.error("Error loading conversations", err)
         setChats([])
@@ -404,7 +421,12 @@ export default function ChatPage() {
     socketInstance.on("connect", () => {
       socketInstance.emit("join_user", { userId: currentUser.id })
       if (selectedChat?.id) {
-        socketInstance.emit("join_conversation", { conversationId: selectedChat.id })
+        const isGroupChat = selectedChat.isGroup || selectedChat.type === 'group'
+        if (isGroupChat) {
+          socketInstance.emit("join_group", { groupId: selectedChat.id })
+        } else {
+          socketInstance.emit("join_conversation", { conversationId: selectedChat.id })
+        }
       }
       socketInstance.emit("get_online_users")
     })
@@ -465,6 +487,11 @@ export default function ChatPage() {
           return prev
         }
         
+        // Skip messages from current user - they're handled by the socket callback
+        if (String(message.sender_id) === String(currentUser?.id)) {
+          return prev
+        }
+        
         const exists = prev.some((msg) => {
           return String(msg.id) === msgId || 
                  (msg.isPending && 
@@ -512,6 +539,81 @@ export default function ChatPage() {
       )
     })
 
+    // Group message listener
+    socketInstance.on("group_message", (message) => {
+      const groupId = String(message.group_id)
+      const msgId = String(message.id)
+      
+      setMessages((prev) => {
+        if (!selectedChat || String(selectedChat.id) !== groupId) {
+          return prev
+        }
+        
+        // Skip messages from current user - they're handled by the socket callback
+        if (String(message.sender_id) === String(currentUser?.id)) {
+          return prev
+        }
+        
+        const exists = prev.some((msg) => {
+          return String(msg.id) === msgId || 
+                 (msg.isPending && 
+                  msg.text === message.content && 
+                  String(msg.senderId) === String(message.sender_id))
+        })
+        
+        if (exists) {
+          return prev.map((msg) => {
+            if (msg.isPending && 
+                msg.text === message.content && 
+                String(msg.senderId) === String(message.sender_id)) {
+              const mapped = mapMessageToUi(message)
+              return mapped || msg
+            }
+            return msg
+          })
+        }
+        
+        const mapped = mapMessageToUi(message)
+        if (!mapped) return prev
+        
+        const filtered = prev.filter((msg) => 
+          !(msg.isPending && 
+            msg.text === message.content && 
+            String(msg.senderId) === String(message.sender_id))
+        )
+        
+        return [...filtered, mapped]
+      })
+
+      setChats((prev) =>
+        prev.map((chat) => {
+          if (String(chat.id) !== groupId) return chat
+          const preview = message.content || (message.media_url ? "Media message" : "")
+          const time = formatTime(message.created_at)
+          const isCurrentConversation = selectedChat && String(selectedChat.id) === groupId
+          return {
+            ...chat,
+            lastMessage: preview,
+            timestamp: time,
+            unread: isCurrentConversation ? 0 : (chat.unread || 0) + 1,
+          }
+        })
+      )
+    })
+
+    // Delete message listeners
+    socketInstance.on("message_deleted", ({ messageId, conversationId }) => {
+      if (String(selectedChat?.id) === String(conversationId)) {
+        setMessages((prev) => prev.filter((msg) => String(msg.id) !== String(messageId)))
+      }
+    })
+
+    socketInstance.on("group_message_deleted", ({ messageId, groupId }) => {
+      if (String(selectedChat?.id) === String(groupId)) {
+        setMessages((prev) => prev.filter((msg) => String(msg.id) !== String(messageId)))
+      }
+    })
+
     const activityInterval = setInterval(() => {
       if (socketInstance.connected) {
         socketInstance.emit("user_activity")
@@ -555,8 +657,51 @@ export default function ChatPage() {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState(null)
 
-  const handleSendMessage = async () => {
-    if (!messageInput.trim()) {
+  // Upload file to server and return URL
+  const uploadFile = async (file, fileType) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('fileType', fileType)
+      formData.append('groupId', selectedChat?.id)
+      
+      const res = await fetch('/api/upload/group-message', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const data = await res.json()
+      if (data?.success && data.mediaUrl) {
+        return { mediaUrl: data.mediaUrl, mediaType: fileType }
+      } else {
+        throw new Error(data?.error || 'Upload failed')
+      }
+    } catch (err) {
+      console.error('File upload error:', err)
+      throw err
+    }
+  }
+
+  // Handle message send with optional file
+  const handleSendMessage = async (messageData = null) => {
+    // Support both old API (just calling handleSendMessage()) and new API (with messageData)
+    let content = ''
+    let file = null
+    let fileType = null
+    let mediaUrl = null
+    let mediaType = null
+
+    if (messageData) {
+      // Called from GroupMessageInput with { text, file, fileType }
+      content = messageData.text || ''
+      file = messageData.file || null
+      fileType = messageData.fileType || null
+    } else {
+      // Called from old input (for backward compatibility)
+      content = messageInput.trim()
+    }
+
+    if (!content.trim() && !file) {
       toast.error("Message cannot be empty")
       return
     }
@@ -571,16 +716,30 @@ export default function ChatPage() {
       return
     }
 
-    const content = messageInput.trim()
-    const conversationId = String(selectedChat.id)
+    const chatId = String(selectedChat.id)
     const senderId = String(currentUser.id)
+    const isGroupChat = selectedChat.isGroup || selectedChat.type === 'group'
+
+    // Upload file if present
+    if (file) {
+      try {
+        toast.loading('Uploading file...')
+        const uploadResult = await uploadFile(file, fileType)
+        mediaUrl = uploadResult.mediaUrl
+        mediaType = uploadResult.mediaType
+        toast.dismiss()
+      } catch (err) {
+        toast.error(`File upload failed: ${err.message}`)
+        return
+      }
+    }
 
     const tempId = `temp-${Date.now()}`
     const optimisticMessage = {
       id: tempId,
       senderId: senderId,
-      text: content,
-      mediaUrl: null,
+      text: content.trim(),
+      mediaUrl: mediaUrl || null,
       timestamp: formatTime(new Date().toISOString()),
       isOwn: true,
       isPending: true,
@@ -590,7 +749,11 @@ export default function ChatPage() {
     setMessageInput("")
 
     if (socket && socket.connected) {
-      socket.emit("join_conversation", { conversationId })
+      if (isGroupChat) {
+        socket.emit("join_group", { groupId: chatId })
+      } else {
+        socket.emit("join_conversation", { conversationId: chatId })
+      }
     }
 
     const sendViaSocket = () => {
@@ -600,14 +763,27 @@ export default function ChatPage() {
           return
         }
 
+        const eventName = isGroupChat ? "send_group_message" : "send_private_message"
+        const msgContent = content.trim() || (mediaUrl ? `[${mediaType || 'Media'}]` : '')
+        
+        const messagePayload = isGroupChat 
+          ? {
+              groupId: chatId,
+              senderId: senderId,
+              content: msgContent,
+              mediaUrl: mediaUrl || null,
+              mediaType: mediaType || null,
+            }
+          : {
+              conversationId: chatId,
+              senderId: senderId,
+              content: msgContent,
+              mediaUrl: mediaUrl || null,
+            }
+
         socket.emit(
-          "send_private_message",
-          {
-            conversationId: conversationId,
-            senderId: senderId,
-            content: content,
-            mediaUrl: null,
-          },
+          eventName,
+          messagePayload,
           (response) => {
             if (response?.success) {
               setMessages((prev) => {
@@ -618,10 +794,10 @@ export default function ChatPage() {
               
               setChats((prev) =>
                 prev.map((chat) => {
-                  if (String(chat.id) !== conversationId) return chat
+                  if (String(chat.id) !== chatId) return chat
                   return {
                     ...chat,
-                    lastMessage: content,
+                    lastMessage: msgContent,
                     timestamp: formatTime(response.message.created_at),
                   }
                 })
@@ -644,15 +820,13 @@ export default function ChatPage() {
       await sendViaSocket()
     } catch (socketError) {
       console.warn("Socket send failed:", socketError)
-      try {
-        setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
+      if (messageData) {
+        // If called from GroupMessageInput, the input is already cleared
+        toast.error("Failed to send message. Please try again.")
+      } else {
         setMessageInput(content)
         toast.error("Failed to send message. Please try again.")
-      } catch (httpError) {
-        console.error("Both socket and HTTP send failed:", httpError)
-        setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
-        setMessageInput(content)
-        toast.error(httpError.message || "Failed to send message. Please try again.")
       }
     }
   }
@@ -661,9 +835,153 @@ export default function ChatPage() {
     setSearchQuery("")
   }
 
+  const handleDeleteMessage = async (messageId, isGroupChat = false) => {
+    if (!socket || !socket.connected) {
+      toast.error("Socket not connected")
+      return
+    }
+
+    try {
+      const eventName = isGroupChat ? "delete_group_message" : "delete_private_message"
+      const payload = isGroupChat 
+        ? { groupId: selectedChat.id, messageId }
+        : { conversationId: selectedChat.id, messageId }
+
+      socket.emit(eventName, payload, (response) => {
+        if (response?.success) {
+          setMessages((prev) => prev.filter((msg) => String(msg.id) !== String(messageId)))
+          toast.success("Message deleted")
+        } else {
+          toast.error(response?.error || "Failed to delete message")
+        }
+      })
+    } catch (err) {
+      console.error("Error deleting message:", err)
+      toast.error("Failed to delete message")
+    }
+  }
+
+  const getMediaType = (mediaUrl) => {
+    if (!mediaUrl) return null
+    const url = mediaUrl.toLowerCase()
+    if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) return 'image'
+    if (url.match(/\.(mp4|webm|mov|avi)$/)) return 'video'
+    if (url.match(/\.(mp3|wav|ogg|m4a)$/)) return 'audio'
+    if (url.match(/\.(pdf|doc|docx|txt|xls|xlsx|ppt|pptx)$/)) return 'document'
+    return 'file'
+  }
+
+  const MediaMessage = ({ mediaUrl, mediaType, message, isOwn }) => {
+    const type = getMediaType(mediaUrl)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const audioRef = useRef(null)
+
+    if (!mediaUrl) return null
+
+    if (type === 'image') {
+      return (
+        <div className="mb-2">
+          <img 
+            src={mediaUrl} 
+            alt="shared" 
+            className="max-w-xs max-h-96 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
+            onError={(e) => {
+              e.target.src = '/default.png'
+            }}
+          />
+        </div>
+      )
+    }
+
+    if (type === 'video') {
+      return (
+        <div className="mb-2 max-w-xs">
+          <video 
+            controls 
+            className="w-full rounded-lg bg-black"
+            controlsList="nodownload"
+          >
+            <source src={mediaUrl} />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      )
+    }
+
+    if (type === 'audio') {
+      return (
+        <div className="mb-2 min-w-[250px]">
+          <div className={`flex items-center gap-2 ${isOwn ? 'bg-green-700' : isDark ? 'bg-gray-600' : 'bg-gray-200'} p-3 rounded-lg`}>
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  if (isPlaying) {
+                    audioRef.current.pause()
+                  } else {
+                    audioRef.current.play()
+                  }
+                  setIsPlaying(!isPlaying)
+                }
+              }}
+              className={`flex-shrink-0 ${isOwn ? 'text-white' : 'text-gray-700'}`}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
+            <audio 
+              ref={audioRef}
+              src={mediaUrl}
+              onEnded={() => setIsPlaying(false)}
+              className="flex-1"
+            />
+            <span className={`text-sm ${isOwn ? 'text-white/70' : 'text-gray-600'}`}>
+              Voice message
+            </span>
+            <a
+              href={mediaUrl}
+              download
+              className={`flex-shrink-0 ${isOwn ? 'text-white hover:text-green-200' : 'text-gray-700 hover:text-gray-900'}`}
+            >
+              <Download className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      )
+    }
+
+    if (type === 'document') {
+      const fileName = mediaUrl.split('/').pop()
+      return (
+        <div className="mb-2">
+          <a
+            href={mediaUrl}
+            download
+            className={`flex items-center gap-2 ${isOwn ? 'bg-green-700 hover:bg-green-800 text-white' : isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'} p-3 rounded-lg max-w-xs`}
+          >
+            <FileText className="h-5 w-5 flex-shrink-0" />
+            <span className="text-sm truncate flex-1">{fileName}</span>
+            <Download className="h-4 w-4 flex-shrink-0" />
+          </a>
+        </div>
+      )
+    }
+
+    return (
+      <div className="mb-2">
+        <a
+          href={mediaUrl}
+          download
+          className={`flex items-center gap-2 ${isOwn ? 'bg-green-700 hover:bg-green-800 text-white' : isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'} p-3 rounded-lg max-w-xs`}
+        >
+          <FileText className="h-5 w-5 flex-shrink-0" />
+          <span className="text-sm truncate flex-1">File</span>
+          <Download className="h-4 w-4 flex-shrink-0" />
+        </a>
+      </div>
+    )
+  }
+
   const handleEmojiSelect = (emoji) => {
     setMessageInput(prev => prev + emoji)
-    setShowEmoji(false)
   }
 
   // Theme classes
@@ -1090,11 +1408,11 @@ export default function ChatPage() {
                   ref={messagesContainerRef}
                 >
                   <div className="py-4 space-y-4 max-w-3xl mx-auto">
-                    <div className="flex justify-center sticky top-0 z-10">
+                    {/* <div className="flex justify-center sticky top-0 z-10">
                       <Badge variant="secondary" className={`${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${isDark ? 'text-gray-400' : 'text-gray-600'} backdrop-blur-sm`}>
                         {result}
                       </Badge>
-                    </div>
+                    </div> */}
 
                     {isLoadingMessages ? (
                       <div className="flex justify-center py-12">
@@ -1110,7 +1428,7 @@ export default function ChatPage() {
                         {(searchQuery ? filteredMessages : messages).map((message) => (
                           <div
                             key={message.id}
-                            className={`flex items-end gap-2 ${message.isOwn ? "flex-row-reverse" : ""}`}
+                            className={`flex items-end gap-2 group ${message.isOwn ? "flex-row-reverse" : ""}`}
                           >
                             {!message.isOwn && (
                               <Avatar className="h-8 w-8 flex-shrink-0">
@@ -1120,33 +1438,61 @@ export default function ChatPage() {
                                 </AvatarFallback>
                               </Avatar>
                             )}
-                            <div
-                              className={`max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-200 ${
-                                message.isOwn
-                                  ? `${messageBgOwn} text-white rounded-br-sm`
-                                  : `${messageBgOther} ${textColor} rounded-bl-sm border ${borderColor}`
-                              }`}
-                            >
-                              {searchQuery && message.text.toLowerCase().includes(searchQuery.toLowerCase()) ? (
-                                <p className="text-sm break-words">
-                                  {message.text.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
-                                    part.toLowerCase() === searchQuery.toLowerCase() ? (
-                                      <span key={i} className="bg-orange-500 text-white px-1 rounded">
-                                        {part}
-                                      </span>
-                                    ) : (
-                                      part
-                                    )
-                                  )}
-                                </p>
-                              ) : (
-                                <p className="text-sm break-words">{message.text}</p>
-                              )}
-                              <p
-                                className={`text-xs mt-1 ${message.isOwn ? "text-white/70" : textMuted}`}
+                            <div className="flex flex-col gap-1 relative max-w-lg">
+                              <div
+                                className={`rounded-2xl px-4 py-3 transition-all duration-200 break-words word-break ${
+                                  message.isOwn
+                                    ? `${messageBgOwn} text-white rounded-br-sm`
+                                    : `${messageBgOther} ${textColor} rounded-bl-sm border ${borderColor}`
+                                }`}
                               >
-                                {message.timestamp}
-                              </p>
+                                {/* Media Display */}
+                                {message.mediaUrl && (
+                                  <MediaMessage 
+                                    mediaUrl={message.mediaUrl} 
+                                    mediaType={message.mediaType}
+                                    message={message}
+                                    isOwn={message.isOwn}
+                                  />
+                                )}
+                                
+                                {/* Text Content */}
+                                {message.text && (
+                                  <>
+                                    {searchQuery && message.text.toLowerCase().includes(searchQuery.toLowerCase()) ? (
+                                      <p className="text-sm break-words">
+                                        {message.text.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, i) => 
+                                          part.toLowerCase() === searchQuery.toLowerCase() ? (
+                                            <span key={i} className="bg-orange-500 text-white px-1 rounded">
+                                              {part}
+                                            </span>
+                                          ) : (
+                                            part
+                                          )
+                                        )}
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm break-words">{message.text}</p>
+                                    )}
+                                  </>
+                                )}
+                                <p
+                                  className={`text-xs mt-1 ${message.isOwn ? "text-white/70" : textMuted}`}
+                                >
+                                  {message.timestamp}
+                                </p>
+                              </div>
+                              
+                              {/* Delete Button - Only for own messages */}
+                              {message.isOwn && !message.isPending && (
+                                <button
+                                  onClick={() => handleDeleteMessage(message.id, selectedChat.isGroup || selectedChat.type === 'group')}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 self-end"
+                                  title="Delete message"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1165,70 +1511,20 @@ export default function ChatPage() {
                       </Card>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
-                      title="Attach image"
-                    >
-                      <ImageIcon className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
-                      title="Attach file"
-                    >
-                      <FileText className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
-                      title="Attach video"
-                    >
-                      <Film className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}
-                      title="Record audio"
-                    >
-                      <Mic className="h-5 w-5" />
-                    </Button>
-                    <div className="flex-1 relative">
-                      <Input
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        placeholder="Type a message..."
-                        className={`pr-10 ${inputBg} ${borderColor} ${textColor} placeholder:${textMuted}`}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" && messageInput.trim()) {
-                            handleSendMessage()
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-                        title="Add emoji"
-                        onClick={() => setShowEmoji(!showEmoji)}
-                      >
-                        <Smile className="h-5 w-5" />
-                      </Button>
-                    </div>
-                    <Button
-                      size="icon"
-                      className="bg-green-500 hover:bg-green-600 text-white"
-                      onClick={handleSendMessage}
-                      disabled={!messageInput.trim()}
-                    >
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  </div>
+                  <GroupMessageInput
+                    messageInput={messageInput}
+                    setMessageInput={setMessageInput}
+                    onSendMessage={handleSendMessage}
+                    disabled={isLoadingMessages}
+                    isDark={isDark}
+                    inputBg={inputBg}
+                    borderColor={borderColor}
+                    textColor={textColor}
+                    textMuted={textMuted}
+                    showEmoji={showEmoji}
+                    setShowEmoji={setShowEmoji}
+                    onEmojiSelect={handleEmojiSelect}
+                  />
                 </div>
               </>
             )}
