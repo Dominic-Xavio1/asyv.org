@@ -2,6 +2,7 @@ import pool from "../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { getIOInstance } from "../../../../services/notifications/notificationSocket";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads", "groups");
 
@@ -86,6 +87,70 @@ export async function POST(request) {
     );
 
     const group = result.rows[0];
+
+    // Get creator info for notification
+    const creatorResult = await pool.query(
+      `SELECT first_name, rwandan_name, username 
+       FROM api_user 
+       WHERE id = $1`,
+      [created_by]
+    );
+    const creator = creatorResult.rows[0];
+    const creatorName = creator 
+      ? (creator.rwandan_name 
+          ? `${creator.first_name || ''} ${creator.rwandan_name}`.trim()
+          : creator.first_name || creator.username)
+      : "Someone";
+
+    // Send notifications to all members except the creator
+    const memberIdsForNotification = membersArray.filter(
+      (memberId) => String(memberId) !== String(created_by)
+    );
+
+    if (memberIdsForNotification.length > 0) {
+      const io = getIOInstance();
+      
+      // Create notifications for each member and emit Socket.IO events
+      const notificationPromises = memberIdsForNotification.map(async (memberId) => {
+        const result = await pool.query(
+          `INSERT INTO notifications (recipient_id, sender_id, type, title, message, link)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, recipient_id, sender_id, type, title, message, link, is_read, created_at`,
+          [
+            memberId,
+            created_by,
+            "group_update",
+            "Added to Group",
+            `${creatorName} added you to the group "${name}"`,
+            `/chat?group=${group.id}`, // Link to the group chat
+          ]
+        );
+        
+        const notification = result.rows[0];
+        
+        // Emit Socket.IO notification if instance is available
+        if (io) {
+          io.to(`notifications_${memberId}`).emit("new_notification", notification);
+          
+          // Update unread count
+          const unreadCountResult = await pool.query(
+            `SELECT COUNT(*) as count 
+             FROM notifications 
+             WHERE recipient_id = $1 AND is_read = FALSE AND is_deleted = FALSE`,
+            [memberId]
+          );
+          
+          io.to(`notifications_${memberId}`).emit("notification_count_updated", {
+            unreadCount: parseInt(unreadCountResult.rows[0]?.count || 0),
+          });
+        }
+        
+        return notification;
+      });
+
+      // Execute all notifications in parallel
+      await Promise.all(notificationPromises);
+    }
 
     return NextResponse.json(
       {

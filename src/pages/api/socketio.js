@@ -3,6 +3,7 @@ import pool from "../../connection/databaseConnection";
 import { setupOnlineUsersHandlers } from "../../services/online-users/onlineUsersSocket";
 import { handleUserOnline } from "../../services/online-users/onlineUsersSocket";
 import { setupGroupMessagesHandlers } from "../../services/group-messages/groupMessagesSocket";
+import { setIOInstance } from "../../services/notifications/notificationSocket";
 import redisClient from "../../services/redis/redisClient";
 
 const SOCKET_PATH = "/api/socketio";
@@ -34,6 +35,9 @@ export default async function handler(req, res) {
     });
 
     res.socket.server.io = io;
+    
+    // Set IO instance for notification service
+    setIOInstance(io);
 
     io.on("connection", async (socket) => {
       // Setup online users tracking handlers
@@ -41,6 +45,53 @@ export default async function handler(req, res) {
 
       // Setup group messages handlers
       setupGroupMessagesHandlers(socket, io);
+
+      // Setup notification handlers
+      socket.on("join_notifications", ({ userId }) => {
+        if (!userId) return;
+        socket.join(`notifications_${userId}`);
+        console.log(`User ${userId} joined notifications room`);
+      });
+
+      // Emit new notification to recipient
+      socket.on("mark_notification_read", async ({ notificationId, userId }, callback) => {
+        try {
+          if (!notificationId || !userId) {
+            callback?.({ success: false, error: "notificationId and userId are required" });
+            return;
+          }
+
+          const result = await pool.query(
+            `UPDATE notifications 
+             SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 
+             WHERE id = $1 AND recipient_id = $2
+             RETURNING id, is_read`,
+            [notificationId, userId]
+          );
+
+          if (result.rows.length === 0) {
+            callback?.({ success: false, error: "Notification not found" });
+            return;
+          }
+
+          // Emit updated notification count to user
+          const unreadCount = await pool.query(
+            `SELECT COUNT(*) as count 
+             FROM notifications 
+             WHERE recipient_id = $1 AND is_read = FALSE AND is_deleted = FALSE`,
+            [userId]
+          );
+
+          io.to(`notifications_${userId}`).emit("notification_count_updated", {
+            unreadCount: parseInt(unreadCount.rows[0]?.count || 0),
+          });
+
+          callback?.({ success: true });
+        } catch (err) {
+          console.error("Error marking notification as read:", err);
+          callback?.({ success: false, error: err.message });
+        }
+      });
 
       // Join a personal room so we can notify this user about new conversations
       socket.on("join_user", async ({ userId }) => {

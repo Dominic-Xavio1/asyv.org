@@ -1,22 +1,72 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Calendar, User, Filter, ChevronRight, ChevronLeft, Grid, List } from 'lucide-react';
+import { Search, Calendar, User, Filter, ChevronRight, ChevronLeft, Grid, List, X, MapPin, Mail, Briefcase, Heart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
-// Users will be fetched from `/api/users`
+// Predefined options for skills and interests
+const INTEREST_OPTIONS = [
+  "Technology", "Design", "Marketing", "Finance", "Healthcare", 
+  "Education", "Sports", "Music", "Art", "Travel", "Cooking",
+  "Photography", "Gaming", "Fitness", "Reading", "Writing"
+];
 
-// placeholder while interests load
+const SKILL_OPTIONS = [
+  "JavaScript", "React", "Next.js", "Node.js", "Python",
+  "UI/UX Design", "Project Management", "Data Analysis",
+  "Digital Marketing", "Content Writing", "SEO", "Graphic Design"
+];
+
 const DEFAULT_INTEREST = 'All interests';
+const DEFAULT_SKILL = 'All skills';
+const DEFAULT_LOCATION = 'All locations';
 
 export default function SearchResultsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedInterest, setSelectedInterest] = useState(DEFAULT_INTEREST);
   const [viewMode, setViewMode] = useState('list');
-  const [resultsCount, setResultsCount] = useState(1535);
+  const [resultsCount, setResultsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [interests, setInterests] = useState([DEFAULT_INTEREST]);
+  const [skills, setSkills] = useState([DEFAULT_SKILL]);
+  const [locations, setLocations] = useState([DEFAULT_LOCATION]);
+  
+  // Filter states
+  const [selectedInterest, setSelectedInterest] = useState(DEFAULT_INTEREST);
+  const [selectedSkill, setSelectedSkill] = useState(DEFAULT_SKILL);
+  const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
+  const [nameFilter, setNameFilter] = useState("");
+  const [usernameFilter, setUsernameFilter] = useState("");
+  const [emailFilter, setEmailFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Show filters by default on desktop
+  useEffect(() => {
+    const checkScreenSize = () => {
+      if (typeof window !== 'undefined') {
+        setShowFilters(window.innerWidth >= 768);
+      }
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -34,7 +84,7 @@ export default function SearchResultsPage() {
     }, 300);
   };
 
-  // Fetch users from API and parse interests
+  // Fetch users from API and parse interests, skills
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -45,21 +95,41 @@ export default function SearchResultsPage() {
         const data = await res.json();
         const parsed = (data.users || []).map(u => {
           let parsedInterests = [];
+          let parsedSkills = [];
           try {
             if (typeof u.interests === 'string') parsedInterests = JSON.parse(u.interests);
             else parsedInterests = u.interests || [];
+            
+            if (typeof u.skills === 'string') parsedSkills = JSON.parse(u.skills);
+            else parsedSkills = u.skills || [];
           } catch (e) {
             parsedInterests = [];
+            parsedSkills = [];
           }
-          return { ...u, interests: parsedInterests };
+          return { ...u, interests: parsedInterests, skills: parsedSkills };
         });
         if (!mounted) return;
         setUsers(parsed);
 
-        // extract unique interests
-        const all = new Set();
-        parsed.forEach(u => (u.interests || []).forEach(i => all.add(i)));
-        setInterests([DEFAULT_INTEREST, ...Array.from(all).sort()]);
+        // Extract unique interests
+        const allInterests = new Set();
+        parsed.forEach(u => (u.interests || []).forEach(i => allInterests.add(i)));
+        setInterests([DEFAULT_INTEREST, ...Array.from(allInterests).sort()]);
+
+        // Extract unique skills
+        const allSkills = new Set();
+        parsed.forEach(u => (u.skills || []).forEach(s => allSkills.add(s)));
+        setSkills([DEFAULT_SKILL, ...Array.from(allSkills).sort()]);
+
+        // Extract unique locations
+        const allLocations = new Set();
+        parsed.forEach(u => {
+          if (u.location && u.location.trim()) {
+            allLocations.add(u.location.trim());
+          }
+        });
+        setLocations([DEFAULT_LOCATION, ...Array.from(allLocations).sort()]);
+
         setResultsCount(parsed.length);
       } catch (err) {
         console.error('Error loading users', err);
@@ -71,28 +141,88 @@ export default function SearchResultsPage() {
     return () => { mounted = false };
   }, []);
 
+  // Comprehensive filtering logic
   const filteredUsers = useMemo(() => {
     let list = users;
+
+    // Filter by interest
     if (selectedInterest && selectedInterest !== DEFAULT_INTEREST) {
       list = list.filter(u => (u.interests || []).includes(selectedInterest));
     }
+
+    // Filter by skill
+    if (selectedSkill && selectedSkill !== DEFAULT_SKILL) {
+      list = list.filter(u => (u.skills || []).includes(selectedSkill));
+    }
+
+    // Filter by location
+    if (selectedLocation && selectedLocation !== DEFAULT_LOCATION) {
+      list = list.filter(u => 
+        u.location && u.location.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+
+    // Filter by name
+    if (nameFilter && nameFilter.trim()) {
+      const q = nameFilter.trim().toLowerCase();
+      list = list.filter(u => 
+        (u.full_name || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by username
+    if (usernameFilter && usernameFilter.trim()) {
+      const q = usernameFilter.trim().toLowerCase();
+      list = list.filter(u => 
+        (u.username || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by email
+    if (emailFilter && emailFilter.trim()) {
+      const q = emailFilter.trim().toLowerCase();
+      list = list.filter(u => 
+        (u.email || '').toLowerCase().includes(q)
+      );
+    }
+
+    // General search query (searches across name, username, email, location, bio)
     if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      list = list.filter(u => (u.full_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q));
+      list = list.filter(u => 
+        (u.full_name || '').toLowerCase().includes(q) || 
+        (u.username || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.location || '').toLowerCase().includes(q) ||
+        (u.bio || '').toLowerCase().includes(q) ||
+        (u.interests || []).some(i => i.toLowerCase().includes(q)) ||
+        (u.skills || []).some(s => s.toLowerCase().includes(q))
+      );
     }
-    return list;
-  }, [users, selectedInterest, searchQuery]);
 
-  // keep resultsCount in sync
+    return list;
+  }, [users, selectedInterest, selectedSkill, selectedLocation, nameFilter, usernameFilter, emailFilter, searchQuery]);
+
+  // Keep resultsCount in sync
   useEffect(() => setResultsCount(filteredUsers.length), [filteredUsers]);
 
-  const handleLoadMore = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setResultsCount(prev => prev + 20);
-      setIsLoading(false);
-    }, 800);
+  const clearFilters = () => {
+    setSelectedInterest(DEFAULT_INTEREST);
+    setSelectedSkill(DEFAULT_SKILL);
+    setSelectedLocation(DEFAULT_LOCATION);
+    setNameFilter("");
+    setUsernameFilter("");
+    setEmailFilter("");
+    setSearchQuery("");
   };
+
+  const hasActiveFilters = selectedInterest !== DEFAULT_INTEREST ||
+    selectedSkill !== DEFAULT_SKILL ||
+    selectedLocation !== DEFAULT_LOCATION ||
+    nameFilter.trim() !== "" ||
+    usernameFilter.trim() !== "" ||
+    emailFilter.trim() !== "" ||
+    searchQuery.trim() !== "";
 
   const formatNumber = (num) => {
     if (typeof num === 'number') {
@@ -103,18 +233,6 @@ export default function SearchResultsPage() {
 
   const handleViewModeToggle = () => {
     setViewMode(viewMode === 'grid' ? 'list' : 'grid');
-  };
-
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage(prev => prev + 1);
-  };
-
-  const handlePageClick = (page) => {
-    setCurrentPage(page);
   };
 
   return (
@@ -134,7 +252,10 @@ export default function SearchResultsPage() {
                 >
                   {viewMode === 'grid' ? <List size={20} /> : <Grid size={20} />}
                 </button>
-                <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`p-2 rounded-lg ${showFilters ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800'}`}
+                >
                   <Filter size={20} />
                 </button>
               </div>
@@ -148,7 +269,7 @@ export default function SearchResultsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="Search users..."
+                  placeholder="Search by name, username, email, location, skills, interests..."
                 />
               </form>
             </div>
@@ -158,25 +279,220 @@ export default function SearchResultsPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Filters Section */}
+        {showFilters && (
+          <div className="mb-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Filter size={20} />
+                Advanced Filters
+              </h2>
+              {hasActiveFilters && (
+                <Button
+                  onClick={clearFilters}
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 dark:text-gray-400"
+                >
+                  <X size={16} className="mr-2" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Name Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <User size={16} />
+                  Name
+                </label>
+                <Input
+                  type="text"
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  placeholder="Filter by name..."
+                  className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Username Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <User size={16} />
+                  Username
+                </label>
+                <Input
+                  type="text"
+                  value={usernameFilter}
+                  onChange={(e) => setUsernameFilter(e.target.value)}
+                  placeholder="Filter by username..."
+                  className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Email Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Mail size={16} />
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={emailFilter}
+                  onChange={(e) => setEmailFilter(e.target.value)}
+                  placeholder="Filter by email..."
+                  className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              {/* Interest Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Heart size={16} />
+                  Interest
+                </label>
+                <Select value={selectedInterest} onValueChange={setSelectedInterest}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    {interests.map((interest) => (
+                      <SelectItem key={interest} value={interest}>
+                        {interest}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Skill Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Briefcase size={16} />
+                  Skill
+                </label>
+                <Select value={selectedSkill} onValueChange={setSelectedSkill}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    {skills.map((skill) => (
+                      <SelectItem key={skill} value={skill}>
+                        {skill}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Location Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <MapPin size={16} />
+                  Location
+                </label>
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Active Filters Display */}
+            {hasActiveFilters && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex flex-wrap gap-2">
+                  {selectedInterest !== DEFAULT_INTEREST && (
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm flex items-center gap-2">
+                      Interest: {selectedInterest}
+                      <button onClick={() => setSelectedInterest(DEFAULT_INTEREST)}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {selectedSkill !== DEFAULT_SKILL && (
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm flex items-center gap-2">
+                      Skill: {selectedSkill}
+                      <button onClick={() => setSelectedSkill(DEFAULT_SKILL)}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {selectedLocation !== DEFAULT_LOCATION && (
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm flex items-center gap-2">
+                      Location: {selectedLocation}
+                      <button onClick={() => setSelectedLocation(DEFAULT_LOCATION)}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {nameFilter.trim() && (
+                    <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full text-sm flex items-center gap-2">
+                      Name: {nameFilter}
+                      <button onClick={() => setNameFilter("")}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {usernameFilter.trim() && (
+                    <span className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 rounded-full text-sm flex items-center gap-2">
+                      Username: {usernameFilter}
+                      <button onClick={() => setUsernameFilter("")}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {emailFilter.trim() && (
+                    <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-full text-sm flex items-center gap-2">
+                      Email: {emailFilter}
+                      <button onClick={() => setEmailFilter("")}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Results Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="text-gray-600 dark:text-gray-400">
             <span className="text-lg font-semibold text-gray-900 dark:text-white">{formatNumber(resultsCount)}</span> results
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">View:</span>
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+              onClick={() => setShowFilters(!showFilters)}
+              className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-lg ${showFilters ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
             >
-              <List size={20} />
+              <Filter size={20} />
+              Filters
             </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
-            >
-              <Grid size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">View:</span>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+              >
+                <List size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+              >
+                <Grid size={20} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -184,31 +500,114 @@ export default function SearchResultsPage() {
         <div className="border-t border-gray-200 dark:border-gray-700 mb-8" />
 
         {/* User Results */}
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-          {filteredUsers.map((u) => (
-            <div key={u.id} className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 p-4 ${viewMode === 'list' ? 'flex items-start gap-4' : ''}`}>
-              <div className="flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={u.profile_image || '/placeholder.svg'} alt={u.full_name || u.username} className="h-20 w-20 rounded-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{u.full_name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">@{u.username}</p>
+        {filteredUsers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <User className="h-16 w-16 mx-auto mb-4 opacity-50" />
+            <p className="text-lg">No users found matching your filters</p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-4 text-green-600 dark:text-green-400 hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+            {filteredUsers.map((u) => {
+              const parsedSkills = Array.isArray(u.skills) ? u.skills : (typeof u.skills === 'string' ? JSON.parse(u.skills || '[]') : []);
+              
+              return (
+                <div key={u.id} className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 p-4 hover:shadow-lg ${viewMode === 'list' ? 'flex items-start gap-4' : ''}`}>
+                  <div className="flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={u.profile_image || '/default.png'} 
+                      alt={u.full_name || u.username} 
+                      className="h-20 w-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700" 
+                      onError={(e) => { e.target.src = '/default.png' }}
+                    />
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">{u.location}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                          {u.full_name || 'Unknown User'}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                          @{u.username}
+                        </p>
+                        {u.email && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-1">
+                            {u.email}
+                          </p>
+                        )}
+                      </div>
+                      {u.location && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 flex-shrink-0">
+                          <MapPin size={14} />
+                          <span className="hidden sm:inline">{u.location}</span>
+                        </div>
+                      )}
+                    </div>
+                    {u.bio && (
+                      <p className="text-gray-600 dark:text-gray-300 mt-2 mb-3 line-clamp-2 text-sm">
+                        {u.bio}
+                      </p>
+                    )}
+                    
+                    {/* Skills Display */}
+                    {parsedSkills.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                          <Briefcase size={12} />
+                          Skills
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {parsedSkills.slice(0, 3).map((skill, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full">
+                              {skill}
+                            </span>
+                          ))}
+                          {parsedSkills.length > 3 && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              +{parsedSkills.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interests Display */}
+                    {(u.interests || []).length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                          <Heart size={12} />
+                          Interests
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(u.interests || []).slice(0, 6).map((i, idx) => (
+                            <button 
+                              key={idx} 
+                              onClick={() => {
+                                setSelectedInterest(i);
+                                setShowFilters(true);
+                              }}
+                              className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm rounded-full text-gray-700 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                            >
+                              {i}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300 mt-2 mb-3 line-clamp-2">{u.bio}</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(u.interests || []).slice(0, 6).map((i) => (
-                    <button key={i} onClick={() => handleCategorySelect(i)} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm rounded-full text-gray-700 dark:text-gray-300">{i}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading && (
@@ -217,86 +616,7 @@ export default function SearchResultsPage() {
             <p className="mt-2 text-gray-600 dark:text-gray-400">Loading results...</p>
           </div>
         )}
-
-        {/* Results Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-gray-600 dark:text-gray-400">
-              Showing 1-{filteredUsers.length} of {formatNumber(resultsCount)} results
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <ChevronLeft size={16} />
-                Previous
-              </button>
-              
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageClick(page)}
-                    className={`w-10 h-10 rounded-lg ${
-                      currentPage === page
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <span className="px-2 text-gray-500 dark:text-gray-400">...</span>
-                <button
-                  onClick={() => handlePageClick(10)}
-                  className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                >
-                  10
-                </button>
-              </div>
-              
-              <button
-                onClick={handleNextPage}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-2"
-              >
-                Next
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <button
-              onClick={handleLoadMore}
-              disabled={isLoading}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Show me more results
-              <ChevronRight size={20} />
-            </button>
-          </div>
-        </div>
       </main>
-      <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-gray-600 dark:text-gray-400 text-sm">
-              © 2024 Street Photography Archive. All rights reserved.
-            </div>
-            <div className="flex items-center gap-6 text-sm">
-              <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                Terms of Service
-              </a>
-              <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                Contact
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

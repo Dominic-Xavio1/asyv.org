@@ -16,14 +16,6 @@ import {
 import { Button } from '@/components/ui/button'
 import Link from "next/link"
 import { useAuth } from '@/components/auth/AuthProvider'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,  
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,  
-} from "@/components/ui/dialog"
 import { chatDarkModeStore } from '../../stores/userStore';
 import DialogDemo from "@/components/ui/dialogeDemo"
 import toast from 'react-hot-toast'
@@ -252,14 +244,14 @@ switch(label){
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50">
         <div className="flex items-center justify-between py-2 px-4 space-x-2">
-          <div className="flex items-center space-x-2 cursor-pointer">
+          {/* <div className="flex items-center space-x-2 cursor-pointer">
             <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-orange-500 to-green-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-xs lg:text-sm">CS</span>
             </div>
             <span className="font-bold text-lg lg:text-xl bg-gradient-to-r from-orange-600 to-green-600 bg-clip-text text-transparent">
               ChatSocial
             </span>
-          </div>
+          </div> */}
           
             {navItem.slice(0, 1).map(({ path, icon: Icon, label }) => (
             <div
@@ -272,7 +264,7 @@ switch(label){
             </div>
           ))}
            
-          <div
+          {/* <div
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="flex-1 flex flex-col items-center py-2 transition-colors duration-200 text-gray-600 dark:text-gray-400 cursor-pointer"
           >
@@ -282,7 +274,7 @@ switch(label){
               <User className="h-5 w-5" />
             )}
             <span className="text-sm font-medium mt-1">More</span>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -410,7 +402,7 @@ switch(label){
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>
             <User className="mr-2 h-4 w-4" />
-            Edit Profile
+            Create Profile
           </DropdownMenuItem>
           <DropdownMenuItem>
             <CreditCard className="mr-2 h-4 w-4" />

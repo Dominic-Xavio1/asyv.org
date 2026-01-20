@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, MessageSquare,UserCog, LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage,Filter } from 'lucide-react';
+import { Bell, Search, MessageSquare,UserCog,Lock,KeyRound, ShieldCheck,LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage,Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Textarea } from "@/components/ui/textarea";
@@ -911,6 +911,191 @@ const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
   );
 };
 
+// Change Password Form Component
+const ChangePasswordForm = ({ onClose, userId }) => {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const validateForm = () => {
+    setError('');
+    
+    if (!currentPassword.trim()) {
+      setError('Current password is required');
+      return false;
+    }
+    
+    if (!newPassword.trim()) {
+      setError('New password is required');
+      return false;
+    }
+    
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters');
+      return false;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match');
+      return false;
+    }
+    
+    if (currentPassword === newPassword) {
+      setError('New password must be different from current password');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Password changed successfully!');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => onClose(), 1500);
+      } else {
+        setError(data.error || 'Failed to change password');
+        toast.error(data.error || 'Failed to change password');
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'An error occurred while changing password';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
+          Current Password
+        </label>
+        <div className="relative">
+          <input
+            type={showCurrentPassword ? 'text' : 'password'}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter your current password..."
+            className="w-full px-3 md:px-2 py-2 text-base border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 pr-10"
+            disabled={loading}
+          />
+          <button
+            type="button"
+            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            {showCurrentPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
+          New Password
+        </label>
+        <div className="relative">
+          <input
+            type={showNewPassword ? 'text' : 'password'}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter your new password..."
+            className="w-full px-3 md:px-2 py-2 text-base border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 pr-10"
+            disabled={loading}
+          />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword(!showNewPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            {showNewPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Must be at least 8 characters
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 dark:text-gray-300 mb-2">
+          Confirm New Password
+        </label>
+        <div className="relative">
+          <input
+            type={showConfirmPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your new password..."
+            className="w-full px-3 md:px-2 py-2 text-base border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 pr-10"
+            disabled={loading}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex gap-1 pt-1">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          className="flex-1 px-2 py-2 text-base border border-neutral-300 dark:border-gray-600 text-neutral-700 dark:text-gray-300 rounded-lg hover:bg-neutral-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 px-4 py-3 text-base bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+          {loading ? 'Changing...' : 'Change Password'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
 // Content Card Component
 const ContentCard = ({ item, onDelete, onEdit }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -1010,12 +1195,34 @@ export default function Dashboard() {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
+  const [onlySuperuser, setOnlySuperuser] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
   // const [textLimit,setTextLimit]=useState('');
-
+const [badgeCount,setBadgeCount]=useState(0);
   const router = useRouter();
+  useEffect(()=>{
+const fetchNotifications = async()=>{
+  if(!currentUser?.id) return;
+  try{
+    const response = await fetch(`/api/notifications?userId=${currentUser?.id}&type=all&limit=50`,{
+      method:"GET",
+      headers:{
+        "Content-Type":"application/json",
+      },
+    });
+    const data = await response.json();
+    console.log("notifications",data);
+    setBadgeCount(data.data.length);
+  }
+  catch(error){
+    console.error('Error fetching notifications:', error);
+  }
+  }
+  fetchNotifications();
+},[currentUser])
 
   const [userContent, setUserContent] = useState({
     posts: [],
@@ -1028,11 +1235,12 @@ export default function Dashboard() {
   });
   const menuItems = [
     { id: 'home', icon: Home, label: 'Dashboard' },
-    { id: 'chat', icon: MessageSquare, label: 'Messages', badge: 12 },
-    { id: 'community', icon: Users, label: 'Community' },
-    { id: 'events', icon: Calendar, label: 'Events' },
+    { id: 'notifications', icon: Bell, label: 'Notifications', badge: badgeCount },
+    // { id: 'groups', icon: Users, label: 'Groups' },
+    // { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
-    {id:"management",icon:UserCog,label:"Manage Users"}
+    {id:"management",icon:UserCog,label:"Manage Users"},
+    {id:"change_password",icon:ShieldCheck,label:"Change Password"},
   ];
   useEffect(() => {
     // Check user role
@@ -1042,6 +1250,7 @@ export default function Dashboard() {
         try {
           const user = JSON.parse(fullInfo);
           setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
+          setOnlySuperuser(user.is_superuser === true);
           setCurrentUser(user);
         } catch (e) {
           console.error('Error parsing user info:', e);
@@ -1210,8 +1419,10 @@ function handleNavigate(word){
       return "/dashboard";
     case 'management':
       return "/management";
-    case "chat":
-      return "/chat";
+    case "notifications":
+      return "/notification";
+    case "change_password":
+      return "#"; // Don't navigate, will open slide panel
     default:
       return "/";
   }
@@ -1342,7 +1553,7 @@ function handleNavigate(word){
 
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => {
-          if(item.id=="management"&& !isCrcOrSuperuser){
+          if(item.id=="management"&& !onlySuperuser){
 return null;
           }
           
@@ -1353,7 +1564,11 @@ return null;
             <button
              
               onClick={() => {
-                setActiveTab(item.id);
+                if (item.id === 'change_password') {
+                  setShowChangePassword(true);
+                } else {
+                  setActiveTab(item.id);
+                }
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === item.id
@@ -1368,9 +1583,9 @@ return null;
                   <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
                 )}
               </span>
-              {item.badge && (
+              {item.id === "notifications" && (
                 <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
-                  {item.badge}
+                  {badgeCount}
                 </span>
               )}
             </button>
@@ -1778,6 +1993,48 @@ return null;
       >
         <ProfileForm onClose={() => setActiveModal(null)} onSubmit={handleUpdateProfile} currentProfile={profile} />
       </AnimatedModal>
+
+      {/* Change Password Slide Panel */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-full top-25 sm:w-96 bg-white dark:bg-gray-900 max-h-[80vh] rounded-md shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${
+          showChangePassword ? 'translate-x-150' : '-translate-x-full'
+        }`}
+      >
+        {/* Panel Header */}
+        <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <KeyRound className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-gray-100">Change Password</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Update your account security</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowChangePassword(false)}
+            className="p-2 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-neutral-500 dark:text-gray-400" />
+          </button>
+        </div>
+
+        {/* Panel Content */}
+        <div className="p-4 sm:p-6">
+          <ChangePasswordForm 
+            onClose={() => setShowChangePassword(false)} 
+            userId={currentUser?.id}
+          />
+        </div>
+      </div>
+
+      {/* Backdrop for slide panel */}
+      {showChangePassword && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowChangePassword(false)}
+        />
+      )}
 
     </div>
   );
