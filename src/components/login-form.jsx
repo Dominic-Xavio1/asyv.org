@@ -328,12 +328,12 @@ const loginUser = async()=>{
           {/* Mobile Table Sheet */}
           <div className="lg:hidden p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700">
             <Sheet>
-              <SheetTrigger asChild>
+              {/* <SheetTrigger asChild>
                 <Button variant="outline" className="w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm sm:text-base h-10 sm:h-11">
                   <Menu className="mr-2 h-4 w-4" />
                   View Student Directory
                 </Button>
-              </SheetTrigger>
+              </SheetTrigger> */}
               <SheetContent side="bottom" className="h-[85vh] bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                 <div className="h-full overflow-auto">
                   {mode === "signup" ? (
