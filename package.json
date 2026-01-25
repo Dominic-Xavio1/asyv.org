@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "cross-env NODE_OPTIONS=--enable-source-maps next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -38,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cross-env": "^10.1.0",
     "data-fns": "^1.1.0",
     "emoji-mart": "^5.6.0",
     "framer-motion": "^12.26.2",

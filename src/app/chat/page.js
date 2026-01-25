@@ -120,12 +120,40 @@ export default function ChatPage() {
         status: conversation.status || "online",
       }
 
+      // Handle last message - prioritize content, then media, then placeholder
+      let lastMessageText = ""
+      if (conversation.last_message) {
+        lastMessageText = conversation.last_message
+        // Truncate if too long
+        if (lastMessageText.length > 50) {
+          lastMessageText = lastMessageText.substring(0, 50) + "..."
+        }
+      } else if (conversation.last_message_media) {
+        // Determine media type from URL
+        const url = conversation.last_message_media.toLowerCase()
+        if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+          lastMessageText = "📷 Photo"
+        } else if (url.match(/\.(mp4|webm|mov)$/)) {
+          lastMessageText = "🎥 Video"
+        } else if (url.match(/\.(mp3|wav|ogg)$/)) {
+          lastMessageText = "🎵 Audio"
+        } else {
+          lastMessageText = "📎 File"
+        }
+      } else {
+        lastMessageText = "No messages yet"
+      }
+
+      // Use last message time if exists, else use conversation creation time
+      const messageTime = conversation.last_message_time || conversation.created_at
+
       return {
         id: String(conversation.id),
         type: 'private',
         user: otherUser,
-        lastMessage: conversation.last_message || "",
-        timestamp: formatTime(conversation.created_at),
+        lastMessage: lastMessageText,
+        timestamp: formatTime(messageTime),
+        sortTime: messageTime, // Store raw timestamp for sorting
         unread: conversation.unread || 0,
       }
     },
@@ -150,6 +178,33 @@ export default function ChatPage() {
         }
       })
 
+      // Handle last message - prioritize content, then media, then placeholder
+      let lastMessageText = ""
+      if (group.last_message) {
+        lastMessageText = group.last_message
+        // Truncate if too long
+        if (lastMessageText.length > 50) {
+          lastMessageText = lastMessageText.substring(0, 50) + "..."
+        }
+      } else if (group.last_message_media) {
+        // Determine media type from URL
+        const url = group.last_message_media.toLowerCase()
+        if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+          lastMessageText = "📷 Photo"
+        } else if (url.match(/\.(mp4|webm|mov)$/)) {
+          lastMessageText = "🎥 Video"
+        } else if (url.match(/\.(mp3|wav|ogg)$/)) {
+          lastMessageText = "🎵 Audio"
+        } else {
+          lastMessageText = "📎 File"
+        }
+      } else {
+        lastMessageText = "No messages yet"
+      }
+
+      // Use last message time if exists, else use group creation time
+      const messageTime = group.last_message_time || group.created_at
+
       return {
         id: String(group.id),
         type: 'group',
@@ -161,8 +216,9 @@ export default function ChatPage() {
           memberCount: memberObjs.length,
           members: memberObjs,
         },
-        lastMessage: group.last_message || "",
-        timestamp: formatTime(group.created_at),
+        lastMessage: lastMessageText,
+        timestamp: formatTime(messageTime),
+        sortTime: messageTime, // Store raw timestamp for sorting
         unread: group.unread || 0,
         isGroup: true,
         description: group.description || '',
@@ -347,11 +403,16 @@ export default function ChatPage() {
           allChats.push(...mappedGroups)
         }
 
-        // Sort by timestamp (most recent first)
+        // Sort all chats by timestamp (most recent first)
+        // This ensures private and group chats are properly interleaved by activity
         allChats.sort((a, b) => {
-          const timeA = new Date(a.timestamp || 0).getTime()
-          const timeB = new Date(b.timestamp || 0).getTime()
-          return timeB - timeA
+          // Use sortTime (raw timestamp) for accurate sorting
+          const timeA = a.sortTime ? new Date(a.sortTime).getTime() : 0
+          const timeB = b.sortTime ? new Date(b.sortTime).getTime() : 0
+          
+          // If timestamps are same or invalid, maintain original order
+          if (timeA === timeB) return 0
+          return timeB - timeA // Most recent first
         })
 
         setChats(allChats)
@@ -525,13 +586,38 @@ export default function ChatPage() {
       setChats((prev) =>
         prev.map((chat) => {
           if (String(chat.id) !== convId) return chat
-          const preview = message.content || (message.media_url ? "Media message" : "")
+          
+          // Format last message preview with truncation and media handling
+          let preview = ""
+          if (message.content) {
+            preview = message.content
+            // Truncate if too long
+            if (preview.length > 50) {
+              preview = preview.substring(0, 50) + "..."
+            }
+          } else if (message.media_url) {
+            // Determine media type from URL
+            const url = message.media_url.toLowerCase()
+            if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+              preview = "📷 Photo"
+            } else if (url.match(/\.(mp4|webm|mov)$/)) {
+              preview = "🎥 Video"
+            } else if (url.match(/\.(mp3|wav|ogg)$/)) {
+              preview = "🎵 Audio"
+            } else {
+              preview = "📎 File"
+            }
+          } else {
+            preview = "No messages yet"
+          }
+          
           const time = formatTime(message.created_at)
           const isCurrentConversation = selectedChat && String(selectedChat.id) === convId
           return {
             ...chat,
             lastMessage: preview,
             timestamp: time,
+            sortTime: message.created_at, // Update sort time for proper ordering
             unread: isCurrentConversation ? 0 : (chat.unread || 0) + 1,
           }
         })
@@ -587,13 +673,38 @@ export default function ChatPage() {
       setChats((prev) =>
         prev.map((chat) => {
           if (String(chat.id) !== groupId) return chat
-          const preview = message.content || (message.media_url ? "Media message" : "")
+          
+          // Format last message preview with truncation and media handling
+          let preview = ""
+          if (message.content) {
+            preview = message.content
+            // Truncate if too long
+            if (preview.length > 50) {
+              preview = preview.substring(0, 50) + "..."
+            }
+          } else if (message.media_url) {
+            // Determine media type from URL
+            const url = message.media_url.toLowerCase()
+            if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+              preview = "📷 Photo"
+            } else if (url.match(/\.(mp4|webm|mov)$/)) {
+              preview = "🎥 Video"
+            } else if (url.match(/\.(mp3|wav|ogg)$/)) {
+              preview = "🎵 Audio"
+            } else {
+              preview = "📎 File"
+            }
+          } else {
+            preview = "No messages yet"
+          }
+          
           const time = formatTime(message.created_at)
           const isCurrentConversation = selectedChat && String(selectedChat.id) === groupId
           return {
             ...chat,
             lastMessage: preview,
             timestamp: time,
+            sortTime: message.created_at, // Update sort time for proper ordering
             unread: isCurrentConversation ? 0 : (chat.unread || 0) + 1,
           }
         })
@@ -826,7 +937,7 @@ export default function ChatPage() {
         }
 
         const eventName = isGroupChat ? "send_group_message" : "send_private_message"
-        const msgContent = content.trim() || (mediaUrl ? `[${mediaType || 'Media'}]` : '')
+        const msgContent = content.trim() || ''
         
         const messagePayload = isGroupChat 
           ? {
@@ -854,16 +965,45 @@ export default function ChatPage() {
                 return realMessage ? [...filtered, realMessage] : filtered
               })
               
-              setChats((prev) =>
-                prev.map((chat) => {
+              setChats((prev) => {
+                // Format last message preview with proper media handling
+                let preview = ""
+                if (response.message.content) {
+                  preview = response.message.content
+                  if (preview.length > 50) {
+                    preview = preview.substring(0, 50) + "..."
+                  }
+                } else if (response.message.media_url) {
+                  // Determine media type from URL
+                  const url = response.message.media_url.toLowerCase()
+                  if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+                    preview = "📷 Photo"
+                  } else if (url.match(/\.(mp4|webm|mov)$/)) {
+                    preview = "🎥 Video"
+                  } else if (url.match(/\.(mp3|wav|ogg)$/)) {
+                    preview = "🎵 Audio"
+                  } else {
+                    preview = "📎 File"
+                  }
+                } else {
+                  preview = "No messages yet"
+                }
+                
+                return prev.map((chat) => {
                   if (String(chat.id) !== chatId) return chat
                   return {
                     ...chat,
-                    lastMessage: msgContent,
+                    lastMessage: preview,
                     timestamp: formatTime(response.message.created_at),
+                    sortTime: response.message.created_at, // Update sort time
                   }
+                }).sort((a, b) => {
+                  // Re-sort chats after updating to maintain most recent first
+                  const timeA = a.sortTime ? new Date(a.sortTime).getTime() : 0
+                  const timeB = b.sortTime ? new Date(b.sortTime).getTime() : 0
+                  return timeB - timeA
                 })
-              )
+              })
 
               resolve(response)
             } else {
@@ -1114,6 +1254,7 @@ export default function ChatPage() {
         </aside>
 
         {/* Chat List */}
+        <div className="flex flex gap-16 max-w-full">
         <aside className={`w-full lg:w-80 flex ${showConversation ? 'hidden lg:flex' : 'flex'}`}>
           <Card className={`flex-1 ${cardBg} ${borderColor} border flex flex-col`}>
             {/* Mobile Online Users */}
@@ -1302,7 +1443,7 @@ export default function ChatPage() {
         </aside>
 
         {/* Chat Area */}
-        <main className={`flex-1 flex ${showConversation ? 'flex' : 'hidden lg:flex'}`}>
+        <main className={`flex-1 flex ${showConversation ? 'flex' : 'hidden lg:flex'} w-[850px]`}>
           <Card className={`flex-1 ${cardBg} ${borderColor} border flex flex-col`}>
             {!selectedChat ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8">
@@ -1607,6 +1748,7 @@ export default function ChatPage() {
             )}
           </Card>
         </main>
+        </div>
       </div>
     </div>
   )
