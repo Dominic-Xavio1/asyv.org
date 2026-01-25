@@ -28,7 +28,7 @@ export async function POST(request) {
     const members = formData.get("members"); // JSON string array of user IDs
     const created_by = formData.get("created_by");
     const imageFile = formData.get("image");
-
+console.log("Recieved form data ",formData);
     // Validation
     if (!name || !created_by || !members) {
       return NextResponse.json(

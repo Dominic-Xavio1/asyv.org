@@ -4,7 +4,9 @@ import React, { useState,useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard, Settings } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ThemeTogglerButton } from "@/components/animate-ui/components/buttons/theme-toggler";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +20,11 @@ import Link from "next/link"
 import { useAuth } from '@/components/auth/AuthProvider'
 import { chatDarkModeStore } from '../../stores/userStore';
 import DialogDemo from "@/components/ui/dialogeDemo"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import toast from 'react-hot-toast'
 import {useRouter} from 'next/navigation'
 export default function Navbar() {
@@ -242,7 +249,7 @@ switch(label){
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 shadow-lg z-40">
         <div className="flex items-center justify-between py-2 px-4 space-x-2">
           {/* <div className="flex items-center space-x-2 cursor-pointer">
             <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-orange-500 to-green-500 rounded-full flex items-center justify-center">
@@ -260,11 +267,11 @@ switch(label){
               className="flex-1 flex flex-col items-center py-2 transition-colors duration-200 text-gray-600 dark:text-gray-400"
             >
               <Icon className="h-5 w-5" />
-              <span className="text-xs font-medium mt-1">{label}</span>
+              <span className="text-xs font-medium mt-1">{label}1</span>
             </div>
           ))}
            
-          {/* <div
+          <div
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="flex-1 flex flex-col items-center py-2 transition-colors duration-200 text-gray-600 dark:text-gray-400 cursor-pointer"
           >
@@ -274,92 +281,107 @@ switch(label){
               <User className="h-5 w-5" />
             )}
             <span className="text-sm font-medium mt-1">More</span>
-          </div> */}
+          </div>
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 z-40 backdrop-blur-md"
-            />
-            
-            {/* Menu Container */}
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              variants={menuVariants}
-              className="fixed top-0 right-0 z-50 w-72 h-full bg-white dark:bg-gray-900 shadow-xl"
-            >
-              <div className="h-full flex flex-col">
-                {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
-                  <div 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-                  >
-                    <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                  </div>
-                </div>
+      {/* Mobile menu overlay and drawer are rendered outside the top nav to avoid stacking/positioning issues */}
+      </nav>
+    <AnimatePresence>
+      {mobileMenuOpen && (
+        <>
+          {/* Overlay - placed above nav */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 z-50 backdrop-blur-md"
+          />
 
-                {/* Navigation Items */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                  {navItems.map(({ path, icon: Icon, label }, i) => (
-                    <motion.div
-                      key={`${path}-${i}`}
-                      custom={i}
-                      initial="hidden"
-                      animate="visible"
-                      variants={itemVariants}
-                    >
+          {/* Menu Container - higher z-index so it sits above nav */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={menuVariants}
+            className="fixed top-0 right-0 z-60 w-72 h-full bg-white dark:bg-gray-900 shadow-xl"
+          >
+            <Card className="h-full flex flex-col">
+              {/* Header */}
+              <div className="flex justify-between items-center p-4  border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
+                <div 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                >
+                  <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                </div>
+              </div>
+
+              {/* Navigation Items */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {navItems.map(({ path, icon: Icon, label }, i) => (
+                  <motion.div
+                    key={`${path}-${i}`}
+                    custom={i}
+                    initial="hidden"
+                    animate="visible"
+                    variants={itemVariants}
+                  >
+                    <Link href={getHref(label)}>
                       <div
+                        onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer"
                       >
                         <Icon className="h-5 w-5" />
                         <span className="font-medium">{label}</span>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={currentUser?.profile_image_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"}
-                      alt={currentUser?.username || 'User'}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 dark:text-gray-100 truncate">
-                        {currentUser?.username || 'User Profile'}
-                      </p>
-                      <div className="flex space-x-3 mt-1">
-                            <div className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer">
-                              <ThemeToggle inline />
-                            </div>
-                        <div className="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
-                          onClick={() => logout()}
-                        >
-                          Logout
-                        </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="flex items-center space-x-3">
+                  {/* <img
+                    src={currentUser?.profile_image_url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"}
+                    alt={currentUser?.username || 'User'}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-gray-700"
+                  /> */}
+                   <Avatar>
+              <AvatarImage alt="user" src={
+                currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png')
+              } 
+              className="object-cover"
+              />
+              <AvatarFallback>{currentUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+            </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 dark:text-gray-100 truncate">
+                      {currentUser?.username || 'User Profile'}
+                    </p>
+                    <div className="flex space-x-3 mt-1">
+                          <div className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer">
+                            <ThemeToggle inline />
+                          </div>
+                      <div className="text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
+                        onClick={() =>{
+toast.success("Logout successfully!")
+                          logout()
+                          setMobileMenuOpen(false)
+                        } }
+                      >
+                        Logout
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-      </nav>
+            </Card>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
       <DialogDemo open={editProfileOpen} setOpen={setEditProfileOpen} />
     </>
   )
@@ -369,15 +391,29 @@ switch(label){
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="relative h-10 w-10 rounded-full p-0" variant="outline">
-            <Avatar>
+            <div className="flex flex-wrap gap-2 hover:cursor-pointer">
+      {(["right"]).map((side) => (
+        <Tooltip key={side} >
+          <TooltipTrigger  asChild>
+            {/* <Button variant="outline" className="w-fit capitalize">
+              {side}
+            </Button> */}
+             <Avatar>
               <AvatarImage alt="user" src={
-                // prefer currentUser (from API) then local fullInfo image, normalized
                 currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png')
               } 
               className="object-cover"
               />
               <AvatarFallback>{currentUser?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
+          </TooltipTrigger>
+          <TooltipContent side={side}>
+            <p>Make it yours—add your details.</p>
+            <p>BY creating your profile</p>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
             <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
           </Button>
         </DropdownMenuTrigger>
@@ -396,8 +432,9 @@ switch(label){
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
-            {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            {theme === 'dark' ? <Sun /> : <Moon />}
             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            {/* <ThemeTogglerButton /> */}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>

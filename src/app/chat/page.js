@@ -65,8 +65,7 @@ export default function ChatPage() {
   const [isLoadingChats, setIsLoadingChats] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
-  const [typingUsers, setTypingUsers] = useState([])
-  const typingTimeoutRef = useRef(null)
+  const [typingUsers, setTypingUsers] = useState([]) // Array of { userId, userName } for users currently typing
   
   // Refs for scroll behavior
   const messagesEndRef = useRef(null)
@@ -614,6 +613,62 @@ export default function ChatPage() {
       }
     })
 
+    // Typing indicator listeners for private chats
+    socketInstance.on("typing_private", ({ conversationId, userId, userName, isTyping }) => {
+      // Only show typing indicator if it's for the current conversation and not the current user
+      if (
+        selectedChat && 
+        String(selectedChat.id) === String(conversationId) &&
+        String(userId) !== String(currentUser?.id)
+      ) {
+        if (isTyping) {
+          setTypingUsers((prev) => {
+            // Check if user is already in the list
+            const exists = prev.some(u => String(u.userId) === String(userId));
+            if (exists) return prev;
+            return [...prev, { userId: String(userId), userName: userName || `User ${userId}` }];
+          });
+        }
+      }
+    });
+
+    socketInstance.on("user_stopped", ({ conversationId, userId }) => {
+      if (
+        selectedChat && 
+        String(selectedChat.id) === String(conversationId)
+      ) {
+        setTypingUsers((prev) => prev.filter(u => String(u.userId) !== String(userId)));
+      }
+    });
+
+    // Typing indicator listeners for group chats
+    socketInstance.on("typing_group", ({ groupId, userId, userName, isTyping }) => {
+      // Only show typing indicator if it's for the current group and not the current user
+      if (
+        selectedChat && 
+        String(selectedChat.id) === String(groupId) &&
+        String(userId) !== String(currentUser?.id)
+      ) {
+        if (isTyping) {
+          setTypingUsers((prev) => {
+            // Check if user is already in the list
+            const exists = prev.some(u => String(u.userId) === String(userId));
+            if (exists) return prev;
+            return [...prev, { userId: String(userId), userName: userName || `User ${userId}` }];
+          });
+        }
+      }
+    });
+
+    socketInstance.on("group_stopped", ({ groupId, userId }) => {
+      if (
+        selectedChat && 
+        String(selectedChat.id) === String(groupId)
+      ) {
+        setTypingUsers((prev) => prev.filter(u => String(u.userId) !== String(userId)));
+      }
+    });
+
     const activityInterval = setInterval(() => {
       if (socketInstance.connected) {
         socketInstance.emit("user_activity")
@@ -627,8 +682,15 @@ export default function ChatPage() {
     return () => {
       clearInterval(activityInterval)
       socketInstance.disconnect()
+      // Clear typing users when component unmounts or chat changes
+      setTypingUsers([])
     }
   }, [currentUser, selectedChat, mapConversationToChat, mapMessageToUi, loadOnlineUsers])
+
+  // Clear typing users when chat changes
+  useEffect(() => {
+    setTypingUsers([])
+  }, [selectedChat?.id])
 
   const filteredChats = useMemo(() => {
     if (!searchQuery.trim()) return chats
@@ -1175,7 +1237,7 @@ export default function ChatPage() {
                             </AvatarFallback>
                           </Avatar>
                           {chat.type === 'group' ? (
-                            <span className={`absolute bottom-0 right-0 w-4 h-4 bg-blue-500 border-2 ${onlineStatus} rounded-full flex items-center justify-center`}>
+                            <span className={`absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 ${onlineStatus} rounded-full flex items-center justify-center`}>
                               <Users className="h-2 w-2 text-white" />
                             </span>
                           ) : chat.user.status === "online" && (
@@ -1190,11 +1252,6 @@ export default function ChatPage() {
                                   <div className="relative inline-block group">
                                     <p className={`text-sm font-semibold ${textColor} truncate cursor-default`}>{chat.user.name}</p>
                                   </div>
-                                  {chat.type === 'group' && (
-                                    <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-sm px-2 py-1">
-                                      {chat.user.memberCount} members
-                                    </span>
-                                  )}
                                 </div>
                                 {searchQuery && chat.user.name.toLowerCase().includes(searchQuery.toLowerCase()) && (
                                   <Badge className="bg-orange-500 text-white text-xs px-1 py-0 h-4 mt-1">
@@ -1475,6 +1532,44 @@ export default function ChatPage() {
                             </div>
                           </div>
                         ))}
+                        
+                        {/* Typing Indicator */}
+                        {typingUsers.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            {selectedChat?.isGroup || selectedChat?.type === 'group' ? (
+                              <Avatar className="h-8 w-8 flex-shrink-0">
+                                <AvatarFallback className={`text-xs ${isDark ? 'bg-gray-700' : 'bg-gray-200'} ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                                  <Users className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                            ) : (
+                              <Avatar className="h-8 w-8 flex-shrink-0">
+                                <AvatarImage src={selectedChat?.user?.avatar || "/default.png"} alt={selectedChat?.user?.name} />
+                                <AvatarFallback className={`text-xs ${isDark ? 'bg-gray-700' : 'bg-gray-200'} ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                                  {selectedChat?.user?.name?.split(" ").map((n) => n[0]).join("")}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div className={`rounded-2xl px-4 py-3 ${messageBgOther} ${textColor} rounded-bl-sm border ${borderColor}`}>
+                              <div className="flex items-center gap-1">
+                                <span className={`text-sm italic ${textMuted}`}>
+                                  {typingUsers.length === 1 
+                                    ? `${typingUsers[0].userName} is typing...`
+                                    : typingUsers.length === 2
+                                    ? `${typingUsers[0].userName} and ${typingUsers[1].userName} are typing...`
+                                    : `${typingUsers[0].userName} and ${typingUsers.length - 1} others are typing...`
+                                  }
+                                </span>
+                                <div className="flex gap-1 ml-2">
+                                  <span className={`w-2 h-2 ${isDark ? 'bg-gray-400' : 'bg-gray-500'} rounded-full animate-bounce`} style={{ animationDelay: '0ms' }}></span>
+                                  <span className={`w-2 h-2 ${isDark ? 'bg-gray-400' : 'bg-gray-500'} rounded-full animate-bounce`} style={{ animationDelay: '150ms' }}></span>
+                                  <span className={`w-2 h-2 ${isDark ? 'bg-gray-400' : 'bg-gray-500'} rounded-full animate-bounce`} style={{ animationDelay: '300ms' }}></span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div ref={messagesEndRef} />
                       </>
                     )}
@@ -1503,6 +1598,9 @@ export default function ChatPage() {
                     showEmoji={showEmoji}
                     setShowEmoji={setShowEmoji}
                     onEmojiSelect={handleEmojiSelect}
+                    socket={socket}
+                    currentUserId={currentUser?.id}
+                    selectedChat={selectedChat}
                   />
                 </div>
               </>

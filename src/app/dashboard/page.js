@@ -699,6 +699,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
           method: 'POST',
           body: formData,
         });
+        console.log("Sending...",Object.fromEntries(formData))
         data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.message || 'Failed to create group');
@@ -1530,7 +1531,7 @@ function handleNavigate(word){
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-gray-900" suppressHydrationWarning>
+    <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-16 pb-24" suppressHydrationWarning>
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-neutral-200 dark:border-gray-700 flex-col z-80">
         <div className="p-6 border-b border-neutral-200 dark:border-gray-700">
@@ -1678,12 +1679,12 @@ return null;
       )}
 
       {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen">
+      <main className="lg:ml-64 min-h-screen pt-0">
         {/* Top Bar */}
    
 
         {/* Dashboard Content */}
-        <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-22">
+        <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-4 md:mt-6">
           {/* Create Buttons */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
             <button
