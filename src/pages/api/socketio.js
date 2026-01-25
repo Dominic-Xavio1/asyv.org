@@ -52,6 +52,107 @@ export default async function handler(req, res) {
         socket.join(`notifications_${userId}`);
         console.log(`User ${userId} joined notifications room`);
       });
+      // Listening for typing in private chats
+      socket.on("private_typing_started", async ({conversationId, userId, isTyping}) => {
+        if(!conversationId || !userId) return;
+        
+        // Ensure user is in the conversation room
+        socket.join(`conversation_${conversationId}`);
+        
+        // Fetch user name for typing indicator
+        try {
+          const userQuery = await pool.query(
+            `SELECT u.first_name, u.rwandan_name, u.username
+             FROM api_user u
+             WHERE u.id = $1
+             LIMIT 1`,
+            [userId]
+          );
+          
+          const user = userQuery.rows[0] || {};
+          const userName = user.rwandan_name 
+            ? `${user.first_name || ''} ${user.rwandan_name}`.trim()
+            : user.first_name || user.username || `User ${userId}`;
+          
+          // Broadcast to other users in the conversation
+          socket.to(`conversation_${conversationId}`).emit("typing_private", {
+            conversationId,
+            userId,
+            userName,
+            isTyping
+          });
+        } catch (error) {
+          console.error("Error fetching user name for typing indicator:", error);
+          // Still emit even if name fetch fails
+          socket.to(`conversation_${conversationId}`).emit("typing_private", {
+            conversationId,
+            userId,
+            userName: `User ${userId}`,
+            isTyping
+          });
+        }
+      });
+      
+      // Listening for typing in group chats
+      socket.on("group_typing_started", async ({groupId, userId, isTyping}) => {
+        if(!groupId || !userId) return;
+        
+        // Ensure user is in the group room
+        socket.join(`group_${groupId}`);
+        
+        // Fetch user name for typing indicator
+        try {
+          const userQuery = await pool.query(
+            `SELECT u.first_name, u.rwandan_name, u.username
+             FROM api_user u
+             WHERE u.id = $1
+             LIMIT 1`,
+            [userId]
+          );
+          
+          const user = userQuery.rows[0] || {};
+          const userName = user.rwandan_name 
+            ? `${user.first_name || ''} ${user.rwandan_name}`.trim()
+            : user.first_name || user.username || `User ${userId}`;
+          
+          // Broadcast to other users in the group
+          socket.to(`group_${groupId}`).emit("typing_group", {
+            groupId,
+            userId,
+            userName,
+            isTyping
+          });
+        } catch (error) {
+          console.error("Error fetching user name for typing indicator:", error);
+          // Still emit even if name fetch fails
+          socket.to(`group_${groupId}`).emit("typing_group", {
+            groupId,
+            userId,
+            userName: `User ${userId}`,
+            isTyping
+          });
+        }
+      });
+      
+      // Listen for private typing stopped
+      socket.on("private_typing_stopped", ({conversationId, userId, isTyping}) => {
+        if(!conversationId || !userId) return;
+        socket.to(`conversation_${conversationId}`).emit("user_stopped", { 
+          conversationId,
+          userId,
+          isTyping
+        });
+      });
+      
+      // Listen for group typing stopped
+      socket.on("group_typing_stopped", ({groupId, userId, isTyping}) => {
+        if(!groupId || !userId) return;
+        socket.to(`group_${groupId}`).emit("group_stopped", { 
+          groupId,
+          userId,
+          isTyping
+        });
+      });
 
       // Emit new notification to recipient
       socket.on("mark_notification_read", async ({ notificationId, userId }, callback) => {

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { ImageIcon, FileText, Film, Mic, X, Send,Music, Smile, Square,Disc, Play, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 /**
  * GroupMessageInput Component
@@ -23,6 +24,9 @@ export default function GroupMessageInput({
   showEmoji,
   setShowEmoji,
   onEmojiSelect,
+  socket,
+  currentUserId,
+  selectedChat,
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
@@ -40,6 +44,14 @@ export default function GroupMessageInput({
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
+
+  // Typing indicator hook
+  const { handleInputChange, stopTyping } = useTypingIndicator(
+    socket,
+    currentUserId,
+    selectedChat,
+    null // onTypingStateChange callback not needed here
+  );
 
   const handleFileSelect = (file, type) => {
     if (!file) return;
@@ -167,6 +179,11 @@ export default function GroupMessageInput({
     if (!messageInput.trim() && !selectedFile) {
       toast.error('Please enter a message or select a file');
       return;
+    }
+
+    // Stop typing indicator when sending
+    if (socket && currentUserId && selectedChat) {
+      stopTyping();
     }
 
     onSendMessage({
@@ -350,6 +367,10 @@ export default function GroupMessageInput({
               // Auto-expand textarea
               e.target.style.height = 'auto';
               e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              // Trigger typing indicator
+              if (socket && currentUserId && selectedChat) {
+                handleInputChange();
+              }
             }}
             placeholder="Type a message..."
             className={`w-full px-4 py-2 pr-10 rounded-lg border resize-none focus:outline-none focus:ring-1 focus:ring-green-500 max-h-[120px] overflow-y-auto ${inputBg} ${borderColor} ${textColor} placeholder:${textMuted}`}

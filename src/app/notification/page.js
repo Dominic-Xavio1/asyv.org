@@ -172,6 +172,7 @@ export default function NotificationPage() {
         `/api/notifications?userId=${currentUser.id}&limit=100`
       )
       const data = await response.json()
+      console.log("fetch notifications result ",data)
 
       if (data.success) {
         setNotifications(data.data || [])
@@ -312,7 +313,33 @@ export default function NotificationPage() {
       toast.error("Failed to delete notification")
     }
   }
+const deleteAllNotifications = async () => {
+  if (!currentUser?.id) return;
+  try {
+    const isSent = viewMode === "sent";
+    const response = await fetch(
+      `/api/notifications?userId=${currentUser.id}&all=true&sent=${isSent}`,
+      { method: "DELETE" }
+    );
 
+    const data = await response.json();
+
+    if (data.success) {
+      if (isSent) {
+        setSentNotifications([]);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+      toast.success(data.message || "Notifications deleted");
+    } else {
+      toast.error(data.message || "Failed to delete notifications");
+    }
+  } catch (err) {
+    console.error("Error deleting all notifications:", err);
+    toast.error("Failed to delete notifications");
+  }
+};
   const handleSendNotification = async (e) => {
     e.preventDefault()
 
@@ -405,9 +432,9 @@ export default function NotificationPage() {
             </Button>
           )}
           {isCrcOrSuperuser && (
-            <Button
+            <Button 
               onClick={() => {
-                window.confirm("Are you sure you want to send a notification?")
+                const confirmed =window.confirm("Are you sure you want to send a notification?")
                 if (confirmed) {
                   setIsSendDialogOpen(true)
                   fetchUsers()
@@ -420,6 +447,7 @@ export default function NotificationPage() {
             </Button>
           )}
           {isCrcOrSuperuser && (
+            <div>
             <Button
               onClick={() => setViewMode(viewMode === "received" ? "sent" : "received")}
               className={viewMode === "sent" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"}
@@ -427,6 +455,21 @@ export default function NotificationPage() {
               <Bell className="h-4 w-4 mr-2" />
               {viewMode === "received" ? "My Sent Notifications" : "Received Notifications"}
             </Button>
+            {viewMode!="received"&&(
+              <Button
+              className="ml-4 bg-orange-500 hover:bg-orange-600"
+              onClick={()=>{
+                if(window.confirm("Delete all sent notifications? This will permanently remove them from your history.")){
+                  // console.log("Hello World!")
+                  deleteAllNotifications()
+                }
+              }}
+              >
+                <Trash2/>
+                 Delete All
+              </Button>
+            )}
+            </div>
           )}
         </div>
       </div>

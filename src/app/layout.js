@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/layout/navagation";
+import {FireworksBackground} from "@/components/animate-ui/components/backgrounds/fireworks"
 import {Providers} from "./provider"
 import {Toaster} from 'react-hot-toast'
 import ThemeProvider from '@/lib/theme'
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
               <NavBar />
               <AuthGate />
               {children}
+              {/* <FireworksBackground /> */}
             </AuthProvider>
           </ThemeProvider>
         </Providers>

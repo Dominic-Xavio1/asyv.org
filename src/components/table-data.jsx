@@ -9,8 +9,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, User, Mail, GraduationCap, Users, CheckCircle, XCircle, Clock, Plus, Edit, Trash2, Shield, ShieldCheck } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, User, Mail, GraduationCap, Users, CheckCircle,Eye, XCircle,View, Clock, Plus, Edit, Trash2, Shield, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -64,17 +65,17 @@ const getColumnIcon = (key) => {
     first_name: User,
     rwandan_name: User,
     username: User,
-    is_student: GraduationCap,
-    is_alumni: GraduationCap,
-    is_crc: Users,
-    is_superuser: ShieldCheck,
+    // is_student: GraduationCap,
+    // is_alumni: GraduationCap,
+    // is_crc: Users,
+    // is_superuser: ShieldCheck,
     phone: Users,
   }
   return icons[key] || User
 }
 
 // Create dynamic columns based on data
-const createColumns = (onEdit, onDelete) => {
+const createColumns = (onEdit, onDelete, onViewDetails) => {
   const baseColumns = [
     {
       id: "select",
@@ -192,146 +193,146 @@ const createColumns = (onEdit, onDelete) => {
         </div>
       ),
     },
-    {
-      accessorKey: "is_student",
-      header: ({ column }) => {
-        const Icon = getColumnIcon("is_student")
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <Icon className="mr-2 h-4 w-4" />
-            Is Student
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => {
-        const value = row.getValue("is_student")
-        return (
-          <div className="flex items-center">
-            {value ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                <CheckCircle className="h-3 w-3" />
-                Yes
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
-                <XCircle className="h-3 w-3" />
-                No
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "is_alumni",
-      header: ({ column }) => {
-        const Icon = getColumnIcon("is_alumni")
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <Icon className="mr-2 h-4 w-4" />
-            Is Alumni
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => {
-        const value = row.getValue("is_alumni")
-        return (
-          <div className="flex items-center">
-            {value ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
-                <GraduationCap className="h-3 w-3" />
-                Yes
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
-                <XCircle className="h-3 w-3" />
-                No
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "is_crc",
-      header: ({ column }) => {
-        const Icon = getColumnIcon("is_crc")
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <Icon className="mr-2 h-4 w-4" />
-            Is CRC
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => {
-        const value = row.getValue("is_crc")
-        return (
-          <div className="flex items-center">
-            {value ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                <Shield className="h-3 w-3" />
-                Yes
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
-                <XCircle className="h-3 w-3" />
-                No
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "is_superuser",
-      header: ({ column }) => {
-        const Icon = getColumnIcon("is_superuser")
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <Icon className="mr-2 h-4 w-4" />
-            Is Superuser
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => {
-        const value = row.getValue("is_superuser")
-        return (
-          <div className="flex items-center">
-            {value ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                <ShieldCheck className="h-3 w-3" />
-                Yes
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
-                <XCircle className="h-3 w-3" />
-                No
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
+    // {
+    //   accessorKey: "is_student",
+    //   header: ({ column }) => {
+    //     const Icon = getColumnIcon("is_student")
+    //     return (
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //         className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         <Icon className="mr-2 h-4 w-4" />
+    //         Is Student
+    //         <ArrowUpDown className="ml-2 h-4 w-4" />
+    //       </Button>
+    //     )
+    //   },
+    //   cell: ({ row }) => {
+    //     const value = row.getValue("is_student")
+    //     return (
+    //       <div className="flex items-center">
+    //         {value ? (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+    //             <CheckCircle className="h-3 w-3" />
+    //             Yes
+    //           </div>
+    //         ) : (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
+    //             <XCircle className="h-3 w-3" />
+    //             No
+    //           </div>
+    //         )}
+    //       </div>
+    //     )
+    //   },
+    // },
+    // {
+    //   accessorKey: "is_alumni",
+    //   header: ({ column }) => {
+    //     const Icon = getColumnIcon("is_alumni")
+    //     return (
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //         className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         <Icon className="mr-2 h-4 w-4" />
+    //         Is Alumni
+    //         <ArrowUpDown className="ml-2 h-4 w-4" />
+    //       </Button>
+    //     )
+    //   },
+    //   cell: ({ row }) => {
+    //     const value = row.getValue("is_alumni")
+    //     return (
+    //       <div className="flex items-center">
+    //         {value ? (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+    //             <GraduationCap className="h-3 w-3" />
+    //             Yes
+    //           </div>
+    //         ) : (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
+    //             <XCircle className="h-3 w-3" />
+    //             No
+    //           </div>
+    //         )}
+    //       </div>
+    //     )
+    //   },
+    // },
+    // {
+    //   accessorKey: "is_crc",
+    //   header: ({ column }) => {
+    //     const Icon = getColumnIcon("is_crc")
+    //     return (
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //         className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         <Icon className="mr-2 h-4 w-4" />
+    //         Is CRC
+    //         <ArrowUpDown className="ml-2 h-4 w-4" />
+    //       </Button>
+    //     )
+    //   },
+    //   cell: ({ row }) => {
+    //     const value = row.getValue("is_crc")
+    //     return (
+    //       <div className="flex items-center">
+    //         {value ? (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+    //             <Shield className="h-3 w-3" />
+    //             Yes
+    //           </div>
+    //         ) : (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
+    //             <XCircle className="h-3 w-3" />
+    //             No
+    //           </div>
+    //         )}
+    //       </div>
+    //     )
+    //   },
+    // },
+    // {
+    //   accessorKey: "is_superuser",
+    //   header: ({ column }) => {
+    //     const Icon = getColumnIcon("is_superuser")
+    //     return (
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //         className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         <Icon className="mr-2 h-4 w-4" />
+    //         Is Superuser
+    //         <ArrowUpDown className="ml-2 h-4 w-4" />
+    //       </Button>
+    //     )
+    //   },
+    //   cell: ({ row }) => {
+    //     const value = row.getValue("is_superuser")
+    //     return (
+    //       <div className="flex items-center">
+    //         {value ? (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+    //             <ShieldCheck className="h-3 w-3" />
+    //             Yes
+    //           </div>
+    //         ) : (
+    //           <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400">
+    //             <XCircle className="h-3 w-3" />
+    //             No
+    //           </div>
+    //         )}
+    //       </div>
+    //     )
+    //   },
+    // },
     {
       accessorKey: "phone",
       header: ({ column }) => {
@@ -353,10 +354,31 @@ const createColumns = (onEdit, onDelete) => {
           {row.getValue("phone") || "-"}        </div>
       ),
     },
-    {
-      accessorKey: "is_staff",
+    // {
+    //   accessorKey: "is_staff",
+    //   header: ({ column }) => {
+    //     const Icon = getColumnIcon("is_staff")
+    //     return (
+    //       <Button
+    //         variant="ghost"
+    //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //         className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+    //       >
+    //         <Icon className="mr-2 h-4 w-4" />
+    //         Is Staff
+    //         <ArrowUpDown className="ml-2 h-4 w-4" />
+    //       </Button>
+    //     )
+    //   },
+    //   cell: ({ row }) => (
+    //     <div className="text-gray-700 dark:text-gray-300">
+    //       {row.getValue("is_staff") || "-"}        </div>
+    //   ),
+    // },
+       {
+      accessorKey: "gender",
       header: ({ column }) => {
-        const Icon = getColumnIcon("is_staff")
+        const Icon = getColumnIcon("gender")
         return (
           <Button
             variant="ghost"
@@ -364,14 +386,14 @@ const createColumns = (onEdit, onDelete) => {
             className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <Icon className="mr-2 h-4 w-4" />
-            Is Staff
+            Gender
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
       },
       cell: ({ row }) => (
         <div className="text-gray-700 dark:text-gray-300">
-          {row.getValue("is_staff") || "-"}        </div>
+          {row.getValue("gender") || "-"}        </div>
       ),
     },
     {
@@ -413,6 +435,13 @@ const createColumns = (onEdit, onDelete) => {
                 <Edit className="mr-2 h-4 w-4" />
                 Edit user
               </DropdownMenuItem>
+               <DropdownMenuItem 
+                onClick={() => onViewDetails(user)}
+                className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
               <DropdownMenuItem 
                 onClick={() => onDelete(user)}
@@ -426,33 +455,14 @@ const createColumns = (onEdit, onDelete) => {
         )
       },
     },
-    {
-      accessorKey: "gender",
-      header: ({ column }) => {
-        const Icon = getColumnIcon("gender")
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <Icon className="mr-2 h-4 w-4" />
-            Gender
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => (
-        <div className="text-gray-700 dark:text-gray-300">
-          {row.getValue("gender") || "-"}        </div>
-      ),
-    },
+ 
   ]
 
   return [...baseColumns, ...fieldColumns]
 }
 
 export function DataTableDemo({ className }) {
+  const router = useRouter();
   const [data, setData] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
@@ -536,6 +546,10 @@ export function DataTableDemo({ className }) {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleViewDetails = (user) => {
+    router.push(`/management/user/${user.id}`);
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -611,7 +625,7 @@ export function DataTableDemo({ className }) {
     }
   };
 
-  const columns = React.useMemo(() => createColumns(handleEdit, handleDelete), []);
+  const columns = React.useMemo(() => createColumns(handleEdit, handleDelete, handleViewDetails), []);
 
   // Custom global filter function that searches across all columns
   const fuzzyFilter = React.useCallback((row, columnId, value) => {

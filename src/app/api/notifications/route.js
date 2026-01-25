@@ -217,3 +217,93 @@ export async function POST(request) {
     );
   }
 }
+
+/**
+ * DELETE /api/notifications?userId=123&all=true&sent=true
+ * Bulk-delete (soft delete) notifications for a user. If `sent=true` deletes
+ * notifications where the user is the sender, otherwise deletes received notifications.
+ */
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+    const all = searchParams.get("all") === "true";
+    const sent = searchParams.get("sent") === "true";
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: "userId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!all) {
+      return NextResponse.json(
+        { success: false, message: "Use ?all=true to perform bulk delete" },
+        { status: 400 }
+      );
+    }
+
+    if (sent) {
+      // Verify user is CRC or superuser (consistent with sent listing permission)
+      const userCheck = await pool.query(
+        `SELECT is_crc, is_superuser FROM api_user WHERE id = $1`,
+        [userId]
+      );
+
+      if (userCheck.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, message: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      const user = userCheck.rows[0];
+      if (!user.is_crc && !user.is_superuser) {
+        return NextResponse.json(
+          { success: false, message: "Only CRC members can bulk-delete sent notifications" },
+          { status: 403 }
+        );
+      }
+
+      const result = await pool.query(
+        `UPDATE notifications SET is_deleted = TRUE WHERE sender_id = $1 AND is_deleted = FALSE RETURNING id`,
+        [userId]
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: `Deleted ${result.rowCount} sent notification(s)`,
+          deletedCount: result.rowCount,
+        },
+        { status: 200 }
+      );
+    }
+
+    // Delete received notifications for the user
+    const result = await pool.query(
+      `UPDATE notifications SET is_deleted = TRUE WHERE recipient_id = $1 AND is_deleted = FALSE RETURNING id`,
+      [userId]
+    );
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Deleted ${result.rowCount} notification(s)`,
+        deletedCount: result.rowCount,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("Error bulk-deleting notifications:", err);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Error deleting notifications",
+        error: err.message,
+      },
+      { status: 500 }
+    );
+  }
+}
