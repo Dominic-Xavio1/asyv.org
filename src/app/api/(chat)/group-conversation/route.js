@@ -194,10 +194,46 @@ export async function GET(request) {
 
     // Get all groups where user is a member
     const result = await pool.query(
-        `SELECT id, name, description, members, created_by, image, created_at
-         FROM group_conversation
-         WHERE $1 = ANY(members) -- Check if userId exists in the native array
-         ORDER BY created_at DESC`,
+        `SELECT 
+            gc.id, 
+            gc.name, 
+            gc.description, 
+            gc.members, 
+            gc.created_by, 
+            gc.image, 
+            gc.created_at,
+            -- Get last message content
+            (
+              SELECT gm.content 
+              FROM group_message gm 
+              WHERE gm.group_id = gc.id 
+              ORDER BY gm.created_at DESC 
+              LIMIT 1
+            ) AS last_message,
+            -- Get last message media URL (for media messages)
+            (
+              SELECT gm.media_url 
+              FROM group_message gm 
+              WHERE gm.group_id = gc.id 
+              ORDER BY gm.created_at DESC 
+              LIMIT 1
+            ) AS last_message_media,
+            -- Get last message timestamp
+            (
+              SELECT gm.created_at 
+              FROM group_message gm 
+              WHERE gm.group_id = gc.id 
+              ORDER BY gm.created_at DESC 
+              LIMIT 1
+            ) AS last_message_time
+         FROM group_conversation gc
+         WHERE $1 = ANY(gc.members) -- Check if userId exists in the native array
+         ORDER BY 
+           -- Sort by last message time if exists, else by group creation
+           COALESCE(
+             (SELECT gm.created_at FROM group_message gm WHERE gm.group_id = gc.id ORDER BY gm.created_at DESC LIMIT 1),
+             gc.created_at
+           ) DESC`,
         [userId] 
       );
     const groups = result.rows;

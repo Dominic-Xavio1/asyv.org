@@ -82,7 +82,6 @@ export async function GET(request) {
        ORDER BY created_at DESC`,
       [userId]
     );
-
     return NextResponse.json(
       {
         success: true,

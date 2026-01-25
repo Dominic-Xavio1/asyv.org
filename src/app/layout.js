@@ -50,3 +50,13 @@ export default function RootLayout({ children }) {
     </html>
   )
 }
+if (process.env.NODE_ENV === "development") {
+  const originalError = console.error
+
+  console.error = (...args) => {
+    if (typeof args[0] === "string" && args[0].includes("Encountered two children with the same key")) {
+      throw new Error(args[0])
+    }
+    originalError(...args)
+  }
+}

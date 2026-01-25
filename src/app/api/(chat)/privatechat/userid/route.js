@@ -21,7 +21,31 @@ const response = await pool.query(`
       pc.created_at,
       u.id AS other_user_id,
       u.first_name,
-      u.rwandan_name
+      u.rwandan_name,
+      -- Get last message content
+      (
+        SELECT pm.content 
+        FROM private_message pm 
+        WHERE pm.conversation_id = pc.id 
+        ORDER BY pm.created_at DESC 
+        LIMIT 1
+      ) AS last_message,
+      -- Get last message media URL (for media messages)
+      (
+        SELECT pm.media_url 
+        FROM private_message pm 
+        WHERE pm.conversation_id = pc.id 
+        ORDER BY pm.created_at DESC 
+        LIMIT 1
+      ) AS last_message_media,
+      -- Get last message timestamp
+      (
+        SELECT pm.created_at 
+        FROM private_message pm 
+        WHERE pm.conversation_id = pc.id 
+        ORDER BY pm.created_at DESC 
+        LIMIT 1
+      ) AS last_message_time
   FROM private_conversation pc
   JOIN api_user u 
     ON u.id = CASE 
@@ -29,7 +53,12 @@ const response = await pool.query(`
                 ELSE pc.user1_id
               END
   WHERE pc.user1_id = $1 OR pc.user2_id = $1
-  ORDER BY pc.created_at DESC
+  ORDER BY 
+    -- Sort by last message time if exists, else by conversation creation
+    COALESCE(
+      (SELECT pm.created_at FROM private_message pm WHERE pm.conversation_id = pc.id ORDER BY pm.created_at DESC LIMIT 1),
+      pc.created_at
+    ) DESC
 `, [userId]);
 
     const data = response.rows;

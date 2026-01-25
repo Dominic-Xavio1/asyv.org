@@ -28,7 +28,6 @@ John Doe
 - Modify queries to include last message
 - Understand JOIN operations
 - Handle edge cases (no messages)
-
 ### **Module 3: Frontend Updates**
 - Update state management
 - Modify UI components
