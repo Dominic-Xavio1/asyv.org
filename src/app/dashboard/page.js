@@ -2,7 +2,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, MessageSquare,UserCog,Lock,KeyRound, ShieldCheck,LayoutList, Users, BookOpen, Calendar, Video, TrendingUp, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload, Send, Edit2, Trash2, MoreVertical, FileImage,Filter } from 'lucide-react';
+import { Bell, Search, MessageSquare,UserCog,Lock,KeyRound, ShieldCheck,LayoutList, Users, 
+  BookOpen, FolderKanban, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload,
+  UserCircle,UserPlus,
+   Send, Edit2, Trash2, MoreVertical, FileImage,Filter, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +16,7 @@ import Link from "next/link"
 import toast from 'react-hot-toast';
 import GroupImageDropzone from './GroupImageDropzone'
 import MemberSelector from './MemberSelector'
-
+import DialogDemo from "@/components/ui/dialogeDemo"
 // Updated AnimatedModal Component
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -47,6 +50,7 @@ const AnimatedModal = ({ isOpen, onClose, children, title }) => {
 
 const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
   const [title, setTitle] = useState(existingPost?.title || '');
+ 
   const [content, setContent] = useState(existingPost?.content || '');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(existingPost?.media_url || null);
@@ -1187,6 +1191,7 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editProfileOpen,setEditProfileOpen]= useState(false)
   const [activeTab, setActiveTab] = useState('home');
   const [activeModal, setActiveModal] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
@@ -1197,6 +1202,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const [onlySuperuser, setOnlySuperuser] = useState(false);
+  const [isAlumni, setIsAlumni] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
@@ -1240,11 +1246,14 @@ const fetchNotifications = async()=>{
     // { id: 'groups', icon: Users, label: 'Groups' },
     // { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
-    {id:"management",icon:UserCog,label:"Manage Users"},
-    {id:"change_password",icon:ShieldCheck,label:"Change Password"},
+    { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
+    { id: "management", icon: UserCog, label: "Manage Users" },
+    { id: "advanced_management", icon: Users, label: "Advanced User Management" },
+    {id:"create_profile",icon:UserPlus,label:"Create your profile"},
+    { id: "change_password", icon: ShieldCheck, label: "Change Password" },
   ];
   useEffect(() => {
-    // Check user role
+    // Check user role 
     if (typeof window !== 'undefined') {
       const fullInfo = localStorage.getItem('fullInfo');
       if (fullInfo) {
@@ -1252,6 +1261,7 @@ const fetchNotifications = async()=>{
           const user = JSON.parse(fullInfo);
           setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
           setOnlySuperuser(user.is_superuser === true);
+          setIsAlumni(user.is_alumni === true);
           setCurrentUser(user);
         } catch (e) {
           console.error('Error parsing user info:', e);
@@ -1418,8 +1428,12 @@ function handleNavigate(word){
       return "/feed";
     case "dashboard":
       return "/dashboard";
+    case "alumni_overview":
+      return "/management/alumni-overview";
     case 'management':
       return "/management";
+    case "advanced_management":
+      return "/management/advanced";
     case "notifications":
       return "/notification";
     case "change_password":
@@ -1554,20 +1568,24 @@ function handleNavigate(word){
 
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => {
-          if(item.id=="management"&& !onlySuperuser){
-return null;
+          if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
+            return null;
           }
-          
             return (
               <Link 
               key={item.id}
               href={handleNavigate(item.id)}>
             <button
              
-              onClick={() => {
+              onClick={(e) => {
                 if (item.id === 'change_password') {
                   setShowChangePassword(true);
-                } else {
+                }
+                else if(item.id==="create_profile"){
+                  e.preventDefault();
+                  setEditProfileOpen(true);
+                }
+                else {
                   setActiveTab(item.id);
                 }
               }}
@@ -1634,7 +1652,11 @@ return null;
             </div>
 
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-              {menuItems.map((item) => (
+              {menuItems.map((item) => {
+                if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
+                  return null;
+                }
+                return (
                 <button
                   key={item.id}
                   onClick={() => {
@@ -1642,6 +1664,8 @@ return null;
                     setSidebarOpen(false);
                     if (item.label === "Feed") {
                       router.push('/feed');
+                    } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management") {
+                      router.push(handleNavigate(item.id));
                     }
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -1658,7 +1682,8 @@ return null;
                     </span>
                   )}
                 </button>
-              ))}
+              );
+              })}
             </nav>
 
             <div className="p-3 border-t border-neutral-200 dark:border-gray-700 space-y-1">
@@ -1686,7 +1711,7 @@ return null;
         {/* Dashboard Content */}
         <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-4 md:mt-6">
           {/* Create Buttons */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
             <button
               onClick={() => setActiveModal('post')}
               className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
@@ -1739,6 +1764,21 @@ return null;
                 <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Start chat</p>
               </div>
             </button>
+            {isAlumni && (
+              <Link href="/alumni/forms">
+                <button
+                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group w-full"
+                >
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-200 text-orange-500 dark:text-orange-400 group-hover:bg-orange-400 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                    <UserCircle className="w-5 h-5" />
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-700 dark:group-hover:text-green-500">Alumni Profile Forms</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Update your profile, education & employment</p>
+                  </div>
+                </button>
+              </Link>
+            )}
           </div>
 
           {/* User Content Sections */}
@@ -1784,6 +1824,10 @@ return null;
                 </div>
               )}
             </div>
+            {editProfileOpen&&(
+              <DialogDemo open={editProfileOpen} setOpen={setEditProfileOpen} />
+            )}
+            
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">

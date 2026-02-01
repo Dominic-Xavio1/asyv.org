@@ -1,12 +1,14 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/layout/navagation";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import {FireworksBackground} from "@/components/animate-ui/components/backgrounds/fireworks"
 import {Providers} from "./provider"
 import {Toaster} from 'react-hot-toast'
 import ThemeProvider from '@/lib/theme'
 import AuthProvider from '@/components/auth/AuthProvider'
 import AuthGate from '@/components/auth/AuthGate'
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -16,8 +18,12 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-
+// const pacifico = Pacifico({
+//   weight: '100',
+//   subsets: ['latin'],
+//   display: 'swap',
+//   variable: '--font-pacifico', 
+// });
 export const metadata = {
   title: "asyv.org Platform",
   icons: {
@@ -42,6 +48,7 @@ export default function RootLayout({ children }) {
               <NavBar />
               <AuthGate />
               {children}
+              <MobileBottomNav />
               {/* <FireworksBackground /> */}
             </AuthProvider>
           </ThemeProvider>

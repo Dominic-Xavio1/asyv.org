@@ -172,6 +172,9 @@ switch(label){
   }
   const navItem = [
     { path: '/chat', icon: MessageCircle, label: 'Chat' },
+    { path: '/feed', icon: Home, label: 'Feed' },
+    { path: '/search', icon: Search, label: "Search" },
+    { path: '/dashboard', icon: User, label: 'Dashboard' },
   ];
   // Animation variants
   const menuVariants = {
@@ -194,20 +197,20 @@ switch(label){
   };
   return (
     <>
-      <nav className="fixed top-0 left-0 pt-2 right-0 z-50 bg-white backdrop-blur-md dark:bg-gray-800/95 border-b border-gray-200 dark:border-gray-700 shadow-sm ">
-      <div className="container mx-auto px-4">
+      <nav className=" fixed top-0 left-0 pt-2 right-0 z-50 bg-white backdrop-blur-md dark:bg-gray-800/95 border-b border-gray-200 dark:border-gray-700 shadow-sm ">
+      <div className="container mx-auto px-12">
         <div className="flex justify-between items-center h-14 lg:h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2 cursor-pointer">
-             <img src='/agahozo.png' alt="ASYV Logo" className="w-[60px] h-auto"/>
-                     
-
-            <span className="font-bold text-lg lg:text-xl bg-gradient-to-r from-orange-600 to-green-600 bg-clip-text text-transparent">
-              PulseVillage
-            </span>
+          <div className="hidden md:flex items-center cursor-pointer">
+             <img src='/agahozo.png' alt="ASYV Logo" className="w-[70px] h-auto object-cover"/>
+         <span className="font-script-style text-xl text-orange-500 ">Village Hub</span>
           </div>
-
+          <div className="flex md:hidden items-center cursor-pointer">
+<img src='/asyv.png' alt="ASYV Logo" className="w-[50px] h-auto object-cover"/>
+<span className="font-script-style text-xl text-orange-500 ">Village Hub</span>
+          </div>
           {/* Desktop Navigation */}
+         
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navItems.map(({ path, icon: Icon, label }) => (
               <Link key={path} href={getHref(label)}>
@@ -233,7 +236,7 @@ switch(label){
               }} />
           </div>
           {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          {/* <div className="md:hidden flex items-center">
             <div
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 cursor-pointer"
@@ -241,47 +244,10 @@ switch(label){
               {mobileMenuOpen ? (
                 <X className="h-5 w-5" />
               ) : (
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5 w-5" />  
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md dark:bg-gray-800/95 border-t border-gray-200 dark:border-gray-700 shadow-lg z-40">
-        <div className="flex items-center justify-between py-2 px-4 space-x-2">
-          {/* <div className="flex items-center space-x-2 cursor-pointer">
-            <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-orange-500 to-green-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xs lg:text-sm">CS</span>
-            </div>
-            <span className="font-bold text-lg lg:text-xl bg-gradient-to-r from-orange-600 to-green-600 bg-clip-text text-transparent">
-              ChatSocial
-            </span>
           </div> */}
-          
-            {navItem.slice(0, 1).map(({ path, icon: Icon, label }) => (
-            <div
-              key={path}
-              data-path={path}
-              className="flex-1 flex flex-col items-center py-2 transition-colors duration-200 text-gray-600 dark:text-gray-400"
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-xs font-medium mt-1">{label}1</span>
-            </div>
-          ))}
-           
-          <div
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex-1 flex flex-col items-center py-2 transition-colors duration-200 text-gray-600 dark:text-gray-400 cursor-pointer"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <User className="h-5 w-5" />
-            )}
-            <span className="text-sm font-medium mt-1">More</span>
-          </div>
         </div>
       </div>
 
@@ -395,9 +361,6 @@ toast.success("Logout successfully!")
       {(["right"]).map((side) => (
         <Tooltip key={side} >
           <TooltipTrigger  asChild>
-            {/* <Button variant="outline" className="w-fit capitalize">
-              {side}
-            </Button> */}
              <Avatar>
               <AvatarImage alt="user" src={
                 currentUser?.profile_image_url ? getProfileImageSrc(currentUser.profile_image_url) : (userProfileImage?.image_url ? getProfileImageSrc(userProfileImage.image_url) : '/default.png')
