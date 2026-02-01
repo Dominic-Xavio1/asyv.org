@@ -128,7 +128,8 @@ export default function AlumniOverviewPage() {
     try {
       const user = JSON.parse(fullInfo);
       setRequestingUserId(String(user.id));
-      setIsSuperuser(user.is_superuser === true);
+      setIsSuperuser(user.is_superuser === true || user.is_crc===true);
+      console.log("Is supersuser ",isSuperuser);
     } catch (e) {
       router.push('/login');
     }
@@ -182,7 +183,7 @@ export default function AlumniOverviewPage() {
           </p>
         </div>
 
-        {isSuperuser && grades.length > 0 && (
+        {isSuperuser  && grades.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Filter className="h-4 w-4" />

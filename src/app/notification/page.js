@@ -5,6 +5,7 @@ import { Bell, Check, Trash2, X, AlertCircle, MessageSquare, Users, Info, Extern
 import toast from "react-hot-toast"
 import { io } from "socket.io-client"
 import { Button } from "@/components/ui/button"
+import {create} from 'zustand';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,10 @@ const getNotificationColor = (type) => {
       return "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400"
   }
 }
+export const userUnreadNotificationStore = create((set)=>({
+  unreadCount:0,
+  setUnreadCount:(count)=>set({unreadCount:count})
+}))
 export default function NotificationPage() {
   const [notifications, setNotifications] = useState([])
   const [filteredNotifications, setFilteredNotifications] = useState([])
@@ -152,6 +157,9 @@ export default function NotificationPage() {
       )
     }
   }, [notifications, filter])
+  useEffect(()=>{
+    userUnreadNotificationStore.getState().setUnreadCount(unreadCount)
+  },[unreadCount])
 
   useEffect(() => {
     if (sentFilter === "all") {

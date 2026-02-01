@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { motion } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import {
   HoverCard,
@@ -21,6 +22,51 @@ const learning = "/learning.jpg";
 const connect = "/connect_.webp";
 const win = "/win.jpg";
 const visitation = "/visitation.jpg";
+
+// Animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+};
+
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { duration: 0.8, ease: "easeOut" }
+  }
+};
+
+const slideInLeft = {
+  hidden: { opacity: 0, x: -30 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+};
+
+const slideInRight = {
+  hidden: { opacity: 0, x: 30 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+};
 
 export default function LandingPage({ onAuthSuccess }){
   const [isScrolled, setIsScrolled] = useState(false);
@@ -58,7 +104,12 @@ export default function LandingPage({ onAuthSuccess }){
   return (
     <div className="text-neutral-700 box-border caret-transparent">
       <header aria-label="Site" className="box-border caret-transparent">
-        <div className={`fixed box-border caret-transparent w-screen z-[100] top-0 inset-x-0 transition-all duration-300 bg-white`}>
+        <motion.div 
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className={`fixed box-border caret-transparent w-screen z-[100] top-0 inset-x-0 transition-all duration-300 bg-white`}
+        >
           <div className="box-border caret-transparent px-4 md:px-[4.16667%]">
             <div className="box-border caret-transparent flex h-16 md:h-20 justify-between max-w-[1800px] mx-auto">
               <div className="items-center box-border caret-transparent flex justify-between min-h-0 min-w-0 w-full">
@@ -75,194 +126,83 @@ export default function LandingPage({ onAuthSuccess }){
                   <nav aria-label="primary" className="static box-border caret-transparent h-auto md:relative md:h-full">
                     {/* Desktop Navigation */}
                     <ul className="[align-items:normal] box-border caret-transparent hidden h-full justify-normal list-none pl-0 md:flex md:items-center md:justify-space-between">
-                      <li className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 mr-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto] md:mr-8">
-                        <HoverCard openDelay={0} closeDelay={0}>
-                          <HoverCardTrigger asChild>
-                            <a className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group">
-                              <span>Home</span>
-                              <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-sm ml-[20px] overflow-hidden z-[9999]">
-                            <div className="flex h-full">
-                              <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
-                                <Image
-                                  src={ceremony}  
-                                  alt="Home"
-                                  width={160}
-                                  height={216}
-                                  className="w-full h-full object-cover rounded-l-lg"
-                                />
-                              </div>
-                              <div className="flex-1 p-4 flex flex-col justify-between">
-                                <div>
-                                  <h3 className="text-green-900 text-lg font-bold mb-2">Home</h3>
-                                  <p className="text-neutral-700 text-sm leading-relaxed">
-                                    Discover the latest posts, updates, and moments from your fellow ASYV members. Your village, your stories — all in one place.
-                                  </p>
+                      {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
+                        <motion.li 
+                          key={item}
+                          initial={{ opacity: 0, y: -20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: index * 0.1 }}
+                          className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 mr-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto] md:mr-8"
+                        >
+                          <HoverCard openDelay={0} closeDelay={0}>
+                            <HoverCardTrigger asChild>
+                              <motion.a 
+                                whileHover={{ scale: 1.05 }}
+                                className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group"
+                              >
+                                <span>{item}</span>
+                                <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
+                              </motion.a>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-sm ml-[20px] overflow-hidden z-[9999]">
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex h-full"
+                              >
+                                <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
+                                  <Image
+                                    src={ceremony}
+                                    alt={item}
+                                    width={160}
+                                    height={216}
+                                    className="w-full h-full object-cover rounded-l-lg"
+                                  />
                                 </div>
-                                <button className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit">
-                                  Explore Feed
-                                </button>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                      <li className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 mr-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto] md:mr-8">
-                        <HoverCard openDelay={0} closeDelay={0}>
-                          <HoverCardTrigger asChild>
-                            <a className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group">
-                              <span>Connect</span>
-                              <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 ml-[20px] rounded-sm overflow-hidden z-[9999]">
-                            <div className="flex h-full">
-                              <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden">
-                                <Image 
-                                  src={ijabo} 
-                                  alt="Connect" 
-                                  width={160}
-                                  height={216}
-                                  className="w-full h-full object-cover rounded-l-lg" 
-                                />
-                              </div>
-                              <div className="flex-1 p-4 flex flex-col justify-between">
-                                <div>
-                                  <h3 className="text-green-900 text-lg font-bold mb-2">Connect</h3>
-                                  <p className="text-neutral-700 text-sm leading-relaxed">
-                                    Build meaningful relationships with ASYV family members worldwide. Share, collaborate, and grow together.
-                                  </p>
+                                <div className="flex-1 p-4 flex flex-col justify-between">
+                                  <div>
+                                    <h3 className="text-green-900 text-lg font-bold mb-2">{item}</h3>
+                                    <p className="text-neutral-700 text-sm leading-relaxed">
+                                      Discover the latest posts, updates, and moments from your fellow ASYV members.
+                                    </p>
+                                  </div>
+                                  <motion.button 
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit transform-gpu"
+                                  >
+                                    Explore Now
+                                  </motion.button>
                                 </div>
-                                <button className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit">
-                                  Start Now
-                                </button>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                      <li className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 mr-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto] md:mr-8">
-                        <HoverCard openDelay={0} closeDelay={0}>
-                          <HoverCardTrigger asChild>
-                            <a className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group">
-                              <span>Stories</span>
-                              <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-lg overflow-hidden z-[9999]">
-                            <div className="flex h-full">
-                              <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center overflow-hidden">
-                                <Image 
-                                  src={anne} 
-                                  alt="Stories" 
-                                  width={160}
-                                  height={216}
-                                  className="w-full h-full object-cover rounded-l-lg" 
-                                />
-                              </div>
-                              <div className="flex-1 p-4 flex flex-col justify-between">
-                                <div>
-                                  <h3 className="text-green-900 text-lg font-bold mb-2">Stories</h3>
-                                  <p className="text-neutral-700 text-sm leading-relaxed">
-                                    Share your journey, celebrate victories, and inspire others with your unique ASYV story.
-                                  </p>
-                                </div>
-                                <button className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit">
-                                  Share Now
-                                </button>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                      <li className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 mr-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto] md:mr-8">
-                        <HoverCard openDelay={0} closeDelay={0}>
-                          <HoverCardTrigger asChild>
-                            <a className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group">
-                              <span>Mentors</span>
-                              <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-ms overflow-hidden z-[9999]">
-                            <div className="flex h-full">
-                              <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center overflow-hidden">
-                                <Image 
-                                  src={learning} 
-                                  alt="Mentors" 
-                                  width={160}
-                                  height={216}
-                                  className="w-full h-full object-cover rounded-l-lg" 
-                                />
-                              </div>
-                              <div className="flex-1 p-4 flex flex-col justify-between">
-                                <div>
-                                  <h3 className="text-green-900 text-lg font-bold mb-2">Mentors</h3>
-                                  <p className="text-neutral-700 text-sm leading-relaxed">
-                                    Connect with experienced mentors who can guide you through career, personal growth, and life challenges.
-                                  </p>
-                                </div>
-                                <button className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit">
-                                  Find Mentor
-                                </button>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                      <li className="relative text-base [align-items:normal] box-border caret-transparent list-item h-auto leading-[28.0008px] min-h-0 min-w-0 md:items-center md:flex md:h-full md:leading-[34px] md:min-h-[auto] md:min-w-[auto]">
-                        <HoverCard openDelay={0} closeDelay={0}>
-                          <HoverCardTrigger asChild>
-                            <a className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group">
-                              <span>Events</span>
-                              <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-sm overflow-hidden z-[9999]">
-                            <div className="flex h-full">
-                              <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center overflow-hidden">
-                                <Image 
-                                  src={anne} 
-                                  alt="Events" 
-                                  width={160}
-                                  height={216}
-                                  className="w-full h-full object-cover rounded-l-lg" 
-                                />
-                              </div>
-                              <div className="flex-1 p-4 flex flex-col justify-between">
-                                <div>
-                                  <h3 className="text-green-900 text-lg font-bold mb-2">Events</h3>
-                                  <p className="text-neutral-700 text-sm leading-relaxed">
-                                    Discover and join exciting events, webinars, and gatherings happening in the ASYV community.
-                                  </p>
-                                </div>
-                                <button className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit">
-                                  View Events
-                                </button>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
+                              </motion.div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </motion.li>
+                      ))}
                     </ul>
                   </nav>
                 </div>
                 <div className="items-center box-border caret-transparent flex">
                   <div className="box-border caret-transparent min-h-0 min-w-0 mr-2 md:mr-4">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => router.push('/login?mode=signup')}
-                      className="bg-green-700 text-white text-xs md:text-sm font-medium box-border caret-transparent px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-green-800 transition-colors hover:cursor-pointer">
+                      className="bg-green-700 text-white text-xs md:text-sm font-medium box-border caret-transparent px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-green-800 transition-all duration-300 transform-gpu"
+                    >
                       Join Community
-                    </button>
+                    </motion.button>
                   </div>
                   <div className="box-border caret-transparent min-h-0 min-w-0 hover:cursor-pointer">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => router.push('/login')}
-                      className="border border-gray-300 px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-gray-50 transition-colors hover:cursor-pointer text-xs md:text-sm"
+                      className="border border-gray-300 px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-gray-50 transition-all duration-300 transform-gpu text-xs md:text-sm"
                     >
                       Sign In
-                    </button>
+                    </motion.button>
                   </div>
                 </div>  
               </div>
@@ -271,27 +211,29 @@ export default function LandingPage({ onAuthSuccess }){
 
           {/* Mobile Navigation Menu */}
           {isMobileMenuOpen && (
-            <div className="md:hidden bg-white border-t">
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-white border-t overflow-hidden"
+            >
               <div className="px-4 py-3 space-y-1">
-                <a href="#" className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded">
-                  Home
-                </a>
-                <a href="#" className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded">
-                  Connect
-                </a>
-                <a href="#" className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded">
-                  Stories
-                </a>
-                <a href="#" className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded">
-                  Mentors
-                </a>
-                <a href="#" className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded">
-                  Events
-                </a>
+                {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
+                  <motion.a 
+                    key={item}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    href="#" 
+                    className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    {item}
+                  </motion.a>
+                ))}
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       </header>
       
       <main className="box-border caret-transparent pt-16 md:pt-0">
@@ -304,11 +246,12 @@ export default function LandingPage({ onAuthSuccess }){
                   <div className="box-border caret-transparent w-full">
                     <div className="absolute inset-0 bg-neutral-900">
                       {carouselImages.map((imageObj, index) => (
-                        <div 
+                        <motion.div 
                           key={index}
-                          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                            index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-                          }`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: index === currentImageIndex ? 1 : 0 }}
+                          transition={{ duration: 1, ease: "easeInOut" }}
+                          className={`absolute inset-0`}
                         >
                           <Image
                             src={imageObj.src}
@@ -317,46 +260,114 @@ export default function LandingPage({ onAuthSuccess }){
                             className="object-cover"
                             priority={index === 0}
                           />
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                    
                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50 flex items-center justify-center px-4">
                       <div className="text-center w-full max-w-6xl">
-                        <div className="inline-block">
+                        <motion.div 
+                          initial={{ opacity: 0, y: 50 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          className="inline-block"
+                        >
                           <div className="text-white">
-                            <div className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-light tracking-wide leading-none mb-4">
-                              ASYV
+                            <div className="relative group">
+                              <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                                className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-light tracking-wide leading-none mb-4 relative overflow-hidden"
+                              >
+                                <span className="relative z-10">ASYV</span>
+                                <motion.div 
+                                  initial={{ x: "-100%" }}
+                                  animate={{ x: "100%" }}
+                                  transition={{ 
+                                    duration: 2, 
+                                    repeat: Infinity, 
+                                    repeatDelay: 3,
+                                    ease: "easeInOut" 
+                                  }}
+                                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                                />
+                              </motion.div>
                             </div>
-                            <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-light tracking-widest uppercase border-t border-white/30 pt-3 md:pt-4 mb-6 md:mb-8">
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.6, delay: 0.4 }}
+                              className="text-base sm:text-lg md:text-xl lg:text-2xl font-light tracking-widest uppercase border-t border-white/30 pt-3 md:pt-4 mb-6 md:mb-8"
+                            >
                               COMMUNITY
-                            </div>
-                            <p className="text-sm sm:text-base md:text-lg lg:text-xl font-light mt-4 md:mt-6 mx-auto leading-relaxed text-white/90 max-w-2xl">
+                            </motion.div>
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.6, delay: 0.6 }}
+                              className="text-sm sm:text-base md:text-lg lg:text-xl font-light mt-4 md:mt-6 mx-auto leading-relaxed text-white/90 max-w-2xl"
+                            >
                               Connecting hearts, sharing stories, building futures together across the globe
-                            </p>
-                            <div className="mt-8 md:mt-12 flex flex-col sm:flex-row gap-3 md:gap-4 justify-center sm:mb-2">
-                              <button className="bg-green-700 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-orange-500 transition-colors">
-                                Get Started
-                              </button>
-                              <button className="bg-transparent text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md border border-orange-500 hover:bg-white/10 transition-colors">
+                            </motion.p>
+                            <motion.div 
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.6, delay: 0.8 }}
+                              className="mt-8 md:mt-12 flex flex-col sm:flex-row gap-3 md:gap-4 justify-center sm:mb-2"
+                            >
+                              <motion.button 
+                                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(21, 128, 61, 0.4)" }}
+                                whileTap={{ scale: 0.95 }}
+                                className="relative bg-green-700 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu overflow-hidden group"
+                              >
+                                <span className="relative z-10">Get Started</span>
+                                <motion.div 
+                                  initial={{ x: "-100%" }}
+                                  animate={{ x: "100%" }}
+                                  transition={{ 
+                                    duration: 2, 
+                                    repeat: Infinity, 
+                                    repeatDelay: 3,
+                                    ease: "easeInOut" 
+                                  }}
+                                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                                />
+                              </motion.button>
+                              <motion.button 
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="bg-transparent text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md border border-orange-500 hover:bg-white/10 transition-all duration-300 transform-gpu"
+                              >
                                 Learn More
-                              </button>
-                            </div>
+                              </motion.button>
+                            </motion.div>
                           </div>
-                        </div>
+                        </motion.div>
                       </div>
                       <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3">
                         {carouselImages.map((_, index) => (
-                          <button
+                          <motion.button
                             key={index}
                             onClick={() => setCurrentImageIndex(index)}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer transform-gpu ${
                               index === currentImageIndex 
-                                ? 'bg-white w-6 md:w-8' 
+                                ? 'bg-white' 
                                 : 'bg-white/50 hover:bg-white/75'
                             }`}
                             aria-label={`Go to image ${index + 1}`}
-                          />
+                          >
+                            {index === currentImageIndex && (
+                              <motion.div 
+                                layoutId="activeDot"
+                                className="absolute inset-0 bg-white rounded-full"
+                                initial={false}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                              />
+                            )}
+                          </motion.button>
                         ))}
                       </div>
                     </div>
@@ -368,60 +379,106 @@ export default function LandingPage({ onAuthSuccess }){
         </section>
 
         {/* Features Section */}
-        <section className="box-border sm:mt-2   caret-transparent py-10 md:py-20 bg-neutral-50">
+        <section className="box-border sm:mt-2 caret-transparent py-10 md:py-20 bg-neutral-50">
           <div className="max-w-[1800px] mx-auto px-4 md:px-[6.25%]">
-            <div className="text-center mb-8 md:mb-16">
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: false, margin: "-50px" }}
+              variants={fadeInUp}
+              className="text-center mb-8 md:mb-16"
+            >
               <h2 className="text-orange-500 text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6 tracking-wide">
                 Our Community Platform
               </h2>
               <div className="flex flex-col lg:flex-row justify-center items-center lg:items-start lg:justify-between gap-8 md:gap-12">
-                <div className="lg:w-1/2">
+                <motion.div 
+                  variants={slideInLeft}
+                  className="lg:w-1/2"
+                >
                   <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-green-600 mb-4">
                     Connect, Share, and Grow with the ASYV Family
                   </h3>
                   <p className="text-base md:text-lg text-neutral-600 max-w-3xl mx-auto lg:mx-0 leading-relaxed mt-4 mb-6">
                     A dedicated space for ASYV family members to connect, share, and grow together no matter where you are in the world.
                   </p>
-                  <div className="mt-6 md:mt-12">
-                    <div className="bg-white p-4 md:p-8 rounded-lg shadow-sm border border-neutral-100 text-center hover:shadow-md transition-shadow h-auto md:h-[400px] flex items-center">
+                  <motion.div 
+                    variants={fadeInUp}
+                    transition={{ delay: 0.2 }}
+                    className="mt-6 md:mt-12"
+                  >
+                    <motion.div 
+                      whileHover={{ 
+                        scale: 1.02, 
+                        boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.1)" 
+                      }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="bg-white p-6 md:p-8 rounded-lg shadow-md hover:cursor-pointer border border-neutral-100 text-center flex items-center justify-center transition-all duration-300 ease-in-out min-h-auto md:min-h-[400px] transform-gpu"
+                    >
                       <p className="text-neutral-600 text-sm md:text-base lg:text-xl leading-relaxed">
                         Our platform offers comprehensive tools for connection, growth, and inspiration. Real-time Chat provides instant text, voice, and video communication to stay connected. The Mentorship program facilitates meaningful, cross-generational relationships by pairing those seeking guidance with those who can provide it. Finally, the Share Stories feature allows members to celebrate successes and inspire others with their unique journeys, fostering a strong sense of community.
                       </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="lg:w-1/2 flex justify-center">
-                  <Image 
-                    src={connect} 
-                    alt="Phone" 
-                    width={580}
-                    height={576}
-                    className="w-full max-w-md md:max-w-lg lg:max-w-none h-auto object-cover rounded-md shadow-lg"
-                  />
-                </div>
+                    </motion.div>
+                  </motion.div>
+                </motion.div>
+                <motion.div 
+                  variants={slideInRight}
+                  transition={{ delay: 0.1 }}
+                  className="lg:w-1/2 flex justify-center"
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden rounded-md shadow-lg transform-gpu"
+                  >
+                    <Image 
+                      src={connect} 
+                      alt="Phone" 
+                      width={580}
+                      height={576}
+                      className="w-full max-w-md md:max-w-lg lg:max-w-none h-auto object-cover"
+                    />
+                  </motion.div>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
         
         <section className="box-border caret-transparent py-10 md:py-20">
-          <div className="[align-items:normal] box-border caret-transparent block max-w-[1800px] mx-auto lg:items-center lg:flex">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, margin: "-50px" }}
+            variants={fadeInUp}
+            className="[align-items:normal] box-border caret-transparent block max-w-[1800px] mx-auto lg:items-center lg:flex"
+          >
             <div className="relative box-border caret-transparent basis-auto list-none min-h-0 min-w-0 z-[1] overflow-hidden mx-auto lg:basis-[66.6667%] lg:min-h-[auto] lg:min-w-[auto]">
               <div className="relative caret-transparent flex h-full w-full z-[1]">
                 <div className="relative box-border caret-transparent shrink-0 h-full w-full">
                   <div className="box-border caret-transparent">
-                    <Image 
-                      src={happy}
-                      width={1200}
-                      height={800}
-                      className="box-border caret-transparent w-full rounded-sm lg:ml-4" 
-                      alt="Video Call" 
-                    />
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden rounded-sm lg:ml-4 transform-gpu"
+                    >
+                      <Image 
+                        src={happy}
+                        width={1200}
+                        height={800}
+                        className="box-border caret-transparent w-full" 
+                        alt="Video Call" 
+                      />
+                    </motion.div>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="box-border caret-transparent block basis-auto flex-row justify-normal min-h-0 min-w-0 pt-5 pb-5 md:pb-[35px] px-4 md:px-[6.25%] lg:flex lg:basis-[33.3333%] lg:flex-col lg:justify-center lg:min-h-[auto] lg:min-w-[auto] lg:pt-[35px] lg:px-[4.16667%]">
+            <motion.div 
+              variants={slideInRight}
+              transition={{ delay: 0.2 }}
+              className="box-border caret-transparent block basis-auto flex-row justify-normal min-h-0 min-w-0 pt-5 pb-5 md:pb-[35px] px-4 md:px-[6.25%] lg:flex lg:basis-[33.3333%] lg:flex-col lg:justify-center lg:min-h-[auto] lg:min-w-[auto] lg:pt-[35px] lg:px-[4.16667%]"
+            >
               <div className="box-border caret-transparent min-h-0 min-w-0 mb-2.5 lg:min-h-[auto] lg:min-w-[auto]">
                 <h3 className="text-green-900 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium">
                   Face-to-Face Connections
@@ -433,120 +490,208 @@ export default function LandingPage({ onAuthSuccess }){
                 </p>
               </div>
               <div className="box-border caret-transparent min-h-0 min-w-0 lg:min-h-[auto] lg:min-w-[auto]">
-                <a href="#" className="relative text-orange-600 text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:text-neutral-600 hover:underline inline-flex items-center gap-2">
+                <motion.a 
+                  whileHover={{ scale: 1.05, x: 5 }}
+                  whileTap={{ scale: 0.95 }}
+                  href="#" 
+                  className="relative text-orange-600 text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:text-neutral-600 hover:underline inline-flex items-center gap-2 transform-gpu"
+                >
                   Start Video Call
-                  <span className="text-lg">→</span>
-                </a>
+                  <motion.span 
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                    className="text-lg"
+                  >
+                    →
+                  </motion.span>
+                </motion.a>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
 
         {/* Community Stories */}
-        <section className="bg-green-900 box-border caret-transparent max-w-[1800px] mx-auto my-10 md:my-20 rounded-lg">
+        <motion.section 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: false, margin: "-50px" }}
+          variants={scaleIn}
+          className="bg-green-900 box-border caret-transparent max-w-[1800px] mx-auto my-10 md:my-20 rounded-lg overflow-hidden transform-gpu"
+        >
           <div className="box-border caret-transparent text-center px-4 md:px-[6.25%] py-8 md:py-10 lg:py-[75px]">
-            <div className="box-border caret-transparent mb-4 md:mb-[15px] lg:mb-5">
+            <motion.div 
+              variants={fadeIn}
+              className="box-border caret-transparent mb-4 md:mb-[15px] lg:mb-5"
+            >
               <h2 className="text-white text-2xl md:text-3xl lg:text-4xl box-border caret-transparent leading-[32px] md:leading-[38.0016px] font-light">
                 Share Your Journey
               </h2>
-            </div>
-            <div className="box-border caret-transparent mb-4 md:mb-5">
+            </motion.div>
+            <motion.div 
+              variants={fadeIn}
+              transition={{ delay: 0.1 }}
+              className="box-border caret-transparent mb-4 md:mb-5"
+            >
               <p className="text-white/80 text-base box-border caret-transparent leading-relaxed md:text-lg max-w-2xl mx-auto">
                 Every story matters. Share your experiences, challenges, and triumphs with the ASYV family worldwide.
               </p>
-            </div>
-            <div className="box-border caret-transparent">
-              <a href="#" className="relative text-white text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:underline inline-flex items-center gap-2">
+            </motion.div>
+            <motion.div 
+              variants={fadeIn}
+              transition={{ delay: 0.2 }}
+              className="box-border caret-transparent"
+            >
+              <motion.a 
+                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.3)" }}
+                whileTap={{ scale: 0.95 }}
+                href="#" 
+                className="relative text-white text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] inline-flex items-center gap-2 bg-green-700 px-6 py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu"
+              >
                 Share Your Story
-                <span className="text-lg">→</span>
-              </a>
-            </div>
+                <motion.span 
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="text-lg"
+                >
+                  ↻
+                </motion.span>
+              </motion.a>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Mentorship Section */}
         <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20">
           <div className="box-border caret-transparent px-4 md:px-[8.33333%]">
-            <div className="box-border caret-transparent block mb-6 md:mb-[25px] lg:flex lg:mb-[15px]">
+            <motion.div 
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: false, margin: "-50px" }}
+              variants={fadeInUp}
+              className="box-border caret-transparent block mb-6 md:mb-[25px] lg:flex lg:mb-[15px]"
+            >
               <div className="box-border caret-transparent basis-auto shrink min-h-0 min-w-0 w-auto -mb-2.5 lg:basis-3/5 lg:shrink-0 lg:min-h-[auto] lg:min-w-[auto] lg:w-3/5">
                 <h2 className="text-neutral-900 text-2xl md:text-3xl lg:text-4xl box-border caret-transparent leading-[36px] md:leading-[46.0008px] font-light">
                  Find Your Mentor
                 </h2>
               </div>
-            </div>
+            </motion.div>
             <div className="box-border caret-transparent block lg:flex gap-8">
-              <div className="relative box-border caret-transparent basis-auto shrink h-auto min-h-0 min-w-0 w-auto pb-6 md:pb-[25px] lg:basis-3/5 lg:shrink-0 lg:h-full lg:min-h-[auto] lg:min-w-[auto] lg:w-3/5 lg:pb-0">
-                <div className="box-border caret-transparent mb-6 md:mb-[23px] lg:mb-0 lg:mx-0">
-                  <Image 
-                    src={jesi}
-                    width={800}
-                    height={600}
-                    alt="Mentorship" 
-                    className="aspect-square box-border caret-transparent object-cover w-full rounded-lg" 
-                  />
+              <motion.div 
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once:false }}
+                variants={slideInLeft}
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.3 }}
+                className="relative box-border caret-transparent basis-auto shrink h-auto min-h-0 min-w-0 w-auto pb-6 md:pb-[25px] lg:basis-3/5 lg:shrink-0 lg:h-full lg:min-h-[auto] lg:min-w-[auto] lg:w-3/5 lg:pb-0 transform-gpu"
+              >
+                <div className="box-border caret-transparent mb-6 md:mb-[23px] lg:mb-0 lg:mx-0 overflow-hidden rounded-lg">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.5 }}
+                    className="transform-gpu"
+                  >
+                    <Image 
+                      src={jesi}
+                      width={800}
+                      height={600}
+                      alt="Mentorship" 
+                      className="aspect-square box-border caret-transparent object-cover w-full rounded-lg" 
+                    />
+                  </motion.div>
                 </div>
-              </div>
-              <div className="box-border caret-transparent lg:basis-2/5 flex flex-col justify-center">
+              </motion.div>
+              <motion.div 
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once:false }}
+                variants={slideInRight}
+                transition={{ delay: 0.2 }}
+                className="box-border caret-transparent lg:basis-2/5 flex flex-col justify-center"
+              >
                 <h3 className="text-orange-500 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium mb-4">
                   Guidance That Transforms
                 </h3>
                 <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 md:text-lg mb-6">
                   Connect with experienced mentors who can guide you through career choices, personal growth, and life challenges.
                 </p>
-                <button className="bg-green-900 text-white text-base font-medium px-6 py-3 rounded-md hover:bg-neutral-800 transition-colors w-fit">
+                <motion.button 
+                  whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-green-900 text-white text-base font-medium px-6 py-3 rounded-md hover:bg-neutral-800 transition-all duration-300 transform-gpu"
+                >
                   Become a Mentor
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </div>
           </div>
         </section>
       </main>
 
       <footer className="bg-gray-900 box-border caret-transparent">
-        <div className="box-border caret-transparent max-w-[1800px] mx-auto">
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once:false, margin: "-50px" }}
+          variants={fadeInUp}
+          className="box-border caret-transparent max-w-[1800px] mx-auto"
+        >
           <div className="bg-none bg-repeat box-border caret-transparent bg-left-top pt-8 md:pt-10 pb-8 md:pb-[50px] px-4 md:px-[6.25%]">
             <div className="box-border caret-transparent flex flex-col flex-nowrap mb-8 md:mb-10 lg:flex-row lg:flex-wrap lg:mb-20">
               <div className="box-border caret-transparent block basis-auto shrink mr-0 mb-6 md:mb-[30px] lg:flex lg:basis-[40.4762%] lg:shrink-0 lg:mr-[7.14286%] lg:mb-0">
                 <div className="box-border caret-transparent min-h-0 min-w-0 w-full mb-5 lg:min-h-[auto] lg:min-w-[auto]">
                   <nav aria-label="tertiary" className="box-border caret-transparent flex justify-between">
                     <ul className="box-border caret-transparent basis-6/12 list-none pl-0 lg:basis-[35%]">
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          About ASYV
-                        </a>
-                      </li>
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          Community Guidelines
-                        </a>
-                      </li>
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          Privacy Policy
-                        </a>
-                      </li>
+                      {["About ASYV", "Community Guidelines", "Privacy Policy"].map((item, index) => (
+                        <motion.li 
+                          key={item}
+                          initial={{ opacity: 0, x: -10 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once:false }}
+                          transition={{ delay: index * 0.1 }}
+                          className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0"
+                        >
+                          <motion.a 
+                            whileHover={{ x: 5 }}
+                            href="#" 
+                            className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
+                          >
+                            {item}
+                          </motion.a>
+                        </motion.li>
+                      ))}
                     </ul>
                     <ul className="box-border caret-transparent basis-6/12 list-none pl-0 lg:basis-[35%]">
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          Contact
-                        </a>
-                      </li>
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          Support
-                        </a>
-                      </li>
-                      <li className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0">
-                        <a href="#" className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-colors">
-                          FAQ
-                        </a>
-                      </li>
+                      {["Contact", "Support", "FAQ"].map((item, index) => (
+                        <motion.li 
+                          key={item}
+                          initial={{ opacity: 0, x: -10 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once:false }}
+                          transition={{ delay: index * 0.1 + 0.15 }}
+                          className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0"
+                        >
+                          <motion.a 
+                            whileHover={{ x: 5 }}
+                            href="#" 
+                            className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
+                          >
+                            {item}
+                          </motion.a>
+                        </motion.li>
+                      ))}
                     </ul>
                   </nav>
                 </div>
               </div>
-              <div className="box-border caret-transparent basis-auto grow-0 shrink ml-0 lg:basis-[30.9524%] lg:grow lg:shrink-0 lg:ml-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once:false }}
+                transition={{ delay: 0.3 }}
+                className="box-border caret-transparent basis-auto grow-0 shrink ml-0 lg:basis-[30.9524%] lg:grow lg:shrink-0 lg:ml-auto"
+              >
                 <div className="text-neutral-400 box-border caret-transparent">
                   <p className="text-sm box-border caret-transparent leading-relaxed">
                     ASYV Community Platform<br />
@@ -554,23 +699,34 @@ export default function LandingPage({ onAuthSuccess }){
                     Building Futures Together<br />
                   </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
             <div className="box-border caret-transparent flex flex-col flex-nowrap justify-between lg:flex-row lg:flex-wrap">
-              <div className="items-center box-border caret-transparent flex max-w-[250px] mb-6 md:mb-10 mx-auto lg:mb-0 lg:mx-0">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once:false }}
+                className="items-center box-border caret-transparent flex max-w-[250px] mb-6 md:mb-10 mx-auto lg:mb-0 lg:mx-0"
+              >
                 <div className="text-white text-center">
                   <div className="text-xl font-light">ASYV</div>
                   <div className="text-xs tracking-widest">COMMUNITY</div>
                 </div>
-              </div>
-              <div className="box-border caret-transparent">
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once:false }}
+                transition={{ delay: 0.2 }}
+                className="box-border caret-transparent"
+              >
                 <div className="text-neutral-500 box-border caret-transparent leading-[26px] text-center text-sm lg:text-right">
                   © 2025 ASYV Community Platform. All rights reserved.
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </footer>
     </div>
   );

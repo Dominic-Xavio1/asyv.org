@@ -4,9 +4,12 @@ import React, { useState,useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard, Settings } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
+import { ShimmeringText } from "@/components/animate-ui/primitives/texts/shimmering";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {usePathname} from "next/navigation"
 import { ThemeTogglerButton } from "@/components/animate-ui/components/buttons/theme-toggler";
+import { ContainerTextFlip } from "@/components/ui/container-text-flip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,10 +38,10 @@ export default function Navbar() {
   const {visible,setVisible,clearVisible} = chatDarkModeStore();
   const { logout } = useAuth()
   const { theme, toggle } = useTheme()
-
+const pathname = usePathname();
   useEffect(() => {
     try {
-      const user = localStorage.getItem("user");
+      const user = localStorage.getItem("user");  
       if (user) {
         setCurrentUser(JSON.parse(user));
       }
@@ -203,11 +206,22 @@ switch(label){
           {/* Logo */}
           <div className="hidden md:flex items-center cursor-pointer">
              <img src='/agahozo.png' alt="ASYV Logo" className="w-[70px] h-auto object-cover"/>
-         <span className="font-script-style text-xl text-orange-500 ">Village Hub</span>
+{/* <ContainerTextFlip  words={["CHOOSE","LISTEN","BRIGHT"]}/> */}
+{!pathname.includes("/dashboard") &&(
+<ShimmeringText 
+  text="Village Hub" 
+  className="text-3xl font-bold" 
+  duration={2}
+  color="#f97316" 
+  shimmeringColor="#0c8438"
+/>
+)}
+
+         {/* <span className="font-script-style text-2xl font-bold text-green-800 animate-shadow-dance">Village Hub</span> */}
           </div>
           <div className="flex md:hidden items-center cursor-pointer">
 <img src='/asyv.png' alt="ASYV Logo" className="w-[50px] h-auto object-cover"/>
-<span className="font-script-style text-xl text-orange-500 ">Village Hub</span>
+<span className="font-script-style text-xl text-orange-500 animate-shadow-dance"> Hub</span>
           </div>
           {/* Desktop Navigation */}
          

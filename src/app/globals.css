@@ -243,3 +243,95 @@ body::-webkit-scrollbar {
 .mobile-menu-backdrop {
   z-index: 30;
 }
+@layer utilities {
+  .animate-shadow-dance {
+    animation: shadow-dance 2s infinite;
+  }
+
+  @keyframes shadow-dance {
+    0%, 100% { text-shadow: 5px 5px 0 #0da14b, 10px 10px 0 #0d6522; }
+    50% { text-shadow: -5px -5px 0 #15a34e, -10px -10px 0 #0a8a2c; }
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.8) 25%,
+    #ffffff 50%,
+    rgba(255, 255, 255, 0.8) 75%,
+    #ffffff 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.shimmer-text-active {
+  animation-play-state: running;
+}
+
+.shimmer-button {
+  background: linear-gradient(
+    90deg,
+    #15803d 0%,
+    #22c55e 25%,
+    #15803d 50%,
+    #22c55e 75%,
+    #15803d 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 3s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.shimmer-button-active {
+  animation-play-state: running;
+}
+
+/* Add these animations to your global styles */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* GPU-accelerated transforms */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Smooth transitions */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
