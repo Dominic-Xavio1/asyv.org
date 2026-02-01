@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import GroupImageDropzone from './GroupImageDropzone'
 import MemberSelector from './MemberSelector'
 import DialogDemo from "@/components/ui/dialogeDemo"
+import {userUnreadNotificationStore} from '../notification/page.js'
 // Updated AnimatedModal Component
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -1203,6 +1204,7 @@ export default function Dashboard() {
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const [onlySuperuser, setOnlySuperuser] = useState(false);
   const [isAlumni, setIsAlumni] = useState(false);
+  const unreadCount = userUnreadNotificationStore((state) => state.unreadCount);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
@@ -1242,7 +1244,7 @@ const fetchNotifications = async()=>{
   });
   const menuItems = [
     { id: 'home', icon: Home, label: 'Dashboard' },
-    { id: 'notifications', icon: Bell, label: 'Notifications', badge: badgeCount },
+    { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
     // { id: 'groups', icon: Users, label: 'Groups' },
     // { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'feed', icon: LayoutList, label: 'Feed' },
@@ -1603,15 +1605,32 @@ function handleNavigate(word){
                 )}
               </span>
               {item.id === "notifications" && (
-                <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
-                  {badgeCount}
-                </span>
+               <span className="relative flex items-center justify-center">
+              {unreadCount>0 && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
               )}
-            </button>
+            
+               <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount>0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
+                 {unreadCount}
+               </span>
+             </span>
+              )}
+                 {item.id === "change_password" && (
+               <span className="relative flex items-center justify-center">
+              {unreadCount===0 && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+              )}
+            
+               <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount===0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
+                 {unreadCount}
+               </span>
+             </span>
+              )}
+            </button> 
             </Link>
           )})}
         </nav>
-
+      
         <div className="p-4 border-t border-neutral-200 dark:border-gray-700 space-y-1">
           <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200">
             <Settings className="w-5 h-5" />
