@@ -19,6 +19,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['var(--font-geist-sans)', ...defaultTheme.fontFamily.sans],
+        village: ['var(--font-vast-shadow)', 'serif'],
       },
       colors: {
         // Chat UI specific gray colors

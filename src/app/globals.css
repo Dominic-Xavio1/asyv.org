@@ -195,3 +195,51 @@ body[data-hide-nav="true"] .login-fullscreen {
 body::-webkit-scrollbar {
   display: none;
 }
+
+/* Mobile Bottom Navigation Styles */
+@media (max-width: 768px) {
+  /* Ensure content doesn't hide behind bottom nav */
+  body {
+    padding-bottom: 0;
+  }
+
+  /* Smooth transitions for mobile nav items */
+  .mobile-nav-item {
+    transition: all 0.2s ease;
+  }
+
+  .mobile-nav-item:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Mobile Menu Animations */
+@keyframes slideUpSmooth {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpSmooth 0.3s ease-out;
+}
+
+/* Smooth scroll behavior for mobile menu */
+.mobile-menu-panel {
+  scroll-behavior: smooth;
+}
+
+/* Ensure proper stacking of mobile nav elements */
+.mobile-nav-container {
+  position: relative;
+  z-index: 40;
+}
+
+.mobile-menu-backdrop {
+  z-index: 30;
+}
