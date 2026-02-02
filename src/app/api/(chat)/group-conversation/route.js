@@ -102,7 +102,7 @@ console.log("Recieved form data ",formData);
           : creator.first_name || creator.username)
       : "Someone";
 
-    // Send notifications to all members except the creator
+    // Send invitation notifications to all members except the creator
     const memberIdsForNotification = membersArray.filter(
       (memberId) => String(memberId) !== String(created_by)
     );
@@ -110,19 +110,26 @@ console.log("Recieved form data ",formData);
     if (memberIdsForNotification.length > 0) {
       const io = getIOInstance();
       
-      // Create notifications for each member and emit Socket.IO events
+      // Create invitation notifications for each member and emit Socket.IO events
       const notificationPromises = memberIdsForNotification.map(async (memberId) => {
-        const result = await pool.query(
-          `INSERT INTO notifications (recipient_id, sender_id, type, title, message, link)
-           VALUES ($1, $2, $3, $4, $5, $6)
+        const result = await pool.query(  
+          `INSERT INTO notifications (recipient_id, sender_id, type, title, message, link, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            RETURNING id, recipient_id, sender_id, type, title, message, link, is_read, created_at`,
           [
             memberId,
             created_by,
-            "group_update",
-            "Added to Group",
-            `${creatorName} added you to the group "${name}"`,
+            "group_invitation",
+            "Group Invitation",
+            `${creatorName} invited you to join the group "${name}"${description ? ': ' + description : ''}`,
             `/chat?group=${group.id}`, // Link to the group chat
+            JSON.stringify({
+              type: 'group_invitation',
+              groupId: group.id,
+              groupName: name,
+              senderId: created_by,
+              senderName: creatorName,
+            }),
           ]
         );
         

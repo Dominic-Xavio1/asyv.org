@@ -2,6 +2,7 @@ import pool from "../../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { getIOInstance } from "../../../../../services/notifications/notificationSocket";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads", "group-messages");
 
@@ -176,7 +177,7 @@ export async function POST(request, { params }) {
 
     const message = result.rows[0];
 
-    // Get sender info for response
+    // Get sender info for response and notification
     const senderResult = await pool.query(
       `SELECT u.first_name, u.rwandan_name, u.username, up.profile_image
        FROM api_user u
@@ -189,6 +190,68 @@ export async function POST(request, { params }) {
     const senderName = sender.rwandan_name 
       ? `${sender.first_name || ''} ${sender.rwandan_name}`.trim()
       : sender.first_name || sender.username || `User ${senderId}`;
+
+    // Get group information for notification
+    const groupResult = await pool.query(
+      `SELECT name FROM group_conversation WHERE id = $1`,
+      [groupId]
+    );
+    
+    const groups = groupResult.rows[0];
+    const groupName = groups?.name || 'Unknown Group';
+
+    // Send notifications to all group members except the sender
+    const recipientIds = members.filter(memberId => String(memberId) !== String(senderId));
+    
+    if (recipientIds.length > 0) {
+      // Truncate message content for notification
+      const messageContent = content || (mediaUrl ? 'Sent a media file' : '');
+      const truncatedMessage = messageContent.length > 50 
+        ? messageContent.substring(0, 50) + '...' 
+        : messageContent;
+
+      // Create notifications for all recipients
+      const notificationPromises = recipientIds.map(async (recipientId) => {
+        const notificationResult = await pool.query(
+          `INSERT INTO notifications (recipient_id, sender_id, type, title, message, link)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, recipient_id, sender_id, type, title, message, link, is_read, created_at`,
+          [
+            recipientId,
+            senderId,
+            'message',
+            `New message in ${groupName}`,
+            `${senderName}: ${truncatedMessage}`,
+            `/chat?group=${groupId}`,
+          ]
+        );
+        
+        return notificationResult.rows[0];
+      });
+
+      const notifications = await Promise.all(notificationPromises);
+      
+      // Emit real-time notifications
+      const io = getIOInstance();
+      if (io) {
+        notifications.forEach((notification, index) => {
+          const recipientId = recipientIds[index];
+          io.to(`notifications_${recipientId}`).emit("new_notification", notification);
+          
+          // Update unread count for each recipient
+          pool.query(
+            `SELECT COUNT(*) as count 
+             FROM notifications 
+             WHERE recipient_id = $1 AND is_read = FALSE AND is_deleted = FALSE`,
+            [recipientId]
+          ).then(countResult => {
+            io.to(`notifications_${recipientId}`).emit("notification_count_updated", {
+              unreadCount: parseInt(countResult.rows[0]?.count || 0),
+            });
+          });
+        });
+      }
+    }
 
     return NextResponse.json(
       {

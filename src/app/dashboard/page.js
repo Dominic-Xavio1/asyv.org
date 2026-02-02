@@ -3,9 +3,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, MessageSquare,UserCog,Lock,KeyRound, ShieldCheck,LayoutList, Users, 
-  BookOpen, FolderKanban, Settings, LogOut, Menu, X, Home, Plus, ChevronRight, Upload,
+  BookOpen, FolderKanban, Settings, LogOut,ArrowLeft,  Menu, X, Home, Plus, ChevronRight, Upload,
   UserCircle,UserPlus,
    Send, Edit2, Trash2, MoreVertical, FileImage,Filter, BarChart3 } from 'lucide-react';
+import {motion} from 'motion/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Textarea } from "@/components/ui/textarea";
@@ -1194,6 +1195,7 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editProfileOpen,setEditProfileOpen]= useState(false)
   const [activeTab, setActiveTab] = useState('home');
+  const [countClick,setCountClick]=useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1209,9 +1211,18 @@ export default function Dashboard() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [hideChangePassword, setHideChangePassword] = useState(false);
   // const [textLimit,setTextLimit]=useState('');
 const [badgeCount,setBadgeCount]=useState(0);
   const router = useRouter();
+  useEffect(() => {
+    try {
+      const hidden = localStorage.getItem('hideChangePassword');
+      if (hidden === 'true') setHideChangePassword(true);
+    } catch (err) {
+      // ignore
+    }
+  }, []);
   useEffect(()=>{
 const fetchNotifications = async()=>{
   if(!currentUser?.id) return;
@@ -1578,20 +1589,36 @@ function handleNavigate(word){
               key={item.id}
               href={handleNavigate(item.id)}>
             <button
-             
               onClick={(e) => {
-                if (item.id === 'change_password') {
-                  setShowChangePassword(true);
-                }
-                else if(item.id==="create_profile"){
+                // Open edit profile modal without navigating
+                if (item.id === "create_profile") {
                   e.preventDefault();
                   setEditProfileOpen(true);
+                  return;
                 }
-                else {
-                  setActiveTab(item.id);
+
+                // Handle change password clicks: first click opens, second click hides permanently
+                if (item.id === 'change_password') {
+                  setShowChangePassword(true);
+                  // e.preventDefault();
+                  setCountClick((prev) => {
+                    const next = Math.min(prev + 1, 2);
+                    if (next === 1) {
+                      
+                    } else if (next >= 2) {
+                      // setShowChangePassword(false);
+                      setHideChangePassword(true);
+                      try { localStorage.setItem('hideChangePassword','true'); } catch (err) {}
+                    }
+                    return next;
+                  });
+                  return;
                 }
+
+                // Default navigation behavior
+                setActiveTab(item.id);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 hover:cursor-pointer rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === item.id
                   ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
@@ -1609,24 +1636,30 @@ function handleNavigate(word){
               {unreadCount>0 && (
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
               )}
-            
                <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount>0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
                  {unreadCount}
                </span>
              </span>
               )}
-                 {item.id === "change_password" && (
-               <span className="relative flex items-center justify-center">
-              {unreadCount===0 && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+
+              {/* Left pointer indicator: show only for change_password and only when not permanently hidden */}
+              {(item.id === 'change_password' && !hideChangePassword && countClick < 2) && (
+                <motion.div
+                  animate={{ x: [0, 10, 0] }}
+                  transition={{
+                    duration: 0.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <div className=" h-6 w-6 flex">
+                    <span className="absolute h-full w-full h-5 w-5 animate-ping rounded-full bg-gray-400 opacity-75"></span>
+                    <ArrowLeft className=" h-5 w-5" />
+                  </div>
+                </motion.div>
               )}
-            
-               <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount===0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
-                 {unreadCount}
-               </span>
-             </span>
-              )}
-            </button> 
+
+            </button>
             </Link>
           )})}
         </nav>
@@ -2061,7 +2094,7 @@ function handleNavigate(word){
       {/* Change Password Slide Panel */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-full top-25 sm:w-96 bg-white dark:bg-gray-900 max-h-[80vh] rounded-md shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${
-          showChangePassword ? 'translate-x-150' : '-translate-x-full'
+          (showChangePassword) ? 'translate-x-150' : '-translate-x-full'
         }`}
       >
         {/* Panel Header */}

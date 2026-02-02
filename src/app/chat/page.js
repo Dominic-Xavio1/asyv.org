@@ -44,6 +44,7 @@ import {
 import ComboboxPopover from "./combobox"
 import GroupMessageInput from "./GroupMessageInput"
 import dynamic from 'next/dynamic';
+import { useMessageStore } from '@/stores/messageStore';
 
 const EmojiPicker = dynamic(
   () => import('@/components/emojiPicker'),
@@ -66,6 +67,15 @@ export default function ChatPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [typingUsers, setTypingUsers] = useState([]) // Array of { userId, userName } for users currently typing
+  
+  // Message store for unread counts
+  const { 
+    unreadCounts, 
+    totalUnreadCount, 
+    updateUnreadCount, 
+    markAsRead, 
+    incrementUnreadCount 
+  } = useMessageStore();
   
   // Refs for scroll behavior
   const messagesEndRef = useRef(null)
@@ -235,6 +245,9 @@ export default function ChatPage() {
       const conversationId = String(chat.id)
       const isGroupChat = chat.isGroup || chat.type === 'group'
       
+      // Mark conversation as read in the store
+      markAsRead(conversationId)
+      
       if (socket) {
         if (socket.connected) {
           if (isGroupChat) {
@@ -258,6 +271,7 @@ export default function ChatPage() {
     
     setSearchQuery("")
     
+    // Update local chat state to clear unread count
     if (chat.unread > 0) {
       setChats((prev) => prev.map(c => 
         String(c.id) === String(chat.id) ? { ...c, unread: 0 } : c

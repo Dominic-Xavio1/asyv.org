@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageCircle, Share2,ThumbsUp, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MessageCircle, Share2,ThumbsUp, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle, ExternalLink, X } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from "@/components/ui/button"
@@ -23,23 +24,15 @@ const dummyArticles = [
   { id: 2, title: 'The Power of Mentorship in Youth Development', views: 734, discussions: 38 },
   { id: 3, title: 'Creating Inclusive Spaces for Growth', views: 612, discussions: 29 },
 ];
-const dummyTrendingNews = [
-  { 
-    id: 1, 
-    title: "Annual ASYV Reunion Dates Announced", 
-    category: "Events",
-    timestamp: "2 hours ago",
-    views: 1203,
-    hot: true
-  },
-  { 
-    id: 2, 
-    title: "New Scholarship Program Launched for Youth", 
-    category: "Education",
-    timestamp: "4 hours ago",
-    views: 856,
-    hot: true
-  },
+const TRENDING_DESCRIPTION_LENGTH = 100;
+
+const NEWS_CATEGORIES = [
+  { value: 'all', label: 'All' },
+  { value: 'business', label: 'Business' },
+  { value: 'technology', label: 'Technology' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'science', label: 'Science' },
 ];
 
 // Comment Section Component
@@ -366,6 +359,11 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 export default function SocialFeed() {
   const [posts, setPosts] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
+  const [trendingNews, setTrendingNews] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [newsSearchQuery, setNewsSearchQuery] = useState('');
+  const [newsCategoryFilter, setNewsCategoryFilter] = useState('all');
+  const [newsSortBy, setNewsSortBy] = useState('newest');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -373,6 +371,7 @@ export default function SocialFeed() {
   const [auth, setAuth] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const router = useRouter();
 
   // Get auth from localStorage (client-side only)
   useEffect(() => {
@@ -452,6 +451,58 @@ export default function SocialFeed() {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const fetchTrendingNews = async () => {
+      setTrendingLoading(true);
+      try {
+        const res = await fetch('/api/news');
+        const data = await res.json();
+        if (data.success && data.trending) {
+          const flat = [];
+          Object.entries(data.trending).forEach(([category, articles]) => {
+            (articles || []).forEach((a) => flat.push({ ...a, category }));
+          });
+          flat.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+          setTrendingNews(flat);
+        } else {
+          setTrendingNews([]);
+        }
+      } catch (err) {
+        console.error('Error fetching trending news:', err);
+        setTrendingNews([]);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+    fetchTrendingNews();
+  }, []);
+
+  const handleViewNews = (article) => {
+    try {
+      sessionStorage.setItem('trending-news-article', JSON.stringify(article));
+      router.push('/feed/news/article');
+    } catch (e) {
+      console.error('Error storing article:', e);
+    }
+  };
+
+  const filteredTrendingNews = trendingNews
+    .filter((news) => {
+      const matchesCategory = newsCategoryFilter === 'all' || news.category === newsCategoryFilter;
+      const q = newsSearchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (news.title || '').toLowerCase().includes(q) ||
+        (news.description || '').toLowerCase().includes(q) ||
+        (news.source || '').toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.publishedAt || 0).getTime();
+      const dateB = new Date(b.publishedAt || 0).getTime();
+      return newsSortBy === 'newest' ? dateB - dateA : dateA - dateB;
+    });
 
   const filteredPosts = posts
     .filter(post => 
@@ -676,69 +727,136 @@ export default function SocialFeed() {
           {/* Right Sidebar - Activity & Stats */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-4">
-              {/* Activity Feed */}
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm mt-24">
+              {/* Activity Feed - Trending News */}
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm mt-24 ">
                 <div className="p-4 border-b border-neutral-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">Trending News</h3>
+                    <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">The International Brief</h3>
                     <Flame className="w-4 h-4 text-orange-500" />
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Hot in the village</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Blazing New All Over The World</p>
+                </div>
+
+                {/* News Search */}
+                <div className="p-3 border-b border-neutral-100 dark:border-gray-800 space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                    <input
+                      type="text"
+                      value={newsSearchQuery}
+                      onChange={(e) => setNewsSearchQuery(e.target.value)}
+                      placeholder="Search by title, source..."
+                      className="w-full pl-8 pr-7 py-2 text-xs border border-neutral-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+                    />
+                    {newsSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setNewsSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-gray-700 text-gray-500"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <select
+                      value={newsCategoryFilter}
+                      onChange={(e) => setNewsCategoryFilter(e.target.value)}
+                      className="flex-1 min-w-0 text-xs py-1.5 px-2 border border-neutral-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    >
+                      {NEWS_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={newsSortBy}
+                      onChange={(e) => setNewsSortBy(e.target.value)}
+                      className="flex-1 min-w-0 text-xs py-1.5 px-2 border border-neutral-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    >
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                    </select>
+                  </div>
+                  {(newsSearchQuery || newsCategoryFilter !== 'all') && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Showing {filteredTrendingNews.length} of {trendingNews.length} articles
+                    </p>
+                  )}
                 </div>
                 
                 <div className="h-96 overflow-y-auto p-4 space-y-3">
-                  {dummyTrendingNews.map((news) => (
-                    <div
-                      key={news.id}
-                      className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
-                    >
-                      <div className="flex items-start gap-2">
-                        {news.hot && (
-                          <Flame className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors line-clamp-2">
-                            {news.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
-                              {news.category}
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{news.timestamp}</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-2">
-                            <Eye className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{news.views} views</span>
+                  {trendingLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <Loader className="w-8 h-8 animate-spin text-green-600" />
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Loading news...</span>
+                    </div>
+                  ) : trendingNews.length > 0 ? (
+                    filteredTrendingNews.length > 0 ? (
+                    filteredTrendingNews.map((news, index) => {
+                      const shortDesc = (news.description || news.content || '')
+                        .replace(/\[\+?\d* chars\]/g, '')
+                        .trim()
+                        .slice(0, TRENDING_DESCRIPTION_LENGTH);
+                      const categoryLabel = (news.category || '').charAt(0).toUpperCase() + (news.category || '').slice(1);
+                      const timeAgo = news.publishedAt
+                        ? (() => {
+                            const diff = Date.now() - new Date(news.publishedAt).getTime();
+                            const mins = Math.floor(diff / 60000);
+                            const hours = Math.floor(diff / 3600000);
+                            if (mins < 60) return `${mins}m ago`;
+                            if (hours < 24) return `${hours}h ago`;
+                            return `${Math.floor(hours / 24)}d ago`;
+                          })()
+                        : '';
+                      return (
+                        <div
+                          key={`${news.title}-${index}`}
+                          className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
+                          onClick={() => handleViewNews(news)}
+                        >
+                          <div className="flex items-start gap-2">
+                            <Flame className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors line-clamp-2">
+                                {news.title}
+                              </p>
+                              {shortDesc && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2">
+                                  {shortDesc}{shortDesc.length >= TRENDING_DESCRIPTION_LENGTH ? '...' : ''}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
+                                  {categoryLabel}
+                                </span>
+                                {timeAgo && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">{timeAgo}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 mt-2">
+                                <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 group-hover:underline">
+                                  View more
+                                  <ExternalLink className="w-3 h-3" />
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                      );
+                    })
+                    ) : (
+                      <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No articles match your search. Try different filters.
                       </div>
+                    )
+                  ) : (
+                    <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                      No trending news available. Try again later.
                     </div>
-                  ))}
-                </div>
-              </div>
-            
-              {/* Quick Stats */}
-              <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm">
-                <div className="p-4 border-b border-neutral-200 dark:border-gray-700">
-                  <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">Your Stats</h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Posts Today</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">3</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Total Likes</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">215</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Comments</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">66</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Shares</span>
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">38</span>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

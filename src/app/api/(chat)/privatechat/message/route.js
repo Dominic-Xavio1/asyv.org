@@ -1,5 +1,6 @@
 import pool from "../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
+import { getIOInstance } from "../../../../services/notifications/notificationSocket";
 
 /**
  * POST /api/privatechat/message
@@ -50,6 +51,66 @@ export async function POST(request) {
     );
 
     const inserted = response.rows[0];
+    
+    // Get recipient ID from conversation
+    const recipientId = convCheck.rows[0].user1_id === senderId 
+      ? convCheck.rows[0].user2_id 
+      : convCheck.rows[0].user1_id;
+    
+    // Get sender information for notification
+    const senderResult = await pool.query(
+      `SELECT first_name, rwandan_name, username 
+       FROM api_user 
+       WHERE id = $1`,
+      [senderId]
+    );
+    
+    const sender = senderResult.rows[0];
+    const senderName = sender 
+      ? (sender.rwandan_name 
+          ? `${sender.first_name || ''} ${sender.rwandan_name}`.trim()
+          : sender.first_name || sender.username)
+      : 'Someone';
+    
+    // Truncate message content for notification
+    const messageContent = content || (media_url ? 'Sent a media file' : '');
+    const truncatedMessage = messageContent.length > 50 
+      ? messageContent.substring(0, 50) + '...' 
+      : messageContent;
+    
+    // Create notification for recipient
+    const notificationResult = await pool.query(
+      `INSERT INTO notifications (recipient_id, sender_id, type, title, message, link)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, recipient_id, sender_id, type, title, message, link, is_read, created_at`,
+      [
+        recipientId,
+        senderId,
+        'message',
+        'New Message',
+        `${senderName}: ${truncatedMessage}`,
+        `/chat?private=${conversationId}`,
+      ]
+    );
+    
+    // Emit real-time notification
+    const io = getIOInstance();
+    if (io) {
+      const notification = notificationResult.rows[0];
+      io.to(`notifications_${recipientId}`).emit("new_notification", notification);
+      
+      // Update unread count
+      const unreadCountResult = await pool.query(
+        `SELECT COUNT(*) as count 
+         FROM notifications 
+         WHERE recipient_id = $1 AND is_read = FALSE AND is_deleted = FALSE`,
+        [recipientId]
+      );
+      
+      io.to(`notifications_${recipientId}`).emit("notification_count_updated", {
+        unreadCount: parseInt(unreadCountResult.rows[0]?.count || 0),
+      });
+    }
     
     return NextResponse.json(
       {
