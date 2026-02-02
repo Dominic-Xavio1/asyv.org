@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Bell, Check, Trash2, X, AlertCircle, MessageSquare, Users, Info, ExternalLink } from "lucide-react"
+import { Bell, Check, Trash2, X, AlertCircle, MessageSquare, Users, Info, ExternalLink, UserPlus, UserMinus } from "lucide-react"
 import toast from "react-hot-toast"
 import { io } from "socket.io-client"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,8 @@ const getNotificationIcon = (type) => {
       return AlertCircle
     case "group_update":
       return Users
+    case "group_invitation":
+      return UserPlus
     default:
       return Bell
   }
@@ -51,6 +53,8 @@ const getNotificationColor = (type) => {
       return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
     case "group_update":
       return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+    case "group_invitation":
+      return "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
     default:
       return "bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400"
   }
@@ -66,7 +70,7 @@ export default function NotificationPage() {
   const [filteredSentNotifications, setFilteredSentNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [filter, setFilter] = useState("all") // all, message, system, alert, group_update
+  const [filter, setFilter] = useState("all") // all, message, system, alert, group_update, group_invitation
   const [sentFilter, setSentFilter] = useState("all")
   const [viewMode, setViewMode] = useState("received") // received or sent
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false)
@@ -74,6 +78,7 @@ export default function NotificationPage() {
   const [currentUser, setCurrentUser] = useState(null)
   const [socket, setSocket] = useState(null)
   const router = useRouter()
+  const [respondingToInvitation, setRespondingToInvitation] = useState(null)
 
   const [sendFormData, setSendFormData] = useState({
     recipient_ids: "all", // "all" or array of user IDs
@@ -410,6 +415,61 @@ const deleteAllNotifications = async () => {
     }
   }
 
+  const handleGroupInvitationResponse = async (notificationId, action) => {
+    if (!currentUser?.id) return
+    
+    setRespondingToInvitation(notificationId)
+    
+    try {
+      // Parse metadata to get group details
+      let metadata = {}
+      try {
+        metadata = JSON.parse(notification.metadata || '{}')
+      } catch (e) {
+        metadata = {}
+      }
+      
+      const response = await fetch('/api/notifications/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notificationId,
+          userId: currentUser.id,
+          action,
+          groupId: metadata.groupId,
+          inviterId: metadata.senderId,
+        }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(`Group invitation ${action}ed successfully`)
+        
+        // Update notification in state
+        setNotifications(prev => prev.map(n => 
+          n.id === notificationId 
+            ? { ...n, is_read: true, metadata: JSON.stringify({ ...metadata, response: action, respondedAt: new Date().toISOString() }) }
+            : n
+        ))
+        
+        setUnreadCount(prev => Math.max(0, prev - 1))
+        
+        // If accepted, navigate to the group chat
+        if (action === 'accept' && metadata.groupId) {
+          router.push(`/chat?group=${metadata.groupId}`)
+        }
+      } else {
+        toast.error(result.message || `Failed to ${action} invitation`)
+      }
+    } catch (error) {
+      console.error('Error responding to invitation:', error)
+      toast.error('Failed to respond to invitation')
+    } finally {
+      setRespondingToInvitation(null)
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl mt-30 ">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -484,7 +544,7 @@ const deleteAllNotifications = async () => {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {["all", "message", "system", "alert", "group_update"].map((type) => (
+        {["all", "message", "system", "alert", "group_update", "group_invitation"].map((type) => (
           <Button
             key={type}
             variant={
@@ -579,6 +639,95 @@ const deleteAllNotifications = async () => {
                       <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
                         {notification.message}
                       </p>
+                      
+                      {/* Group Invitation Action Buttons */}
+                      {viewMode === "received" && notification.type === "group_invitation" && !notification.is_read && (() => {
+                        let metadata = {}
+                        try {
+                          metadata = JSON.parse(notification.metadata || '{}')
+                        } catch (e) {
+                          metadata = {}
+                        }
+                        return !metadata.response
+                      })() && (
+                        <div className="flex gap-2 mb-2">
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleGroupInvitationResponse(notification.id, 'accept')
+                            }}
+                            disabled={respondingToInvitation === notification.id}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
+                          >
+                            {respondingToInvitation === notification.id ? (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                Accepting...
+                              </div>
+                            ) : (
+                              'Accept'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleGroupInvitationResponse(notification.id, 'reject')
+                            }}
+                            disabled={respondingToInvitation === notification.id}
+                            className="text-xs px-3 py-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            {respondingToInvitation === notification.id ? (
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 border border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                                Rejecting...
+                              </div>
+                            ) : (
+                              'Reject'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {/* Show response status for processed invitations */}
+                      {viewMode === "received" && notification.type === "group_invitation" && (() => {
+                        let metadata = {}
+                        try {
+                          metadata = JSON.parse(notification.metadata || '{}')
+                        } catch (e) {
+                          metadata = {}
+                        }
+                        return metadata.response
+                      })() && (
+                        <div className="mb-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            (() => {
+                              let metadata = {}
+                              try {
+                                metadata = JSON.parse(notification.metadata || '{}')
+                              } catch (e) {
+                                metadata = {}
+                              }
+                              return metadata.response === 'accept' 
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                            })()
+                          }`}>
+                            {(() => {
+                              let metadata = {}
+                              try {
+                                metadata = JSON.parse(notification.metadata || '{}')
+                              } catch (e) {
+                                metadata = {}
+                              }
+                              return metadata.response === 'accept' ? '✓ Accepted' : '✗ Rejected'
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
                         <span>{viewMode === "received" ? "From" : "To"}: {displayName}</span>
                         <span>
