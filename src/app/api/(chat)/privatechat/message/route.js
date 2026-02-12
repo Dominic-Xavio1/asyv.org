@@ -43,6 +43,7 @@ export async function POST(request) {
     }
 
     // Insert message
+    console.log("📝 Inserting private message:", { conversationId, senderId, content, media_url });
     const response = await pool.query(
       `INSERT INTO private_message (conversation_id, sender_id, content, media_url)
        VALUES ($1, $2, $3, $4)
@@ -51,11 +52,14 @@ export async function POST(request) {
     );
 
     const inserted = response.rows[0];
+    console.log("✅ Private message inserted successfully:", inserted);
     
     // Get recipient ID from conversation
     const recipientId = convCheck.rows[0].user1_id === senderId 
       ? convCheck.rows[0].user2_id 
       : convCheck.rows[0].user1_id;
+    
+    console.log("👤 Message recipient ID:", recipientId);
     
     // Get sender information for notification
     const senderResult = await pool.query(
@@ -72,11 +76,15 @@ export async function POST(request) {
           : sender.first_name || sender.username)
       : 'Someone';
     
+    console.log("📤 Sender info for notification:", { senderId, senderName });
+    
     // Truncate message content for notification
     const messageContent = content || (media_url ? 'Sent a media file' : '');
     const truncatedMessage = messageContent.length > 50 
       ? messageContent.substring(0, 50) + '...' 
       : messageContent;
+    
+    console.log("✂️ Truncated message for notification:", truncatedMessage);
     
     // Create notification for recipient
     const notificationResult = await pool.query(
@@ -93,10 +101,13 @@ export async function POST(request) {
       ]
     );
     
+    const notification = notificationResult.rows[0];
+    console.log("🔔 Notification created successfully:", notification);
+    
     // Emit real-time notification
     const io = getIOInstance();
     if (io) {
-      const notification = notificationResult.rows[0];
+      console.log("📡 Emitting real-time notification to recipient:", recipientId);
       io.to(`notifications_${recipientId}`).emit("new_notification", notification);
       
       // Update unread count
@@ -107,9 +118,14 @@ export async function POST(request) {
         [recipientId]
       );
       
+      const unreadCount = parseInt(unreadCountResult.rows[0]?.count || 0);
+      console.log("📊 Emitting unread count update:", unreadCount);
+      
       io.to(`notifications_${recipientId}`).emit("notification_count_updated", {
-        unreadCount: parseInt(unreadCountResult.rows[0]?.count || 0),
+        unreadCount: unreadCount,
       });
+    } else {
+      console.warn("⚠️ Socket.IO instance not available - notification will not be real-time");
     }
     
     return NextResponse.json(

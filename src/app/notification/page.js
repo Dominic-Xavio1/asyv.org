@@ -488,12 +488,12 @@ const deleteAllNotifications = async () => {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-wrap">
           {viewMode === "received" && unreadCount > 0 && (
             <Button
               onClick={markAllAsRead}
               variant="outline"
-              className="bg-white dark:bg-gray-800"
+              className="bg-white dark:bg-gray-800 w-full sm:w-auto"
             >
               <Check className="h-4 w-4 mr-2" />
               Mark all as read
@@ -508,35 +508,34 @@ const deleteAllNotifications = async () => {
                   fetchUsers()
                 }
               }}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
             >
               <Bell className="h-4 w-4 mr-2" />
               Send Notification
             </Button>
           )}
           {isCrcOrSuperuser && (
-            <div>
-            <Button
-              onClick={() => setViewMode(viewMode === "received" ? "sent" : "received")}
-              className={viewMode === "sent" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"}
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              {viewMode === "received" ? "My Sent Notifications" : "Received Notifications"}
-            </Button>
-            {viewMode!="received"&&(
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
-              className="ml-4 bg-orange-500 hover:bg-orange-600"
-              onClick={()=>{
-                if(window.confirm("Delete all sent notifications? This will permanently remove them from your history.")){
-                  // console.log("Hello World!")
-                  deleteAllNotifications()
-                }
-              }}
+                onClick={() => setViewMode(viewMode === "received" ? "sent" : "received")}
+                className={viewMode === "sent" ? "bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto" : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full sm:w-auto"}
               >
-                <Trash2/>
-                 Delete All
+                <Bell className="h-4 w-4 mr-2" />
+                {viewMode === "received" ? "My Sent Notifications" : "Received Notifications"}
               </Button>
-            )}
+              {viewMode!=="received" && (
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
+                  onClick={()=>{
+                    if(window.confirm("Delete all sent notifications? This will permanently remove them from your history.")){
+                      deleteAllNotifications()
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -751,7 +750,7 @@ const deleteAllNotifications = async () => {
                           e.stopPropagation()
                           markAsRead(notification.id)
                         }}
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 flex-shrink-0"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
@@ -763,7 +762,7 @@ const deleteAllNotifications = async () => {
                         e.stopPropagation()
                         deleteNotification(notification.id, viewMode === "sent")
                       }}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

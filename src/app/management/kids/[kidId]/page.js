@@ -13,6 +13,8 @@ import {
   Trash2,
   Plus,
   X,
+  FileText,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +48,7 @@ export default function KidDetailPage() {
   const kidId = params.kidId;
   const [requestingUserId, setRequestingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ kid: null, family: null, grade: null, academics: [] });
+  const [data, setData] = useState({ kid: null, family: null, grade: null, academics: [], reports: [] });
   const [grades, setGrades] = useState([]);
   const [combinations, setCombinations] = useState([]);
   const [families, setFamilies] = useState([]);
@@ -57,12 +59,21 @@ export default function KidDetailPage() {
   const [creatingFamily, setCreatingFamily] = useState(false);
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [academicDialogOpen, setAcademicDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   const [kidForm, setKidForm] = useState({});
   const [familyForm, setFamilyForm] = useState({});
   const [gradeForm, setGradeForm] = useState({});
   const [academicForm, setAcademicForm] = useState({});
   const [editingAcademic, setEditingAcademic] = useState(null);
+  const [reportForm, setReportForm] = useState({
+    title: '',
+    description: '',
+    report_file: '',
+    report_type: 'academic'
+  });
+  const [editingReport, setEditingReport] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     if (!kidId || !requestingUserId) return;
@@ -77,11 +88,20 @@ export default function KidDetailPage() {
         throw new Error(err.error || 'Failed to fetch kid details');
       }
       const json = await res.json();
+      
+      // Fetch reports separately
+      const reportsRes = await fetch(
+        `/api/manage/student-reports?studentId=${kidId}`,
+        { headers: { 'x-user-id': requestingUserId } }
+      );
+      const reportsData = reportsRes.ok ? await reportsRes.json() : { reports: [] };
+      
       setData({
         kid: json.kid,
         family: json.family,
         grade: json.grade,
         academics: json.academics || [],
+        reports: reportsData.reports || [],
       });
     } catch (e) {
       console.error(e);
@@ -351,6 +371,114 @@ export default function KidDetailPage() {
     }
   };
 
+  // Report handling functions
+  const openReportAdd = () => {
+    setEditingReport(null);
+    setReportForm({
+      title: '',
+      description: '',
+      report_file: '',
+      report_type: 'academic'
+    });
+    setReportDialogOpen(true);
+  };
+
+  const openReportEdit = (report) => {
+    setEditingReport(report);
+    setReportForm({
+      title: report.title || '',
+      description: report.description || '',
+      report_file: report.report_file || '',
+      report_type: report.report_type || 'academic'
+    });
+    setReportDialogOpen(true);
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('studentId', kidId);
+      formData.append('reportType', reportForm.report_type);
+
+      const response = await fetch('/api/upload/report', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'File upload failed');
+      }
+
+      setReportForm(prev => ({
+        ...prev,
+        report_file: result.mediaUrl
+      }));
+      
+      toast.success('File uploaded successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const submitReport = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...reportForm,
+        student_id: kidId,
+        requestingUserId,
+      };
+
+      if (editingReport) {
+        const res = await fetch(`/api/manage/student-reports/${editingReport.id}`, {
+          method: 'PUT',
+          headers: authHeaders(requestingUserId),
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to update report');
+        toast.success('Report updated successfully');
+      } else {
+        const res = await fetch('/api/manage/student-reports', {
+          method: 'POST',
+          headers: authHeaders(requestingUserId),
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to add report');
+        toast.success('Report added successfully');
+      }
+      
+      setReportDialogOpen(false);
+      fetchDetails();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save report');
+    }
+  };
+
+  const deleteReport = async (id) => {
+    if (!confirm('Delete this report?')) return;
+    try {
+      const res = await fetch(`/api/manage/student-reports/${id}?requestingUserId=${requestingUserId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': requestingUserId },
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to delete');
+      toast.success('Report deleted successfully');
+      fetchDetails();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete');
+    }
+  };
+
   if (loading && !data.kid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-gray-900">
@@ -372,7 +500,7 @@ export default function KidDetailPage() {
     );
   }
 
-  const { kid, family, grade, academics } = data;
+  const { kid, family, grade, academics, reports } = data;
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-20 pb-12 px-4">
@@ -480,6 +608,73 @@ export default function KidDetailPage() {
                 </div>
               ) : (
                 <p className="text-gray-500 dark:text-gray-400">No grade linked. Set family grade first.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Reports */}
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <FileText className="h-5 w-5" />
+                  Reports
+                </CardTitle>
+                <CardDescription>Student reports and documents</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={openReportAdd}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Report
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {reports.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400">No reports found. Click Add to create one.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {reports.map((report) => (
+                    <li
+                      key={report.id}
+                      className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-800 dark:text-gray-200">{report.title}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {report.report_type || 'academic'}
+                          </Badge>
+                        </div>
+                        {report.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{report.description}</p>
+                        )}
+                        {report.report_file && (
+                          <div className="flex items-center gap-2">
+                            <a 
+                              href={report.report_file} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+                            >
+                              <FileText className="h-4 w-4" />
+                              View Report
+                            </a>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Created: {new Date(report.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => openReportEdit(report)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteReport(report.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardContent>
           </Card>
@@ -706,6 +901,103 @@ export default function KidDetailPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAcademicDialogOpen(false)}>Cancel</Button>
               <Button type="submit">{editingAcademic ? 'Update' : 'Add'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    {/* Report Add/Edit Dialog */}
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent className="max-w-2xl bg-white dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle>{editingReport ? 'Edit Report' : 'Add Report'}</DialogTitle>
+            <DialogDescription>
+              {editingReport ? 'Update student report information' : 'Add a new student report'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitReport} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Report Title *</Label>
+              <Input
+                id="title"
+                required
+                value={reportForm.title}
+                onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
+                placeholder="e.g., Academic Performance Report"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="report_type">Report Type</Label>
+              <Select
+                value={reportForm.report_type}
+                onValueChange={(value) => setReportForm({ ...reportForm, report_type: value })}
+              >
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="academic">Academic</SelectItem>
+                  <SelectItem value="behavioral">Behavioral</SelectItem>
+                  <SelectItem value="medical">Medical</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description"
+                value={reportForm.description}
+                onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                placeholder="Enter report description..."
+                rows={4}
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="report_file">Report File</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="report_file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      handleFileUpload(file);
+                    }
+                  }}
+                  disabled={uploadingFile}
+                  className="bg-white dark:bg-gray-800"
+                />
+                {uploadingFile && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+                    Uploading...
+                  </div>
+                )}
+              </div>
+              {reportForm.report_file && (
+                <div className="mt-2">
+                  <a 
+                    href={reportForm.report_file} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View Current File
+                  </a>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setReportDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={uploadingFile}>
+                {editingReport ? 'Update' : 'Add'} Report
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

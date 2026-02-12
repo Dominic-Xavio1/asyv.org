@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 import { ChevronDown, Menu, X } from "lucide-react";
 import {
   HoverCard,
@@ -13,7 +14,7 @@ import {
 
 const image = "/image.jpg";
 const happy = "/happy.jpg";
-const guidance = "/guidance.jpg";   
+const guidance = "/guidance.jpg";
 const ceremony = "/ceremony.jpg";
 const ijabo = "/ijabo.jpg";
 const anne = "/anne.jpg";
@@ -26,8 +27,8 @@ const visitation = "/visitation.jpg";
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.6, ease: "easeOut" }
   }
@@ -35,7 +36,7 @@ const fadeInUp = {
 
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { 
+  visible: {
     opacity: 1,
     transition: { duration: 0.8, ease: "easeOut" }
   }
@@ -43,8 +44,8 @@ const fadeIn = {
 
 const slideInLeft = {
   hidden: { opacity: 0, x: -30 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     x: 0,
     transition: { duration: 0.6, ease: "easeOut" }
   }
@@ -52,8 +53,8 @@ const slideInLeft = {
 
 const slideInRight = {
   hidden: { opacity: 0, x: 30 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     x: 0,
     transition: { duration: 0.6, ease: "easeOut" }
   }
@@ -61,19 +62,19 @@ const slideInRight = {
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     transition: { duration: 0.6, ease: "easeOut" }
   }
 };
 
-export default function LandingPage({ onAuthSuccess }){
+export default function LandingPage({ onAuthSuccess }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
-  
+
   const carouselImages = [
     { src: image, label: "Community Gathering" },
     { src: happy, label: "Joyful Moments" }
@@ -86,7 +87,7 @@ export default function LandingPage({ onAuthSuccess }){
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 100);	
+      setIsScrolled(window.scrollY > 100);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -96,19 +97,19 @@ export default function LandingPage({ onAuthSuccess }){
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % carouselImages.length);
-    }, 5000); 
-    
+    }, 5000);
+
     return () => clearInterval(interval);
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 box-border caret-transparent">
+    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen">
       <header aria-label="Site" className="box-border caret-transparent">
-        <motion.div 
+        <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className={`fixed box-border caret-transparent w-screen z-[100] top-0 inset-x-0 transition-all duration-300 bg-white`}
+          className={`fixed box-border caret-transparent w-full z-[100] top-0 inset-x-0 transition-all duration-300 bg-white`}
         >
           <div className="box-border caret-transparent px-4 md:px-[4.16667%]">
             <div className="box-border caret-transparent flex h-16 md:h-20 justify-between max-w-[1800px] mx-auto">
@@ -127,7 +128,7 @@ export default function LandingPage({ onAuthSuccess }){
                     {/* Desktop Navigation */}
                     <ul className="[align-items:normal] box-border caret-transparent hidden h-full justify-normal list-none pl-0 md:flex md:items-center md:justify-space-between">
                       {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
-                        <motion.li 
+                        <motion.li
                           key={item}
                           initial={{ opacity: 0, y: -20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -136,7 +137,7 @@ export default function LandingPage({ onAuthSuccess }){
                         >
                           <HoverCard openDelay={0} closeDelay={0}>
                             <HoverCardTrigger asChild>
-                              <motion.a 
+                              <motion.a
                                 whileHover={{ scale: 1.05 }}
                                 className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group"
                               >
@@ -145,7 +146,7 @@ export default function LandingPage({ onAuthSuccess }){
                               </motion.a>
                             </HoverCardTrigger>
                             <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-sm ml-[20px] overflow-hidden z-[9999]">
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.2 }}
@@ -167,7 +168,7 @@ export default function LandingPage({ onAuthSuccess }){
                                       Discover the latest posts, updates, and moments from your fellow ASYV members.
                                     </p>
                                   </div>
-                                  <motion.button 
+                                  <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit transform-gpu"
@@ -204,14 +205,14 @@ export default function LandingPage({ onAuthSuccess }){
                       Sign In
                     </motion.button>
                   </div>
-                </div>  
+                </div>
               </div>
             </div>
           </div>
 
           {/* Mobile Navigation Menu */}
           {isMobileMenuOpen && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -219,12 +220,12 @@ export default function LandingPage({ onAuthSuccess }){
             >
               <div className="px-4 py-3 space-y-1">
                 {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
-                  <motion.a 
+                  <motion.a
                     key={item}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    href="#" 
+                    href="#"
                     className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded transition-colors"
                   >
                     {item}
@@ -235,9 +236,9 @@ export default function LandingPage({ onAuthSuccess }){
           )}
         </motion.div>
       </header>
-      
+
       <main className="box-border caret-transparent pt-16 md:pt-0">
-        {/* Hero Section */}  
+        {/* Hero Section */}
         <section className="box-border caret-transparent">
           <div className="relative bg-transparent box-border caret-transparent list-none min-h-[150px] z-[1] overflow-hidden mx-auto">
             <div className="relative caret-transparent flex h-full w-full z-[1]">
@@ -246,7 +247,7 @@ export default function LandingPage({ onAuthSuccess }){
                   <div className="box-border caret-transparent w-full">
                     <div className="absolute inset-0 bg-neutral-900">
                       {carouselImages.map((imageObj, index) => (
-                        <motion.div 
+                        <motion.div
                           key={index}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: index === currentImageIndex ? 1 : 0 }}
@@ -263,10 +264,10 @@ export default function LandingPage({ onAuthSuccess }){
                         </motion.div>
                       ))}
                     </div>
-                   
+
                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50 flex items-center justify-center px-4">
                       <div className="text-center w-full max-w-6xl">
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 50 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.8, ease: "easeOut" }}
@@ -274,27 +275,27 @@ export default function LandingPage({ onAuthSuccess }){
                         >
                           <div className="text-white">
                             <div className="relative group">
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
                                 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-light tracking-wide leading-none mb-4 relative overflow-hidden"
                               >
                                 <span className="relative z-10">ASYV</span>
-                                <motion.div 
+                                <motion.div
                                   initial={{ x: "-100%" }}
                                   animate={{ x: "100%" }}
-                                  transition={{ 
-                                    duration: 2, 
-                                    repeat: Infinity, 
-                                    repeatDelay: 3,
-                                    ease: "easeInOut" 
+                                  transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    repeatDelay: 0.05,
+                                    ease: "easeInOut"
                                   }}
                                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                                 />
                               </motion.div>
                             </div>
-                            <motion.div 
+                            <motion.div
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.6, delay: 0.4 }}
@@ -302,7 +303,7 @@ export default function LandingPage({ onAuthSuccess }){
                             >
                               COMMUNITY
                             </motion.div>
-                            <motion.p 
+                            <motion.p
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ duration: 0.6, delay: 0.6 }}
@@ -310,31 +311,31 @@ export default function LandingPage({ onAuthSuccess }){
                             >
                               Connecting hearts, sharing stories, building futures together across the globe
                             </motion.p>
-                            <motion.div 
+                            <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.6, delay: 0.8 }}
                               className="mt-8 md:mt-12 flex flex-col sm:flex-row gap-3 md:gap-4 justify-center sm:mb-2"
                             >
-                              <motion.button 
+                              <motion.button
                                 whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(21, 128, 61, 0.4)" }}
                                 whileTap={{ scale: 0.95 }}
                                 className="relative bg-green-700 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu overflow-hidden group"
                               >
                                 <span className="relative z-10">Get Started</span>
-                                <motion.div 
+                                <motion.div
                                   initial={{ x: "-100%" }}
                                   animate={{ x: "100%" }}
-                                  transition={{ 
-                                    duration: 2, 
-                                    repeat: Infinity, 
-                                    repeatDelay: 3,
-                                    ease: "easeInOut" 
+                                  transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    repeatDelay: 0.3,
+                                    ease: "easeInOut"
                                   }}
                                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                                 />
                               </motion.button>
-                              <motion.button 
+                              <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 className="bg-transparent text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md border border-orange-500 hover:bg-white/10 transition-all duration-300 transform-gpu"
@@ -352,15 +353,14 @@ export default function LandingPage({ onAuthSuccess }){
                             onClick={() => setCurrentImageIndex(index)}
                             whileHover={{ scale: 1.2 }}
                             whileTap={{ scale: 0.9 }}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer transform-gpu ${
-                              index === currentImageIndex 
-                                ? 'bg-white' 
-                                : 'bg-white/50 hover:bg-white/75'
-                            }`}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer transform-gpu ${index === currentImageIndex
+                              ? 'bg-white'
+                              : 'bg-white/50 hover:bg-white/75'
+                              }`}
                             aria-label={`Go to image ${index + 1}`}
                           >
                             {index === currentImageIndex && (
-                              <motion.div 
+                              <motion.div
                                 layoutId="activeDot"
                                 className="absolute inset-0 bg-white rounded-full"
                                 initial={false}
@@ -381,7 +381,7 @@ export default function LandingPage({ onAuthSuccess }){
         {/* Features Section */}
         <section className="box-border sm:mt-2 caret-transparent py-10 md:py-20 bg-neutral-50">
           <div className="max-w-[1800px] mx-auto px-4 md:px-[6.25%]">
-            <motion.div 
+            <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: false, margin: "-50px" }}
@@ -392,7 +392,7 @@ export default function LandingPage({ onAuthSuccess }){
                 Our Community Platform
               </h2>
               <div className="flex flex-col lg:flex-row justify-center items-center lg:items-start lg:justify-between gap-8 md:gap-12">
-                <motion.div 
+                <motion.div
                   variants={slideInLeft}
                   className="lg:w-1/2"
                 >
@@ -402,15 +402,15 @@ export default function LandingPage({ onAuthSuccess }){
                   <p className="text-base md:text-lg text-neutral-600 max-w-3xl mx-auto lg:mx-0 leading-relaxed mt-4 mb-6">
                     A dedicated space for ASYV family members to connect, share, and grow together no matter where you are in the world.
                   </p>
-                  <motion.div 
+                  <motion.div
                     variants={fadeInUp}
                     transition={{ delay: 0.2 }}
                     className="mt-6 md:mt-12"
                   >
-                    <motion.div 
-                      whileHover={{ 
-                        scale: 1.02, 
-                        boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.1)" 
+                    <motion.div
+                      whileHover={{
+                        scale: 1.02,
+                        boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.1)"
                       }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="bg-white p-6 md:p-8 rounded-lg shadow-md hover:cursor-pointer border border-neutral-100 text-center flex items-center justify-center transition-all duration-300 ease-in-out min-h-auto md:min-h-[400px] transform-gpu"
@@ -421,7 +421,7 @@ export default function LandingPage({ onAuthSuccess }){
                     </motion.div>
                   </motion.div>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   variants={slideInRight}
                   transition={{ delay: 0.1 }}
                   className="lg:w-1/2 flex justify-center"
@@ -431,9 +431,9 @@ export default function LandingPage({ onAuthSuccess }){
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden rounded-md shadow-lg transform-gpu"
                   >
-                    <Image 
-                      src={connect} 
-                      alt="Phone" 
+                    <Image
+                      src={connect}
+                      alt="Phone"
                       width={580}
                       height={576}
                       className="w-full max-w-md md:max-w-lg lg:max-w-none h-auto object-cover"
@@ -444,9 +444,9 @@ export default function LandingPage({ onAuthSuccess }){
             </motion.div>
           </div>
         </section>
-        
+
         <section className="box-border caret-transparent py-10 md:py-20">
-          <motion.div 
+          <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: false, margin: "-50px" }}
@@ -462,19 +462,19 @@ export default function LandingPage({ onAuthSuccess }){
                       transition={{ duration: 0.3 }}
                       className="overflow-hidden rounded-sm lg:ml-4 transform-gpu"
                     >
-                      <Image 
+                      <Image
                         src={happy}
                         width={1200}
                         height={800}
-                        className="box-border caret-transparent w-full" 
-                        alt="Video Call" 
+                        className="box-border caret-transparent w-full"
+                        alt="Video Call"
                       />
                     </motion.div>
                   </div>
                 </div>
               </div>
             </div>
-            <motion.div 
+            <motion.div
               variants={slideInRight}
               transition={{ delay: 0.2 }}
               className="box-border caret-transparent block basis-auto flex-row justify-normal min-h-0 min-w-0 pt-5 pb-5 md:pb-[35px] px-4 md:px-[6.25%] lg:flex lg:basis-[33.3333%] lg:flex-col lg:justify-center lg:min-h-[auto] lg:min-w-[auto] lg:pt-[35px] lg:px-[4.16667%]"
@@ -490,14 +490,14 @@ export default function LandingPage({ onAuthSuccess }){
                 </p>
               </div>
               <div className="box-border caret-transparent min-h-0 min-w-0 lg:min-h-[auto] lg:min-w-[auto]">
-                <motion.a 
+                <motion.a
                   whileHover={{ scale: 1.05, x: 5 }}
                   whileTap={{ scale: 0.95 }}
-                  href="#" 
+                  href="#"
                   className="relative text-orange-600 text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:text-neutral-600 hover:underline inline-flex items-center gap-2 transform-gpu"
                 >
                   Start Video Call
-                  <motion.span 
+                  <motion.span
                     animate={{ x: [0, 5, 0] }}
                     transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
                     className="text-lg"
@@ -511,7 +511,7 @@ export default function LandingPage({ onAuthSuccess }){
         </section>
 
         {/* Community Stories */}
-        <motion.section 
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, margin: "-50px" }}
@@ -519,7 +519,7 @@ export default function LandingPage({ onAuthSuccess }){
           className="bg-green-900 box-border caret-transparent max-w-[1800px] mx-auto my-10 md:my-20 rounded-lg overflow-hidden transform-gpu"
         >
           <div className="box-border caret-transparent text-center px-4 md:px-[6.25%] py-8 md:py-10 lg:py-[75px]">
-            <motion.div 
+            <motion.div
               variants={fadeIn}
               className="box-border caret-transparent mb-4 md:mb-[15px] lg:mb-5"
             >
@@ -527,7 +527,7 @@ export default function LandingPage({ onAuthSuccess }){
                 Share Your Journey
               </h2>
             </motion.div>
-            <motion.div 
+            <motion.div
               variants={fadeIn}
               transition={{ delay: 0.1 }}
               className="box-border caret-transparent mb-4 md:mb-5"
@@ -536,19 +536,19 @@ export default function LandingPage({ onAuthSuccess }){
                 Every story matters. Share your experiences, challenges, and triumphs with the ASYV family worldwide.
               </p>
             </motion.div>
-            <motion.div 
+            <motion.div
               variants={fadeIn}
               transition={{ delay: 0.2 }}
               className="box-border caret-transparent"
             >
-              <motion.a 
+              <motion.a
                 whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.3)" }}
                 whileTap={{ scale: 0.95 }}
-                href="#" 
+                href="#"
                 className="relative text-white text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] inline-flex items-center gap-2 bg-green-700 px-6 py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu"
               >
                 Share Your Story
-                <motion.span 
+                <motion.span
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   className="text-lg"
@@ -563,7 +563,7 @@ export default function LandingPage({ onAuthSuccess }){
         {/* Mentorship Section */}
         <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20">
           <div className="box-border caret-transparent px-4 md:px-[8.33333%]">
-            <motion.div 
+            <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: false, margin: "-50px" }}
@@ -572,15 +572,15 @@ export default function LandingPage({ onAuthSuccess }){
             >
               <div className="box-border caret-transparent basis-auto shrink min-h-0 min-w-0 w-auto -mb-2.5 lg:basis-3/5 lg:shrink-0 lg:min-h-[auto] lg:min-w-[auto] lg:w-3/5">
                 <h2 className="text-neutral-900 text-2xl md:text-3xl lg:text-4xl box-border caret-transparent leading-[36px] md:leading-[46.0008px] font-light">
-                 Find Your Mentor
+                  Find Your Mentor
                 </h2>
               </div>
             </motion.div>
             <div className="box-border caret-transparent block lg:flex gap-8">
-              <motion.div 
+              <motion.div
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once:false }}
+                viewport={{ once: false }}
                 variants={slideInLeft}
                 whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
@@ -592,20 +592,20 @@ export default function LandingPage({ onAuthSuccess }){
                     transition={{ duration: 0.5 }}
                     className="transform-gpu"
                   >
-                    <Image 
+                    <Image
                       src={jesi}
                       width={800}
                       height={600}
-                      alt="Mentorship" 
-                      className="aspect-square box-border caret-transparent object-cover w-full rounded-lg" 
+                      alt="Mentorship"
+                      className="aspect-square box-border caret-transparent object-cover w-full rounded-lg"
                     />
                   </motion.div>
                 </div>
               </motion.div>
-              <motion.div 
+              <motion.div
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once:false }}
+                viewport={{ once: false }}
                 variants={slideInRight}
                 transition={{ delay: 0.2 }}
                 className="box-border caret-transparent lg:basis-2/5 flex flex-col justify-center"
@@ -616,7 +616,7 @@ export default function LandingPage({ onAuthSuccess }){
                 <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 md:text-lg mb-6">
                   Connect with experienced mentors who can guide you through career choices, personal growth, and life challenges.
                 </p>
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-green-900 text-white text-base font-medium px-6 py-3 rounded-md hover:bg-neutral-800 transition-all duration-300 transform-gpu"
@@ -629,11 +629,11 @@ export default function LandingPage({ onAuthSuccess }){
         </section>
       </main>
 
-      <footer className="bg-gray-900 box-border caret-transparent">
-        <motion.div 
+      <footer className="bg-gray-900 box-border caret-transparent w-full">
+        <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once:false, margin: "-50px" }}
+          viewport={{ once: false, margin: "-50px" }}
           variants={fadeInUp}
           className="box-border caret-transparent max-w-[1800px] mx-auto"
         >
@@ -644,17 +644,17 @@ export default function LandingPage({ onAuthSuccess }){
                   <nav aria-label="tertiary" className="box-border caret-transparent flex justify-between">
                     <ul className="box-border caret-transparent basis-6/12 list-none pl-0 lg:basis-[35%]">
                       {["About ASYV", "Community Guidelines", "Privacy Policy"].map((item, index) => (
-                        <motion.li 
+                        <motion.li
                           key={item}
                           initial={{ opacity: 0, x: -10 }}
                           whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once:false }}
+                          viewport={{ once: false }}
                           transition={{ delay: index * 0.1 }}
                           className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0"
                         >
-                          <motion.a 
+                          <motion.a
                             whileHover={{ x: 5 }}
-                            href="#" 
+                            href="#"
                             className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
                           >
                             {item}
@@ -664,17 +664,17 @@ export default function LandingPage({ onAuthSuccess }){
                     </ul>
                     <ul className="box-border caret-transparent basis-6/12 list-none pl-0 lg:basis-[35%]">
                       {["Contact", "Support", "FAQ"].map((item, index) => (
-                        <motion.li 
+                        <motion.li
                           key={item}
                           initial={{ opacity: 0, x: -10 }}
                           whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once:false }}
+                          viewport={{ once: false }}
                           transition={{ delay: index * 0.1 + 0.15 }}
                           className="text-base box-border caret-transparent leading-[28.0008px] mb-4 pr-5 lg:pr-0"
                         >
-                          <motion.a 
+                          <motion.a
                             whileHover={{ x: 5 }}
-                            href="#" 
+                            href="#"
                             className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
                           >
                             {item}
@@ -685,10 +685,10 @@ export default function LandingPage({ onAuthSuccess }){
                   </nav>
                 </div>
               </div>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once:false }}
+                viewport={{ once: false }}
                 transition={{ delay: 0.3 }}
                 className="box-border caret-transparent basis-auto grow-0 shrink ml-0 lg:basis-[30.9524%] lg:grow lg:shrink-0 lg:ml-auto"
               >
@@ -702,10 +702,10 @@ export default function LandingPage({ onAuthSuccess }){
               </motion.div>
             </div>
             <div className="box-border caret-transparent flex flex-col flex-nowrap justify-between lg:flex-row lg:flex-wrap">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
-                viewport={{ once:false }}
+                viewport={{ once: false }}
                 className="items-center box-border caret-transparent flex max-w-[250px] mb-6 md:mb-10 mx-auto lg:mb-0 lg:mx-0"
               >
                 <div className="text-white text-center">
@@ -713,10 +713,10 @@ export default function LandingPage({ onAuthSuccess }){
                   <div className="text-xs tracking-widest">COMMUNITY</div>
                 </div>
               </motion.div>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
-                viewport={{ once:false }}
+                viewport={{ once: false }}
                 transition={{ delay: 0.2 }}
                 className="box-border caret-transparent"
               >

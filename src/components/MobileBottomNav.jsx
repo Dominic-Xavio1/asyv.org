@@ -8,10 +8,16 @@ import {
   MessageCircle,
   Bell,
   Users,
+  User,
   BookOpen,
   CreditCard,
   Settings,
   LogOut,
+  LayoutList,
+  BarChart3,
+  UserCog,
+  UserPlus,
+  ShieldCheck,
   Menu,
   X,
   ChevronRight,
@@ -25,6 +31,8 @@ const MobileBottomNav = () => {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const pathname = usePathname();
   const { logout } = useAuth();
+  // Placeholder for unread notifications (replace with real value from store/service)
+  const unreadCount = 0;
 
   // Check if we're on the dashboard
   const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
@@ -32,9 +40,9 @@ const MobileBottomNav = () => {
   // Main navigation items (4 primary icons)
   const primaryNavItems = [
     {
-      label: 'Home',
+      label: 'Feed',
       icon: Home,
-      href: '/dashboard',
+      href: '/feed',
       badge: null,
     },
     {
@@ -50,42 +58,24 @@ const MobileBottomNav = () => {
       badge: null,
     },
     {
-      label: 'Notifications',
-      icon: Bell,
-      href: '/notification',
+      label: 'Dashboard',
+      icon: User,
+      href: '/dashboard',
       badge: null,
     },
   ];
-
-  // Additional menu items (visible when "More" is clicked)
-  const additionalMenuItems = [
-    {
-      label: 'Users',
-      icon: Users,
-      href: '/management/user',
-    },
-    {
-      label: 'Resources',
-      icon: BookOpen,
-      href: '#',
-    },
-    {
-      label: 'Billing',
-      icon: CreditCard,
-      href: '#',
-    },
-    {
-      label: 'Settings',
-      icon: Settings,
-      href: '#',
-    },
-    {
-      label: 'Logout',
-      icon: LogOut,
-      href: '#',
-      isLogout: true,
-    },
+  const menuItems = [
+    { id: 'home', icon: Home, label: 'Dashboard', href: '/dashboard' },
+    { id: 'notifications', icon: User, label: 'Dashboard', badge: unreadCount, href: '/dashboard' },
+    { id: 'feed', icon: LayoutList, label: 'Feed', href: '/feed' },
+    { id: 'alumni_overview', icon: BarChart3, label: 'Alumni Overview', href: '/management/alumni-overview' },
+    { id: 'management', icon: UserCog, label: 'Manage Users', href: '/management/user' },
+    { id: 'advanced_management', icon: Users, label: 'Advanced User Management', href: '/management/advanced' },
+    { id: 'create_profile', icon: UserPlus, label: 'Create your profile', href: '/profile/create' },
+    { id: 'change_password', icon: ShieldCheck, label: 'Change Password', href: '/profile/change-password' },
+    { id: 'logout', icon: LogOut, label: 'Logout', isLogout: true },
   ];
+
 
   const isActive = (href) => {
     if (href === '#') return false;
@@ -103,7 +93,8 @@ const MobileBottomNav = () => {
 
   return (
     <>
-      {/* Mobile Bottom Navigation - visible only on small screens */}
+    {pathname === '/' ? (<></>):(
+
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 shadow-2xl backdrop-blur-xl bg-white/80 dark:bg-gray-950/80">
         <nav className="flex items-center justify-around h-20 px-2">
           {primaryNavItems.map((item) => {
@@ -186,6 +177,7 @@ const MobileBottomNav = () => {
           )}
         </nav>
       </div>
+    )}
 
       {/* Side Menu - slides from left */}
       <AnimatePresence>
@@ -209,31 +201,10 @@ const MobileBottomNav = () => {
               transition={{ type: 'spring', stiffness: 280, damping: 28 }}
               className="fixed left-0 top-0 bottom-0 z-40 w-72 bg-white dark:bg-gray-900 shadow-2xl overflow-y-auto mobile-menu-panel"
             >
-              {/* Menu Header with gradient background */}
-              <div className="sticky top-0 flex items-center justify-between p-6 bg-gradient-to-r from-blue-600 via-blue-500 to-purple-600 dark:from-blue-900 dark:via-blue-800 dark:to-purple-900 text-white border-b border-gray-200 dark:border-gray-700 shadow-lg">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    initial={{ rotate: -180 }}
-                    animate={{ rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                    className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center"
-                  >
-                    <Menu className="w-5 h-5" strokeWidth={2} />
-                  </motion.div>
-                  <h2 className="text-xl font-bold">Menu</h2>
-                </div>
-                <motion.button
-                  onClick={() => setSideMenuOpen(false)}
-                  whileTap={{ scale: 0.9 }}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6" strokeWidth={2} />
-                </motion.button>
-              </div>
 
               {/* Menu Items with staggered animation */}
               <div className="p-4 space-y-2">
-                {additionalMenuItems.map((item, index) => {
+                {menuItems.map((item, index) => {
                   const Icon = item.icon;
 
                   if (item.isLogout) {
