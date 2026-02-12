@@ -493,13 +493,21 @@ export default function ChatPage() {
     setSocket(socketInstance)
 
     socketInstance.on("connect", () => {
+      console.log(" Chat Socket connected successfully");
       socketInstance.emit("join_user", { userId: currentUser.id })
+      
+      // Join notifications room for message notifications
+      socketInstance.emit("join_notifications", { userId: currentUser.id });
+      console.log(" Joined notifications room for user:", currentUser.id);
+      
       if (selectedChat?.id) {
         const isGroupChat = selectedChat.isGroup || selectedChat.type === 'group'
         if (isGroupChat) {
           socketInstance.emit("join_group", { groupId: selectedChat.id })
+          console.log(" Joined group room:", selectedChat.id);
         } else {
           socketInstance.emit("join_conversation", { conversationId: selectedChat.id })
+          console.log(" Joined conversation room:", selectedChat.id);
         }
       }
       socketInstance.emit("get_online_users")
@@ -553,8 +561,22 @@ export default function ChatPage() {
     })
 
     socketInstance.on("private_message", (message) => {
+      console.log(" Received private message:", message);
+      
       const convId = String(message.conversation_id)
       const msgId = String(message.id)
+      
+      // Show toast notification for new message
+      if (String(message.sender_id) !== String(currentUser?.id)) {
+        console.log(" Showing toast for new private message");
+        toast.success(`New message from ${message.sender_name || 'Someone'}`);
+        
+        // Increment unread count in store if not in current conversation
+        if (!selectedChat || String(selectedChat.id) !== convId) {
+          console.log(" Incrementing unread count for conversation:", convId);
+          incrementUnreadCount(convId);
+        }
+      }
       
       setMessages((prev) => {
         if (!selectedChat || String(selectedChat.id) !== convId) {
@@ -613,13 +635,13 @@ export default function ChatPage() {
             // Determine media type from URL
             const url = message.media_url.toLowerCase()
             if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-              preview = "📷 Photo"
+              preview = " Photo"
             } else if (url.match(/\.(mp4|webm|mov)$/)) {
-              preview = "🎥 Video"
+              preview = " Video"
             } else if (url.match(/\.(mp3|wav|ogg)$/)) {
-              preview = "🎵 Audio"
+              preview = " Audio"
             } else {
-              preview = "📎 File"
+              preview = " File"
             }
           } else {
             preview = "No messages yet"
@@ -640,8 +662,22 @@ export default function ChatPage() {
 
     // Group message listener
     socketInstance.on("group_message", (message) => {
+      console.log(" Received group message:", message);
+      
       const groupId = String(message.group_id)
       const msgId = String(message.id)
+      
+      // Show toast notification for new group message
+      if (String(message.sender_id) !== String(currentUser?.id)) {
+        console.log(" Showing toast for new group message");
+        toast.success(`New message in ${message.group_name || 'group'}`);
+        
+        // Increment unread count in store if not in current group
+        if (!selectedChat || String(selectedChat.id) !== groupId) {
+          console.log(" Incrementing unread count for group:", groupId);
+          incrementUnreadCount(groupId);
+        }
+      }
       
       setMessages((prev) => {
         if (!selectedChat || String(selectedChat.id) !== groupId) {
@@ -794,6 +830,22 @@ export default function ChatPage() {
       }
     });
 
+    // Notification listeners for message notifications
+    socketInstance.on("new_notification", (notification) => {
+      console.log("🔔 Received new notification in chat:", notification);
+      
+      // Show toast for message notifications
+      if (notification.type === 'message') {
+        toast.success(notification.title);
+        console.log("📢 Showed toast for message notification:", notification.title);
+      }
+    });
+
+    socketInstance.on("notification_count_updated", ({ unreadCount: count }) => {
+      console.log("📊 Notification count updated:", count);
+      // This will update the global notification count in dashboard
+    });
+
     const activityInterval = setInterval(() => {
       if (socketInstance.connected) {
         socketInstance.emit("user_activity")
@@ -801,6 +853,7 @@ export default function ChatPage() {
     }, 30000)
 
     socketInstance.on("disconnect", () => {
+      console.log("🔌 Chat socket disconnected");
       clearInterval(activityInterval)
     })
 
@@ -1212,12 +1265,9 @@ export default function ChatPage() {
   const messageBgOwn = isDark ? "bg-green-600" : "bg-green-500"
   const messageBgOther = isDark ? "bg-gray-700" : "bg-gray-100"
   const inputBg = isDark ? "bg-gray-700" : "bg-gray-50"
-
   return (
     <div className={`min-h-screen ${bgColor} ${textColor} transition-colors duration-300 pt-16`}>
       <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 p-4">
-        
-        {/* Online Users Sidebar - Desktop Only */}
         <aside className="hidden lg:flex lg:w-64">
           <Card className={`flex-1 ${cardBg} ${borderColor} border flex flex-col`}>
             <div className="p-4 border-b">
@@ -1229,6 +1279,7 @@ export default function ChatPage() {
                 {isLoadingOnlineUsers ? "Loading..." : `${onlineUsers.length} active now`}
               </p>
             </div>
+            {console.log('Rendering online users:', onlineUsers)}
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-2">
                 {isLoadingOnlineUsers ? (
@@ -1391,11 +1442,12 @@ export default function ChatPage() {
                               {chat.type === 'group' ? <Users className="h-6 w-6" /> : chat.user.name.split(" ").map((n) => n[0]).join("")}
                             </AvatarFallback>
                           </Avatar>
-                          {chat.type === 'group' ? (
+                          {console.log("Chat user :", chat.user.members)}
+                          {chat.type==="group"&& chat.user.members.some(id => onlineUsers.includes(id)) ? (
                             <span className={`absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 ${onlineStatus} rounded-full flex items-center justify-center`}>
                               <Users className="h-2 w-2 text-white" />
                             </span>
-                          ) : chat.user.status === "online" && (
+                          ) : onlineUsers.some(user => user.id === chat.user.id)&& (
                             <span className={`absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 ${onlineStatus} rounded-full`} />
                           )}
                         </div>
@@ -1422,11 +1474,16 @@ export default function ChatPage() {
                             </div>
                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                               <span className={`text-xs ${textMuted}`}>{chat.timestamp}</span>
-                              {chat.unread > 0 && (
-                                <Badge className={`bg-green-500 text-white text-xs px-2 py-0 h-5 min-w-[20px] flex items-center justify-center`}>
-                                  {chat.unread}
-                                </Badge>
-                              )}
+                              {(() => {
+                                const storeUnreadCount = unreadCounts[chat.id] || 0;
+                                const displayUnread = storeUnreadCount > 0 ? storeUnreadCount : chat.unread || 0;
+                                console.log(`🔢 Chat ${chat.id} - Store unread: ${storeUnreadCount}, Local unread: ${chat.unread || 0}, Display: ${displayUnread}`);
+                                return displayUnread > 0 ? (
+                                  <Badge className={`bg-green-500 text-white text-xs px-2 py-0 h-5 min-w-[20px] flex items-center justify-center`}>
+                                    {displayUnread}
+                                  </Badge>
+                                ) : null;
+                              })()}
                             </div>
                           </div>
                           <p className={`text-sm ${textMuted} truncate`}>

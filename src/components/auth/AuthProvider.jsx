@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const router = useRouter()
 
   useEffect(() => {
+    // Initial check
     try {
       const t = localStorage.getItem("token")
       if (t) setToken(t)
@@ -18,12 +19,21 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false)
     }
+
+    // Listen for storage events (cross-tab sync)
+    const handleStorageChange = () => {
+      const t = localStorage.getItem("token")
+      setToken(t)
+    }
+    window.addEventListener("storage", handleStorageChange)
+
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   const login = (newToken) => {
     try {
       localStorage.setItem("token", newToken)
-    } catch (e) {}
+    } catch (e) { }
     setToken(newToken)
   }
 
@@ -31,10 +41,10 @@ export function AuthProvider({ children }) {
     try {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
-        localStorage.removeItem("fullInfo")
-        localStorage.removeItem("second_name")
-        localStorage.removeItem("theme")
-    } catch (e) {}
+      localStorage.removeItem("fullInfo")
+      localStorage.removeItem("second_name")
+      localStorage.removeItem("theme")
+    } catch (e) { }
     setToken(null)
     router.push("/login")
   }

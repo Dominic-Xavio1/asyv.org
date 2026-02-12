@@ -2,7 +2,7 @@
 
 import React, { useState,useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard, Settings } from 'lucide-react';
+import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
 import { ShimmeringText } from "@/components/animate-ui/primitives/texts/shimmering";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,12 +30,33 @@ import {
 } from "@/components/ui/tooltip"
 import toast from 'react-hot-toast'
 import {useRouter} from 'next/navigation'
+import { io } from "socket.io-client"
+import { useRef } from 'react'
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const router = useRouter();
+  const socketRef = useRef(null);
   const {visible,setVisible,clearVisible} = chatDarkModeStore();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const m = window.matchMedia("(max-width: 767px)");
+    const handleChange = (e) => setIsMobile(e.matches);
+    // Set initial value
+    setIsMobile(m.matches);
+    // Prefer modern event API if available
+    if (m.addEventListener) m.addEventListener('change', handleChange);
+    else m.addListener(handleChange);
+
+    return () => {
+      if (m.removeEventListener) m.removeEventListener('change', handleChange);
+      else m.removeListener(handleChange);
+    };
+  }, []);
   const { logout } = useAuth()
   const { theme, toggle } = useTheme()
 const pathname = usePathname();
@@ -150,9 +171,101 @@ console.log("data which I am fetching ",data);
       }
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    if (typeof window !== 'undefined') {
+      window.addEventListener("storage", handleStorageChange);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener("storage", handleStorageChange);
+      }
+    };
   }, []);
+  
+  // Fetch unread message notifications and set up socket connection
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      if (!currentUser?.id) return;
+      
+      try {
+        // Get user ID from fullInfo if available
+        let userId = currentUser.id;
+        try {
+          const fullInfo = localStorage.getItem("fullInfo");
+          if (fullInfo) {
+            const parsed = JSON.parse(fullInfo);
+            userId = parsed.id || userId;
+          }
+        } catch (e) {
+          console.error("Error parsing fullInfo:", e);
+        }
+        
+        const response = await fetch(
+          `/api/notifications?userId=${userId}&type=message&limit=100`
+        );
+        const data = await response.json();
+        
+        if (data.success) {
+          // Count unread message notifications
+          const unreadMessages = (data.data || []).filter(n => !n.is_read);
+          setUnreadMessageCount(unreadMessages.length);
+        }
+      } catch (error) {
+        console.error("Error fetching unread message notifications:", error);
+      }
+    };
+    
+    fetchUnreadMessages();
+    
+    // Set up Socket.IO connection for real-time message notifications
+    if (currentUser?.id && !socketRef.current && typeof window !== "undefined") {
+      try {
+        let userId = currentUser.id;
+        try {
+          const fullInfo = localStorage.getItem("fullInfo");
+          if (fullInfo) {
+            const parsed = JSON.parse(fullInfo);
+            userId = parsed.id || userId;
+          }
+        } catch (e) {
+          // ignore
+        }
+        
+        const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin, {
+          path: "/api/socketio",
+          transports: ["websocket", "polling"],
+        });
+
+        socketInstance.on("connect", () => {
+          console.log("Socket connected for message notifications in navbar");
+          socketInstance.emit("join_notifications", { userId });
+        });
+
+        socketInstance.on("new_notification", (notification) => {
+          // Only update count if it's a message notification
+          if (notification.type === "message") {
+            setUnreadMessageCount((prev) => prev + 1);
+          }
+        });
+
+        socketInstance.on("notification_count_updated", ({ unreadCount: count }) => {
+          // Refetch to get accurate message count
+          fetchUnreadMessages();
+        });
+
+        socketRef.current = socketInstance;
+      } catch (error) {
+        console.error("Error initializing socket:", error);
+      }
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [currentUser]);
+  
   const navItems = [
     { path: '/feed', icon: Home, label: 'Feed' },
     { path: '/chat', icon: MessageCircle, label: 'Chat' },
@@ -204,26 +317,22 @@ switch(label){
       <div className="container mx-auto px-12">
         <div className="flex justify-between items-center h-14 lg:h-16">
           {/* Logo */}
-          <div className="hidden md:flex items-center cursor-pointer">
-             <img src='/agahozo.png' alt="ASYV Logo" className="w-[70px] h-auto object-cover"/>
-{/* <ContainerTextFlip  words={["CHOOSE","LISTEN","BRIGHT"]}/> */}
-{!pathname.includes("/dashboard") &&(
-<ShimmeringText 
-  text="Village Hub" 
-  className="text-3xl font-bold" 
-  duration={2}
-  color="#f97316" 
-  shimmeringColor="#0c8438"
-/>
-)}
-
-         {/* <span className="font-script-style text-2xl font-bold text-green-800 animate-shadow-dance">Village Hub</span> */}
+          <div className="flex items-center cursor-pointer">
+            <img src="/agahozo.png" alt="ASYV Logo" className="hidden md:block w-[70px] h-auto object-cover" />
+            <img src="/asyv.png" alt="ASYV Small" className="md:hidden w-[42px] h-auto object-cover" />
+            {/* <ContainerTextFlip  words={["CHOOSE","LISTEN","BRIGHT"]}/> */}
+            { (isMobile || !pathname.includes("/dashboard")) && (
+              <ShimmeringText
+                text="Village Hub"
+                className="text-lg md:text-3xl font-bold ml-3"
+                duration={2}
+                color="#f97316"
+                // #0c8438
+                // #864108ff 
+                shimmeringColor="#864108ff "
+              />
+            )}
           </div>
-          <div className="flex md:hidden items-center cursor-pointer">
-<img src='/asyv.png' alt="ASYV Logo" className="w-[50px] h-auto object-cover"/>
-<span className="font-script-style text-xl text-orange-500 animate-shadow-dance"> Hub</span>
-          </div>
-          {/* Desktop Navigation */}
          
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navItems.map(({ path, icon: Icon, label }) => (
@@ -231,12 +340,22 @@ switch(label){
               <div
                 role="link"
                 data-path={path}
-                className="flex items-center space-x-2 px-2 lg:px-3 py-2 rounded-lg transition-colors duration-200 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex items-center space-x-2 px-2 lg:px-3 py-2 rounded-lg transition-colors duration-200 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 relative"
 
               >
                 <Icon className="h-4 w-4" />
                 <span className="font-medium text-sm lg:text-base cursor-pointer"
                 >{label}</span>
+                {label === "Chat" && unreadMessageCount > 0 && (
+                  <span className="relative flex items-center justify-center">
+                    {unreadMessageCount > 0 && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+                    )}
+                    <span className="relative px-1.5 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full min-w-[1.25rem] flex items-center justify-center">
+                      {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                    </span>
+                  </span>
+                )}
               </div>
               </Link>
             ))}
@@ -250,7 +369,7 @@ switch(label){
               }} />
           </div>
           {/* Mobile Menu Button */}
-          {/* <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center">
             <div
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 cursor-pointer"
@@ -261,7 +380,7 @@ switch(label){
                 <Menu className="h-5 w-5" />  
               )}
             </div>
-          </div> */}
+          </div>
         </div>
       </div>
 
@@ -312,10 +431,20 @@ switch(label){
                     <Link href={getHref(label)}>
                       <div
                         onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+                        className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer relative"
                       >
                         <Icon className="h-5 w-5" />
                         <span className="font-medium">{label}</span>
+                        {label === "Chat" && unreadMessageCount > 0 && (
+                          <span className="relative flex items-center justify-center ml-auto">
+                            {unreadMessageCount > 0 && (
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+                            )}
+                            <span className="relative px-1.5 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full min-w-[1.25rem] flex items-center justify-center">
+                              {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </Link>
                   </motion.div>
@@ -417,14 +546,6 @@ toast.success("Logout successfully!")
           <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>
             <User className="mr-2 h-4 w-4" />
             Create Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Billing
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            Account Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400 cursor-pointer">

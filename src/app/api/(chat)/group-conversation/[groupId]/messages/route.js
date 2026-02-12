@@ -2,7 +2,7 @@ import pool from "../../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { getIOInstance } from "../../../../../services/notifications/notificationSocket";
+import { getIOInstance } from "../../../../../../services/notifications/notificationSocket";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads", "group-messages");
 
@@ -203,12 +203,16 @@ export async function POST(request, { params }) {
     // Send notifications to all group members except the sender
     const recipientIds = members.filter(memberId => String(memberId) !== String(senderId));
     
+    console.log("👥 Group message recipients:", recipientIds);
+    
     if (recipientIds.length > 0) {
       // Truncate message content for notification
       const messageContent = content || (mediaUrl ? 'Sent a media file' : '');
       const truncatedMessage = messageContent.length > 50 
         ? messageContent.substring(0, 50) + '...' 
         : messageContent;
+
+      console.log("✂️ Truncated group message for notification:", truncatedMessage);
 
       // Create notifications for all recipients
       const notificationPromises = recipientIds.map(async (recipientId) => {
@@ -226,16 +230,21 @@ export async function POST(request, { params }) {
           ]
         );
         
-        return notificationResult.rows[0];
+        const notification = notificationResult.rows[0];
+        console.log(`🔔 Created group notification for user ${recipientId}:`, notification);
+        
+        return notification;
       });
 
       const notifications = await Promise.all(notificationPromises);
+      console.log("📢 All group notifications created:", notifications.length);
       
       // Emit real-time notifications
       const io = getIOInstance();
       if (io) {
         notifications.forEach((notification, index) => {
           const recipientId = recipientIds[index];
+          console.log(`📡 Emitting group notification to user ${recipientId}:`, notification);
           io.to(`notifications_${recipientId}`).emit("new_notification", notification);
           
           // Update unread count for each recipient
@@ -245,11 +254,15 @@ export async function POST(request, { params }) {
              WHERE recipient_id = $1 AND is_read = FALSE AND is_deleted = FALSE`,
             [recipientId]
           ).then(countResult => {
+            const unreadCount = parseInt(countResult.rows[0]?.count || 0);
+            console.log(`📊 Updating unread count for user ${recipientId}:`, unreadCount);
             io.to(`notifications_${recipientId}`).emit("notification_count_updated", {
-              unreadCount: parseInt(countResult.rows[0]?.count || 0),
+              unreadCount: unreadCount,
             });
           });
         });
+      } else {
+        console.warn("⚠️ Socket.IO instance not available - group notifications will not be real-time");
       }
     }
 

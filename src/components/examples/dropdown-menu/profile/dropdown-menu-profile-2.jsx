@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, LogOut, Settings, User } from "lucide-react";
+import { CreditCard, LogOut, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,14 +49,6 @@ const Example = () => (
       <DropdownMenuItem>
         <User />
         View Profile
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <CreditCard />
-        Billing
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <Settings />
-        Account Settings
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive">

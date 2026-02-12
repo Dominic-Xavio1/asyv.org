@@ -2,30 +2,35 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, MessageSquare,UserCog,Lock,KeyRound, ShieldCheck,LayoutList, Users, 
-  BookOpen, FolderKanban, Settings, LogOut,ArrowLeft,  Menu, X, Home, Plus, ChevronRight, Upload,
-  UserCircle,UserPlus,
-   Send, Edit2, Trash2, MoreVertical, FileImage,Filter, BarChart3 } from 'lucide-react';
-import {motion} from 'motion/react';
+import {
+  Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
+  BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
+  UserCircle, UserPlus,
+  Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3
+} from 'lucide-react';
+import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Textarea } from "@/components/ui/textarea";
-import {Separator} from "@/components/ui/separator"
-import {Input} from "@/components/ui/input"
-import {Button} from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import toast from 'react-hot-toast';
+import { useSession, signOut } from "next-auth/react"
+import { useAuth } from '@/components/auth/AuthProvider' // Import useAuth hook
 import GroupImageDropzone from './GroupImageDropzone'
 import MemberSelector from './MemberSelector'
 import DialogDemo from "@/components/ui/dialogeDemo"
-import {userUnreadNotificationStore} from '../notification/page.js'
-// Updated AnimatedModal Component
+import { userUnreadNotificationStore } from '../notification/page.js'
+
+import { io } from "socket.io-client"
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fadeIn"
         onClick={onClose}
       />
@@ -39,7 +44,7 @@ const AnimatedModal = ({ isOpen, onClose, children, title }) => {
             <X className="w-5 h-5 text-neutral-500 dark:text-gray-400" />
           </button>
         </div>
-        
+
         <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
           <div className="p-6">
             {children}
@@ -52,25 +57,25 @@ const AnimatedModal = ({ isOpen, onClose, children, title }) => {
 
 const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
   const [title, setTitle] = useState(existingPost?.title || '');
- 
+
   const [content, setContent] = useState(existingPost?.content || '');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(existingPost?.media_url || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-const isVideoUrl = (url) => {
-  if (!url) return false;
-  
-  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v'];
-  const lowerUrl = url.toLowerCase();
-  
-  return videoExtensions.some(ext => lowerUrl.endsWith(ext));
-};
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v'];
+    const lowerUrl = url.toLowerCase();
+
+    return videoExtensions.some(ext => lowerUrl.endsWith(ext));
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       if (!userId) {
         throw new Error('User ID is required');
@@ -110,7 +115,7 @@ const isVideoUrl = (url) => {
       }
 
       const result = await response.json();
-      toast.success(existingPost ? 'Post updated successfully!' : 'Post Created successfully!'); 
+      toast.success(existingPost ? 'Post updated successfully!' : 'Post Created successfully!');
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to save post');
       }
@@ -118,7 +123,7 @@ const isVideoUrl = (url) => {
       if (onSubmit) {
         onSubmit(result.post || existingPost);
       }
-      
+
       setTitle('');
       setContent('');
       setImage(null);
@@ -131,12 +136,12 @@ const isVideoUrl = (url) => {
       setLoading(false);
     }
   };
-const fetchUserPost =async()=>{
-  const response = await fetch("api/post");
-  const data  =await response.json()
-  console.log("returned response of post ",data)
-}
-fetchUserPost()
+  const fetchUserPost = async () => {
+    const response = await fetch("api/post");
+    const data = await response.json()
+    console.log("returned response of post ", data)
+  }
+  fetchUserPost()
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -159,7 +164,7 @@ fetchUserPost()
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
-      
+
       <div className="space-y-2">
         <label htmlFor="post-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Post Title <span className="text-red-500">*</span>
@@ -241,7 +246,7 @@ fetchUserPost()
           </div>
         )}
       </div>
-      
+
       <Separator />
 
       <div className="flex justify-end gap-3">
@@ -277,7 +282,7 @@ const ArticleForm = ({ onClose, onSubmit }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       onSubmit({ title, content, coverImage, type: 'article' });
       setTitle('');
@@ -391,7 +396,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       if (!userId) {
         throw new Error('User ID is required');
@@ -435,7 +440,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
       if (onSubmit) {
         onSubmit(result.opportunity);
       }
-      
+
       // Reset form
       setTitle('');
       setOpType('');
@@ -461,10 +466,10 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
-      
+
       <div className="space-y-2">
         <label htmlFor="opportunity-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Opportunity Title 
+          Opportunity Title
         </label>
         <Input
           id="opportunity-title"
@@ -477,9 +482,9 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
           disabled={loading}
         />
       </div>
-<div className="space-y-2">
+      <div className="space-y-2">
         <label htmlFor="opportunity-type" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Opportunity Type 
+          Opportunity Type
         </label>
         <select
           id="opportunity-type"
@@ -497,8 +502,8 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
           <option value="event">Event</option>
           <option value="other">Other</option>
         </select>
-      </div> 
-{/* 
+      </div>
+      {/* 
 <Select value={opType} onValueChange={setOpType}>
                 <SelectTrigger className="w-full sm:w-48 h-11">
                   <Filter className="h-4 w-4 mr-2" />
@@ -705,7 +710,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
           method: 'POST',
           body: formData,
         });
-        console.log("Sending...",Object.fromEntries(formData))
+        console.log("Sending...", Object.fromEntries(formData))
         data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.message || 'Failed to create group');
@@ -792,7 +797,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
           <p id="group-description-help" className="text-xs text-neutral-500 dark:text-gray-500">
             Tell members what this group is about
           </p>
-          <p className={`text-xs ${description.trim().length === 0 ? 'text-neutral-500 dark:text-gray-500' : (description.trim().split(/\s+/).length >= wordLimit ? 'text-red-500' : (description.trim().split(/\s+/).length >= Math.ceil(wordLimit*0.9) ? 'text-yellow-500' : 'text-neutral-500 dark:text-gray-500'))}`}>
+          <p className={`text-xs ${description.trim().length === 0 ? 'text-neutral-500 dark:text-gray-500' : (description.trim().split(/\s+/).length >= wordLimit ? 'text-red-500' : (description.trim().split(/\s+/).length >= Math.ceil(wordLimit * 0.9) ? 'text-yellow-500' : 'text-neutral-500 dark:text-gray-500'))}`}>
             {description.trim().length === 0 ? `0 / ${wordLimit} words` : `${description.trim().split(/\s+/).length} / ${wordLimit} words`}
           </p>
         </div>
@@ -931,44 +936,44 @@ const ChangePasswordForm = ({ onClose, userId }) => {
 
   const validateForm = () => {
     setError('');
-    
+
     if (!currentPassword.trim()) {
       setError('Current password is required');
       return false;
     }
-    
+
     if (!newPassword.trim()) {
       setError('New password is required');
       return false;
     }
-    
+
     if (newPassword.length < 8) {
       setError('New password must be at least 8 characters');
       return false;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setError('New password and confirmation do not match');
       return false;
     }
-    
+
     if (currentPassword === newPassword) {
       setError('New password must be different from current password');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     try {
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch('/api/changePassword/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1108,7 +1113,7 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const getIcon = () => {
-    switch(item.type) {
+    switch (item.type) {
       case 'post': return MessageSquare;
       case 'article': return BookOpen;
       case 'group': return Users;
@@ -1159,7 +1164,7 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
           {showMenu && (
             <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-900 rounded-lg shadow-lg dark:shadow-xl border border-neutral-200 dark:border-gray-700 py-1 z-10">
               {onEdit && (
-                <button 
+                <button
                   onClick={() => {
                     onEdit(item);
                     setShowMenu(false);
@@ -1192,10 +1197,20 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
 };
 
 export default function Dashboard() {
+  // const session = await auth();
+  const { data: session, status } = useSession();
+
+  if (status === "loading") {
+    console.log("Authentication is loading...");
+  } else if (!session) {
+    console.log("Not authenticated by google", session);
+  } else {
+    console.log("Authenticated by google", session);
+  }
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [editProfileOpen,setEditProfileOpen]= useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('home');
-  const [countClick,setCountClick]=useState(0);
+  const [countClick, setCountClick] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1212,9 +1227,13 @@ export default function Dashboard() {
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [hideChangePassword, setHideChangePassword] = useState(false);
-  // const [textLimit,setTextLimit]=useState('');
-const [badgeCount,setBadgeCount]=useState(0);
+  // const session = await auth();
+
+  const [badgeCount, setBadgeCount] = useState(0);
   const router = useRouter();
+  const socketRef = useRef(null);
+  const setUnreadCount = userUnreadNotificationStore((state) => state.setUnreadCount);
+
   useEffect(() => {
     try {
       const hidden = localStorage.getItem('hideChangePassword');
@@ -1223,26 +1242,86 @@ const [badgeCount,setBadgeCount]=useState(0);
       // ignore
     }
   }, []);
-  useEffect(()=>{
-const fetchNotifications = async()=>{
-  if(!currentUser?.id) return;
-  try{
-    const response = await fetch(`/api/notifications?userId=${currentUser?.id}&type=all&limit=50`,{
-      method:"GET",
-      headers:{
-        "Content-Type":"application/json",
-      },
-    });
-    const data = await response.json();
-    console.log("notifications",data);
-    setBadgeCount(data.data.length);
-  }
-  catch(error){
-    console.error('Error fetching notifications:', error);
-  }
-  }
-  fetchNotifications();
-},[currentUser])
+
+  // Fetch notifications on dashboard load and set up socket connection
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!currentUser?.id) return;
+      try {
+        const response = await fetch(`/api/notifications?userId=${currentUser?.id}&type=all&limit=50`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await response.json();
+        console.log("notifications", data);
+        if (data.success) {
+          setBadgeCount(data.data.length);
+          // Update the store with unread count
+          setUnreadCount(data.unreadCount || 0);
+        }
+      }
+      catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    }
+
+    fetchNotifications();
+
+    // Set up Socket.IO connection for real-time notifications
+    if (currentUser?.id && !socketRef.current && typeof window !== "undefined") {
+      console.log("🔌 Setting up socket connection for dashboard notifications...");
+      try {
+        const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin, {
+          path: "/api/socketio",
+          transports: ["websocket", "polling"],
+        });
+
+        socketInstance.on("connect", () => {
+          console.log("✅ Dashboard socket connected successfully");
+          socketInstance.emit("join_notifications", { userId: currentUser.id });
+          console.log("📢 Joined notifications room for dashboard user:", currentUser.id);
+        });
+
+        socketInstance.on("new_notification", (notification) => {
+          console.log("🔔 Dashboard received new notification:", notification);
+          // Update unread count when new notification arrives
+          setUnreadCount((prev) => prev + 1);
+
+          // Show toast for message notifications
+          if (notification.type === 'message') {
+            console.log("📢 Showing toast for message notification in dashboard:", notification.title);
+            toast.success(notification.title);
+          } else if (notification.type === 'group_invitation') {
+            console.log("👥 Showing toast for group invitation in dashboard:", notification.title);
+            toast.success(notification.title);
+          }
+        });
+
+        socketInstance.on("notification_count_updated", ({ unreadCount: count }) => {
+          console.log("📊 Dashboard notification count updated:", count);
+          setUnreadCount(count);
+        });
+
+        socketInstance.on("disconnect", () => {
+          console.log("🔌 Dashboard socket disconnected");
+        });
+
+        socketRef.current = socketInstance;
+        console.log("✅ Dashboard socket setup complete");
+      } catch (error) {
+        console.error("❌ Error initializing dashboard socket:", error);
+      }
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [currentUser, setUnreadCount])
 
   const [userContent, setUserContent] = useState({
     posts: [],
@@ -1262,7 +1341,7 @@ const fetchNotifications = async()=>{
     { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
     { id: "management", icon: UserCog, label: "Manage Users" },
     { id: "advanced_management", icon: Users, label: "Advanced User Management" },
-    {id:"create_profile",icon:UserPlus,label:"Create your profile"},
+    { id: "create_profile", icon: UserPlus, label: "Create your profile" },
     { id: "change_password", icon: ShieldCheck, label: "Change Password" },
   ];
   useEffect(() => {
@@ -1283,8 +1362,41 @@ const fetchNotifications = async()=>{
     }
   }, []);
 
+  // Sync NextAuth session to LocalStorage for app compatibility
+  const { login: authLogin } = useAuth(); // Destructure login from useAuth
 
-  useEffect(()=>{
+  // Sync NextAuth session to LocalStorage for app compatibility
+  useEffect(() => {
+    if (session?.customToken && session?.user && session?.fullInfo) {
+      // Check if localStorage is already set to avoid loops or redundant sets
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+      if (!currentToken || currentToken !== session.customToken) {
+        console.log("Syncing Google session to LocalStorage...");
+
+        // Use the auth context's login function to update state AND localStorage
+        authLogin(session.customToken);
+
+        localStorage.setItem("user", JSON.stringify(session.user));
+        localStorage.setItem("fullInfo", JSON.stringify(session.fullInfo));
+        if (session.user.second_name) {
+          localStorage.setItem("second_name", JSON.stringify(session.user.second_name));
+        }
+
+        // Update state immediately (legacy support)
+        const user = session.fullInfo;
+        setCurrentUser(user);
+        setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
+        setOnlySuperuser(user.is_superuser === true);
+        setIsAlumni(user.is_alumni === true);
+
+        toast.success("Login synced successfully");
+      }
+    }
+  }, [session, authLogin]);
+
+
+  useEffect(() => {
     if (!currentUser?.id) return;
     const fetchAll = async () => {
       try {
@@ -1298,15 +1410,15 @@ const fetchNotifications = async()=>{
     }
 
     fetchAll();
-  },[currentUser, isCrcOrSuperuser])
+  }, [currentUser, isCrcOrSuperuser])
 
   // Move fetchPosts to component scope so other handlers can refresh posts
   const fetchPosts = async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch('/api/post/owner',{
-        method:"POST",
-        headers:{
+      const response = await fetch('/api/post/owner', {
+        method: "POST",
+        headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ userId: currentUser?.id }),
@@ -1335,9 +1447,9 @@ const fetchNotifications = async()=>{
       const response = await fetch(`/api/post?id=${postId}`, {
         method: 'DELETE'
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setPosts(posts.filter(post => post.id !== postId));
         toast.success('Post deleted successfully');
@@ -1373,11 +1485,11 @@ const fetchNotifications = async()=>{
     }
   };
   const fetchOpportunities = async () => {
-    try{
-      if(!currentUser?.id) return;
-      const response = await fetch('/api/opportunity/owner',{
-        method:"POST",
-        headers:{
+    try {
+      if (!currentUser?.id) return;
+      const response = await fetch('/api/opportunity/owner', {
+        method: "POST",
+        headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ owner_id: currentUser?.id }),
@@ -1391,7 +1503,7 @@ const fetchNotifications = async()=>{
       const opsArray = Array.isArray(payload) ? payload : [payload];
       setOpportunities(opsArray);
     }
-    catch(err){
+    catch (err) {
       console.error('Error fetching opportunities:', err);
       toast.error('Failed to fetch opportunities');
     }
@@ -1420,10 +1532,10 @@ const fetchNotifications = async()=>{
       const response = await fetch(`/api/opportunity?id=${opportunityId}`, {
         method: 'DELETE'
       });
-      
+
       const result = await response.json();
-      
-      
+
+
       if (result.success) {
         setOpportunities(opportunities.filter(opp => opp.id !== opportunityId));
         toast.success('Opportunity deleted successfully');
@@ -1435,26 +1547,26 @@ const fetchNotifications = async()=>{
       toast.error(error.message || 'Failed to delete opportunity');
     }
   };
-function handleNavigate(word){
-  switch(word){
-    case "feed":
-      return "/feed";
-    case "dashboard":
-      return "/dashboard";
-    case "alumni_overview":
-      return "/management/alumni-overview";
-    case 'management':
-      return "/management";
-    case "advanced_management":
-      return "/management/advanced";
-    case "notifications":
-      return "/notification";
-    case "change_password":
-      return "#"; // Don't navigate, will open slide panel
-    default:
-      return "/";
+  function handleNavigate(word) {
+    switch (word) {
+      case "feed":
+        return "/feed";
+      case "dashboard":
+        return "/dashboard";
+      case "alumni_overview":
+        return "/management/alumni-overview";
+      case 'management':
+        return "/management";
+      case "advanced_management":
+        return "/management/advanced";
+      case "notifications":
+        return "/notification";
+      case "change_password":
+        return "#"; // Don't navigate, will open slide panel
+      default:
+        return "/";
+    }
   }
-}
 
 
   const fetchGroups = async () => {
@@ -1481,9 +1593,9 @@ function handleNavigate(word){
   const handleCreateContent = async (data) => {
     // #region agent log
     const timestamp = Date.now();
-    fetch('http://127.0.0.1:7242/ingest/a5c05f7c-9e65-48f3-bf13-130a70f52554',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard/page.js:759',message:'handleCreateContent called',data:{timestamp,dataType:data.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/a5c05f7c-9e65-48f3-bf13-130a70f52554', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'dashboard/page.js:759', message: 'handleCreateContent called', data: { timestamp, dataType: data.type }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
     // #endregion
-    
+
     // For groups, data is already the created group from API
     if (data.id && data.name) {
       // This is a group from API
@@ -1493,7 +1605,7 @@ function handleNavigate(word){
 
     const newItem = {
       ...data,
-      id: timestamp,  
+      id: timestamp,
       date: new Date().toLocaleDateString()
     };
 
@@ -1513,9 +1625,9 @@ function handleNavigate(word){
       const response = await fetch(`/api/group-conversation/groupId?groupId=${groupId}`, {
         method: 'DELETE'
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         await fetchGroups(); // Refresh groups list
         toast.success('Group deleted successfully');
@@ -1533,7 +1645,7 @@ function handleNavigate(word){
       handleDeleteGroup(id);
       return;
     }
-    
+
     if (type === 'post') {
       setUserContent(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== id) }));
     } else if (type === 'article') {
@@ -1545,15 +1657,22 @@ function handleNavigate(word){
     setProfile(data);
   };
 
-  const handleLogout = () => {
+  // ... (keep existing imports)
+
+  const handleLogout = async () => {
     toast.success('Logged out successfully!');
+
+    // Clear local storage
     if (typeof window !== 'undefined') {
-        localStorage.removeItem("token")
+      localStorage.removeItem("token")
       localStorage.removeItem("user")
-        localStorage.removeItem("fullInfo")
-        localStorage.removeItem("second_name")
-        localStorage.removeItem("theme");
+      localStorage.removeItem("fullInfo")
+      localStorage.removeItem("second_name")
+      localStorage.removeItem("theme");
     }
+    // Sign out from NextAuth (caches, cookies, etc.)
+    await signOut({ redirect: false });
+
     router.push('/login');
   };
 
@@ -1564,9 +1683,9 @@ function handleNavigate(word){
         <div className="p-6 border-b border-neutral-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10">
-              <Image 
+              <Image
                 src='/agahozo.png'
-                alt="ASYV Logo" 
+                alt="ASYV Logo"
                 width={60}
                 height={80}
                 className="object-contain"
@@ -1581,95 +1700,89 @@ function handleNavigate(word){
 
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => {
-          if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
-            return null;
-          }
+            if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
+              return null;
+            }
             return (
-              <Link 
-              key={item.id}
-              href={handleNavigate(item.id)}>
-            <button
-              onClick={(e) => {
-                // Open edit profile modal without navigating
-                if (item.id === "create_profile") {
-                  e.preventDefault();
-                  setEditProfileOpen(true);
-                  return;
-                }
-
-                // Handle change password clicks: first click opens, second click hides permanently
-                if (item.id === 'change_password') {
-                  setShowChangePassword(true);
-                  // e.preventDefault();
-                  setCountClick((prev) => {
-                    const next = Math.min(prev + 1, 2);
-                    if (next === 1) {
-                      
-                    } else if (next >= 2) {
-                      // setShowChangePassword(false);
-                      setHideChangePassword(true);
-                      try { localStorage.setItem('hideChangePassword','true'); } catch (err) {}
+              <Link
+                key={item.id}
+                href={handleNavigate(item.id)}>
+                <button
+                  onClick={(e) => {
+                    // Open edit profile modal without navigating
+                    if (item.id === "create_profile") {
+                      e.preventDefault();
+                      setEditProfileOpen(true);
+                      return;
                     }
-                    return next;
-                  });
-                  return;
-                }
 
-                // Default navigation behavior
-                setActiveTab(item.id);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 hover:cursor-pointer rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === item.id
-                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="flex-1 text-left">
-                {item.label}
-                {item.label === "Feed" && (
-                  <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
-                )}
-              </span>
-              {item.id === "notifications" && (
-               <span className="relative flex items-center justify-center">
-              {unreadCount>0 && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
-              )}
-               <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount>0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
-                 {unreadCount}
-               </span>
-             </span>
-              )}
+                    // Handle change password clicks: first click opens, second click hides permanently
+                    if (item.id === 'change_password') {
+                      setShowChangePassword(true);
+                      // e.preventDefault();
+                      setCountClick((prev) => {
+                        const next = Math.min(prev + 1, 2);
+                        if (next === 1) {
 
-              {/* Left pointer indicator: show only for change_password and only when not permanently hidden */}
-              {(item.id === 'change_password' && !hideChangePassword && countClick < 2) && (
-                <motion.div
-                  animate={{ x: [0, 10, 0] }}
-                  transition={{
-                    duration: 0.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
+                        } else if (next >= 2) {
+                          // setShowChangePassword(false);
+                          setHideChangePassword(true);
+                          try { localStorage.setItem('hideChangePassword', 'true'); } catch (err) { }
+                        }
+                        return next;
+                      });
+                      return;
+                    }
+                    setActiveTab(item.id);
                   }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 hover:cursor-pointer rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
+                    ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
                 >
-                  <div className=" h-6 w-6 flex">
-                    <span className="absolute h-full w-full h-5 w-5 animate-ping rounded-full bg-gray-400 opacity-75"></span>
-                    <ArrowLeft className=" h-5 w-5" />
-                  </div>
-                </motion.div>
-              )}
+                  <item.icon className="w-5 h-5" />
+                  <span className="flex-1 text-left">
+                    {item.label}
+                    {item.label === "Feed" && (
+                      <ChevronRight className="inline-block ml-1 w-4 h-4 text-neutral-400 dark:text-gray-500" />
+                    )}
+                  </span>
+                  {item.id === "notifications" && (
+                    <span className="relative flex items-center justify-center">
+                      {unreadCount > 0 && (
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+                      )}
+                      <span className={`relative px-2 py-0.5 text-xs font-semibold ${unreadCount > 0 ? 'bg-orange-500 text-white animate-bounce' : 'bg-orange-500 text-white'} rounded-full`}>
+                        {unreadCount}
+                      </span>
+                    </span>
+                  )}
 
-            </button>
-            </Link>
-          )})}
+                  {/* Left pointer indicator: show only for change_password and only when not permanently hidden */}
+                  {(item.id === 'change_password' && !hideChangePassword && countClick < 2) && (
+                    <motion.div
+                      animate={{ x: [0, 10, 0] }}
+                      transition={{
+                        duration: 0.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <div className=" h-6 w-6 flex">
+                        <span className="absolute h-full w-full h-5 w-5 animate-ping rounded-full bg-gray-400 opacity-75"></span>
+                        <ArrowLeft className=" h-5 w-5" />
+                      </div>
+                    </motion.div>
+                  )}
+
+                </button>
+              </Link>
+            )
+          })}
         </nav>
-      
+
         <div className="p-4 border-t border-neutral-200 dark:border-gray-700 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200">
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
           >
@@ -1685,9 +1798,9 @@ function handleNavigate(word){
             <div className="p-5 border-b border-neutral-200 dark:border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10">
-                  <Image 
+                  <Image
                     src='/asyv.png'
-                    alt="ASYV Logo" 
+                    alt="ASYV Logo"
                     width={40}
                     height={40}
                     className="object-contain"
@@ -1709,41 +1822,36 @@ function handleNavigate(word){
                   return null;
                 }
                 return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setSidebarOpen(false);
-                    if (item.label === "Feed") {
-                      router.push('/feed');
-                    } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management") {
-                      router.push(handleNavigate(item.id));
-                    }
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    activeTab === item.id
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setSidebarOpen(false);
+                      if (item.label === "Feed") {
+                        router.push('/feed');
+                      } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management") {
+                        router.push(handleNavigate(item.id));
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
                       ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 shadow-sm'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge && (
-                    <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
+                      }`}
+                  >
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
               })}
             </nav>
-
             <div className="p-3 border-t border-neutral-200 dark:border-gray-700 space-y-1">
-              <button className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 transition-all duration-200">
-                <Settings className="w-5 h-5" />
-                <span>Settings</span>
-              </button>
-              <button 
+
+              <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
               >
@@ -1758,10 +1866,22 @@ function handleNavigate(word){
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-0">
         {/* Top Bar */}
-   
+
 
         {/* Dashboard Content */}
         <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-4 md:mt-6">
+          {session && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-bold text-blue-800 dark:text-blue-300 mb-2">Google Session Debug Info</h3>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">
+                This section displays the information captured from Google. Use this to verify data capture.
+              </p>
+              <div className="bg-gray-900 text-green-400 p-4 rounded overflow-auto max-h-60 text-xs font-mono">
+                <pre>{JSON.stringify(session, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+
           {/* Create Buttons */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
             <button
@@ -1858,9 +1978,9 @@ function handleNavigate(word){
               ) : posts.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {posts.map((post) => (
-                    <ContentCard 
-                      key={post.created_at} 
-                      item={{...post, type: 'post'}} 
+                    <ContentCard
+                      key={post.created_at}
+                      item={{ ...post, type: 'post' }}
                       onDelete={handleDeletePost}
                       onEdit={(post) => {
                         setEditingPost(post);
@@ -1876,10 +1996,10 @@ function handleNavigate(word){
                 </div>
               )}
             </div>
-            {editProfileOpen&&(
+            {editProfileOpen && (
               <DialogDemo open={editProfileOpen} setOpen={setEditProfileOpen} />
             )}
-            
+
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -1918,14 +2038,14 @@ function handleNavigate(word){
                 ) : (Array.isArray(opportunities) && opportunities.filter(opp => opp.user_id === currentUser?.id).length > 0) ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {opportunities.filter(opp => opp.user_id === currentUser?.id).map((opportunity) => (
-                      <ContentCard 
-                        key={opportunity.id} 
+                      <ContentCard
+                        key={opportunity.id}
                         item={{
                           ...opportunity,
                           type: 'opportunity',
                           title: opportunity.title,
                           content: opportunity.description
-                        }} 
+                        }}
                         onDelete={handleDeleteOpportunity}
                         onEdit={(opp) => {
                           setEditingOpportunity(opp);
@@ -2030,12 +2150,12 @@ function handleNavigate(word){
         }}
         title={editingPost ? "Edit Post" : "Create New Post"}
       >
-        <PostForm 
+        <PostForm
           onClose={() => {
             setActiveModal(null);
             setEditingPost(null);
-          }} 
-          onSubmit={handlePostSubmit} 
+          }}
+          onSubmit={handlePostSubmit}
           userId={currentUser?.id}
           existingPost={editingPost}
         />
@@ -2050,12 +2170,12 @@ function handleNavigate(word){
           }}
           title={editingOpportunity ? "Edit Opportunity" : "Post New Opportunity"}
         >
-          <OpportunityForm 
+          <OpportunityForm
             onClose={() => {
               setActiveModal(null);
               setEditingOpportunity(null);
-            }} 
-            onSubmit={handleOpportunitySubmit} 
+            }}
+            onSubmit={handleOpportunitySubmit}
             userId={currentUser?.id}
             existingOpportunity={editingOpportunity}
           />
@@ -2075,8 +2195,8 @@ function handleNavigate(word){
         onClose={() => { setActiveModal(null); setEditingGroup(null); }}
         title={editingGroup ? "Edit Chat Group" : "Create Chat Group"}
       >
-        <ChatGroupForm 
-          onClose={() => { setActiveModal(null); setEditingGroup(null); }} 
+        <ChatGroupForm
+          onClose={() => { setActiveModal(null); setEditingGroup(null); }}
           onSubmit={handleCreateContent}
           userId={currentUser?.id}
           existingGroup={editingGroup}
@@ -2093,9 +2213,8 @@ function handleNavigate(word){
 
       {/* Change Password Slide Panel */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-full top-25 sm:w-96 bg-white dark:bg-gray-900 max-h-[80vh] rounded-md shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${
-          (showChangePassword) ? 'translate-x-150' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-full top-25 sm:w-96 bg-white dark:bg-gray-900 max-h-[80vh] rounded-md shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${(showChangePassword) ? 'translate-x-150' : '-translate-x-full'
+          }`}
       >
         {/* Panel Header */}
         <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 backdrop-blur-sm">
@@ -2118,8 +2237,8 @@ function handleNavigate(word){
 
         {/* Panel Content */}
         <div className="p-4 sm:p-6">
-          <ChangePasswordForm 
-            onClose={() => setShowChangePassword(false)} 
+          <ChangePasswordForm
+            onClose={() => setShowChangePassword(false)}
             userId={currentUser?.id}
           />
         </div>
