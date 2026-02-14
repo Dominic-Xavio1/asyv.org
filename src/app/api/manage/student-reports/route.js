@@ -9,8 +9,8 @@ export async function GET(request) {
         const studentId = searchParams.get('studentId');
 
         if (!studentId) {
-            return NextResponse.json({ 
-                error: "Student ID is required" 
+            return NextResponse.json({
+                error: "Student ID is required"
             }, { status: 400 });
         }
 
@@ -22,15 +22,15 @@ export async function GET(request) {
             [studentId]
         );
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
-            reports: result.rows 
+            reports: result.rows
         }, { status: 200 });
     } catch (err) {
         console.error("Error in GET /api/manage/student-reports:", err);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: "Internal Server Error",
-            details: err.message 
+            details: err.message
         }, { status: 500 });
     }
 }
@@ -40,9 +40,9 @@ export async function POST(request) {
     try {
         // Check superuser permissions
         const authCheck = await requireSuperuser(request);
-        if (!authCheck.success) {
-            return NextResponse.json({ 
-                error: authCheck.error 
+        if (!authCheck.ok) {
+            return NextResponse.json({
+                error: authCheck.error
             }, { status: authCheck.status });
         }
 
@@ -50,8 +50,8 @@ export async function POST(request) {
         const { student_id, title, description, report_file, report_type, requestingUserId } = body;
 
         if (!student_id || !title) {
-            return NextResponse.json({ 
-                error: "Student ID and title are required" 
+            return NextResponse.json({
+                error: "Student ID and title are required"
             }, { status: 400 });
         }
 
@@ -62,16 +62,16 @@ export async function POST(request) {
             [student_id, title, description || null, report_file || null, report_type || 'academic', requestingUserId]
         );
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
             message: "Student report created successfully",
             report: result.rows[0]
         }, { status: 201 });
     } catch (err) {
         console.error("Error in POST /api/manage/student-reports:", err);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: "Internal Server Error",
-            details: err.message 
+            details: err.message
         }, { status: 500 });
     }
 }
@@ -81,18 +81,19 @@ export async function PUT(request) {
     try {
         // Check superuser permissions
         const authCheck = await requireSuperuser(request);
-        if (!authCheck.success) {
-            return NextResponse.json({ 
-                error: authCheck.error 
+        if (!authCheck.ok) {
+            return NextResponse.json({
+                error: authCheck.error
             }, { status: authCheck.status });
         }
 
         const body = await request.json();
+        console.log("Body ", body);
         const { id, title, description, report_file, report_type, requestingUserId } = body;
 
         if (!id) {
-            return NextResponse.json({ 
-                error: "Report ID is required" 
+            return NextResponse.json({
+                error: "Report ID is required"
             }, { status: 400 });
         }
 
@@ -118,8 +119,8 @@ export async function PUT(request) {
         }
 
         if (updateFields.length === 0) {
-            return NextResponse.json({ 
-                error: "No fields to update" 
+            return NextResponse.json({
+                error: "No fields to update"
             }, { status: 400 });
         }
 
@@ -136,21 +137,21 @@ export async function PUT(request) {
         const result = await pool.query(updateQuery, updateValues);
 
         if (result.rows.length === 0) {
-            return NextResponse.json({ 
-                error: "Student report not found" 
+            return NextResponse.json({
+                error: "Student report not found"
             }, { status: 404 });
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
             message: "Student report updated successfully",
             report: result.rows[0]
         }, { status: 200 });
     } catch (err) {
         console.error("Error in PUT /api/manage/student-reports:", err);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: "Internal Server Error",
-            details: err.message 
+            details: err.message
         }, { status: 500 });
     }
 }
@@ -160,9 +161,9 @@ export async function DELETE(request) {
     try {
         // Check superuser permissions
         const authCheck = await requireSuperuser(request);
-        if (!authCheck.success) {
-            return NextResponse.json({ 
-                error: authCheck.error 
+        if (!authCheck.ok) {
+            return NextResponse.json({
+                error: authCheck.error
             }, { status: authCheck.status });
         }
 
@@ -170,8 +171,8 @@ export async function DELETE(request) {
         const id = searchParams.get('id');
 
         if (!id) {
-            return NextResponse.json({ 
-                error: "Report ID is required" 
+            return NextResponse.json({
+                error: "Report ID is required"
             }, { status: 400 });
         }
 
@@ -182,23 +183,23 @@ export async function DELETE(request) {
         );
 
         if (existingReport.rows.length === 0) {
-            return NextResponse.json({ 
-                error: "Student report not found" 
+            return NextResponse.json({
+                error: "Student report not found"
             }, { status: 404 });
         }
 
         // Delete the report
         await pool.query("DELETE FROM student_reports WHERE id = $1", [id]);
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
             message: "Student report deleted successfully"
         }, { status: 200 });
     } catch (err) {
         console.error("Error in DELETE /api/manage/student-reports:", err);
-        return NextResponse.json({ 
+        return NextResponse.json({
             error: "Internal Server Error",
-            details: err.message 
+            details: err.message
         }, { status: 500 });
     }
 }

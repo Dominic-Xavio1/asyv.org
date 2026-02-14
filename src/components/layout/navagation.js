@@ -2,7 +2,7 @@
 
 import React, { useState,useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard } from 'lucide-react';
+import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard, Compass, Flame, ChevronRight, Loader, ExternalLink } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
 import { ShimmeringText } from "@/components/animate-ui/primitives/texts/shimmering";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +32,8 @@ import toast from 'react-hot-toast'
 import {useRouter} from 'next/navigation'
 import { io } from "socket.io-client"
 import { useRef } from 'react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -41,6 +43,44 @@ export default function Navbar() {
   const socketRef = useRef(null);
   const {visible,setVisible,clearVisible} = chatDarkModeStore();
   const [isMobile, setIsMobile] = useState(false);
+  const [opportunitiesOpen, setOpportunitiesOpen] = useState(false);
+  const [trendingOpen, setTrendingOpen] = useState(false);
+  const [opportunities, setOpportunities] = useState([]);
+  const [trendingNews, setTrendingNews] = useState([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [trendingLoading, setTrendingLoading] = useState(false);
+
+  useEffect(() => {
+    if (!opportunitiesOpen) return;
+    setOpportunitiesLoading(true);
+    fetch('/api/opportunity')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.opportunities) setOpportunities(data.opportunities);
+        else setOpportunities([]);
+      })
+      .catch(() => setOpportunities([]))
+      .finally(() => setOpportunitiesLoading(false));
+  }, [opportunitiesOpen]);
+
+  useEffect(() => {
+    if (!trendingOpen) return;
+    setTrendingLoading(true);
+    fetch('/api/news')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.trending) {
+          const flat = [];
+          Object.entries(data.trending).forEach(([category, articles]) => {
+            (articles || []).forEach((a) => flat.push({ ...a, category }));
+          });
+          flat.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+          setTrendingNews(flat);
+        } else setTrendingNews([]);
+      })
+      .catch(() => setTrendingNews([]))
+      .finally(() => setTrendingLoading(false));
+  }, [trendingOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -418,12 +458,34 @@ switch(label){
                 </div>
               </div>
 
-              {/* Navigation Items */}
+              {/* Navigation Items - From Feed (not visible on mobile feed) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4 pb-2">From Feed</div>
+                <motion.div custom={0} initial="hidden" animate="visible" variants={itemVariants}>
+                  <div
+                    onClick={() => { setOpportunitiesOpen(true); setMobileMenuOpen(false); }}
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+                  >
+                    <Compass className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium">Opportunities</span>
+                    <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />
+                  </div>
+                </motion.div>
+                <motion.div custom={1} initial="hidden" animate="visible" variants={itemVariants}>
+                  <div
+                    onClick={() => { setTrendingOpen(true); setMobileMenuOpen(false); }}
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer"
+                  >
+                    <Flame className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium">Trending</span>
+                    <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />
+                  </div>
+                </motion.div>
+                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4 pt-4 pb-2">Pages</div>
                 {navItems.map(({ path, icon: Icon, label }, i) => (
                   <motion.div
                     key={`${path}-${i}`}
-                    custom={i}
+                    custom={i + 2}
                     initial="hidden"
                     animate="visible"
                     variants={itemVariants}
@@ -491,6 +553,102 @@ toast.success("Logout successfully!")
         </>
       )}
     </AnimatePresence>
+
+      {/* Opportunities Sheet - mobile */}
+      <Sheet open={opportunitiesOpen} onOpenChange={setOpportunitiesOpen}>
+        <SheetContent side="bottom" className="h-[90dvh] max-h-[90dvh] rounded-t-2xl p-0 flex flex-col">
+          <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <SheetTitle className="flex items-center gap-2">
+              <Compass className="h-5 w-5 text-orange-500" />
+              Opportunities
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="flex-1 p-4">
+            {opportunitiesLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader className="h-8 w-8 animate-spin text-orange-500" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Loading opportunities...</span>
+              </div>
+            ) : opportunities.length > 0 ? (
+              <div className="space-y-3 pb-6">
+                {opportunities.map((opp, index) => (
+                  <div
+                    key={opp.id}
+                    className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        index === 0 ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white' :
+                        index === 1 ? 'bg-neutral-300 dark:bg-gray-700 text-neutral-700 dark:text-gray-300' :
+                        'bg-neutral-200 dark:bg-gray-800 text-neutral-600 dark:text-gray-400'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">{opp.title}</p>
+                        {opp.op_type && (
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded text-xs font-medium">{opp.op_type}</span>
+                        )}
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">{opp.description}</p>
+                        {opp.deadline && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Deadline: {new Date(opp.deadline).toLocaleDateString()}</p>
+                        )}
+                        {opp.link && (
+                          <a href={opp.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                            <ExternalLink className="w-3 h-3" /> View / Apply
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No opportunities yet.</div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Trending Sheet - mobile */}
+      <Sheet open={trendingOpen} onOpenChange={setTrendingOpen}>
+        <SheetContent side="bottom" className="h-[90dvh] max-h-[90dvh] rounded-t-2xl p-0 flex flex-col">
+          <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <SheetTitle className="flex items-center gap-2">
+              <Flame className="h-5 w-5 text-orange-500" />
+              The International Brief
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="flex-1 p-4">
+            {trendingLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader className="h-8 w-8 animate-spin text-orange-500" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Loading news...</span>
+              </div>
+            ) : trendingNews.length > 0 ? (
+              <div className="space-y-3 pb-6">
+                {trendingNews.slice(0, 30).map((news, index) => {
+                  const shortDesc = (news.description || news.content || '').replace(/\[\+?\d* chars\]/g, '').trim().slice(0, 100);
+                  const categoryLabel = (news.category || '').charAt(0).toUpperCase() + (news.category || '').slice(1);
+                  return (
+                    <div
+                      key={`${news.title}-${index}`}
+                      className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">{news.title}</p>
+                      {shortDesc && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{shortDesc}...</p>}
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs">{categoryLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No trending news available.</div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
       <DialogDemo open={editProfileOpen} setOpen={setEditProfileOpen} />
     </>
   )

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { motion } from "framer-motion";
 import { signIn } from "next-auth/react";
 import { ChevronDown, Menu, X } from "lucide-react";
+import Link from "next/link"
 import {
   HoverCard,
   HoverCardContent,
@@ -21,8 +22,37 @@ const anne = "/anne.jpg";
 const jesi = "/asyvceo.webp";
 const learning = "/learning.jpg";
 const connect = "/connect_.webp";
+const inganji = '/images/inganji.webp'
+const cousin = '/images/cousin.webp'
 const win = "/win.jpg";
 const visitation = "/visitation.jpg";
+const navItems = [
+  {
+    title: "Home",
+    message: "Returning to our roots. Where the heart finds its rhythm and the family stays whole.",
+    image: win
+  },
+  {
+    title: "Connect",
+    message: "Bridging oceans and borders. Rediscover your brothers and sisters, no matter where life has led them.",
+    image: connect
+  },
+  {
+    title: "Stories",
+    message: "Your voice is our legacy. Share the journey you’ve walked and be the light for those following in your footsteps.",
+    image: ijabo
+  },
+  {
+    title: "Mentors",
+    message: "The wisdom of the Village continues. Guidance for your career, your craft, and your soul.",
+    image: cousin
+  },
+  {
+    title: "Events",
+    message: "Gathering under the same sky again. Moments of celebration, reunion, and shared purpose.",
+    image: inganji
+  }
+];
 
 // Animation variants
 const fadeInUp = {
@@ -103,8 +133,8 @@ export default function LandingPage({ onAuthSuccess }) {
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen">
-      <header aria-label="Site" className="box-border caret-transparent">
+    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen flex flex-col">
+      <header aria-label="Site" className="box-border caret-transparent flex-shrink-0">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -127,9 +157,9 @@ export default function LandingPage({ onAuthSuccess }) {
                   <nav aria-label="primary" className="static box-border caret-transparent h-auto md:relative md:h-full">
                     {/* Desktop Navigation */}
                     <ul className="[align-items:normal] box-border caret-transparent hidden h-full justify-normal list-none pl-0 md:flex md:items-center md:justify-space-between">
-                      {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
+                      {navItems.map((item, index) => (
                         <motion.li
-                          key={item}
+                          key={item.title}
                           initial={{ opacity: 0, y: -20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: index * 0.1 }}
@@ -141,7 +171,7 @@ export default function LandingPage({ onAuthSuccess }) {
                                 whileHover={{ scale: 1.05 }}
                                 className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group"
                               >
-                                <span>{item}</span>
+                                <span>{item.title}</span>
                                 <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
                               </motion.a>
                             </HoverCardTrigger>
@@ -154,8 +184,8 @@ export default function LandingPage({ onAuthSuccess }) {
                               >
                                 <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
                                   <Image
-                                    src={ceremony}
-                                    alt={item}
+                                    src={item.image}
+                                    alt={item.title}
                                     width={160}
                                     height={216}
                                     className="w-full h-full object-cover rounded-l-lg"
@@ -163,9 +193,9 @@ export default function LandingPage({ onAuthSuccess }) {
                                 </div>
                                 <div className="flex-1 p-4 flex flex-col justify-between">
                                   <div>
-                                    <h3 className="text-green-900 text-lg font-bold mb-2">{item}</h3>
+                                    <h3 className="text-green-900 text-lg font-bold mb-2">{item.title}</h3>
                                     <p className="text-neutral-700 text-sm leading-relaxed">
-                                      Discover the latest posts, updates, and moments from your fellow ASYV members.
+                                      {item.message}
                                     </p>
                                   </div>
                                   <motion.button
@@ -237,7 +267,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </motion.div>
       </header>
 
-      <main className="box-border caret-transparent pt-16 md:pt-0">
+      <main className="box-border caret-transparent pt-16 md:pt-0 flex-1 min-h-0">
         {/* Hero Section */}
         <section className="box-border caret-transparent">
           <div className="relative bg-transparent box-border caret-transparent list-none min-h-[150px] z-[1] overflow-hidden mx-auto">
@@ -322,7 +352,7 @@ export default function LandingPage({ onAuthSuccess }) {
                                 whileTap={{ scale: 0.95 }}
                                 className="relative bg-green-700 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu overflow-hidden group"
                               >
-                                <span className="relative z-10">Get Started</span>
+                                <Link href="/login" className="relative z-10">Get Started</Link>
                                 <motion.div
                                   initial={{ x: "-100%" }}
                                   animate={{ x: "100%" }}
@@ -561,7 +591,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </motion.section>
 
         {/* Mentorship Section */}
-        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20">
+        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20 mb-0 pb-6 md:pb-20">
           <div className="box-border caret-transparent px-4 md:px-[8.33333%]">
             <motion.div
               initial="hidden"
@@ -628,8 +658,7 @@ export default function LandingPage({ onAuthSuccess }) {
           </div>
         </section>
       </main>
-
-      <footer className="bg-gray-900 box-border caret-transparent w-full">
+ <footer className="bg-gray-900 box-border caret-transparent w-full">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -727,7 +756,7 @@ export default function LandingPage({ onAuthSuccess }) {
             </div>
           </div>
         </motion.div>
-      </footer>
+      </footer> 
     </div>
   );
 }

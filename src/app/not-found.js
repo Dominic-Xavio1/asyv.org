@@ -14,18 +14,18 @@ export default function NotFound() {
         </h1>
 
         <Image
-          src="/images/404.svg"
+          src="/404-25.png"
           alt="404"
           className="dark:hidden"
-          width={472}
-          height={152}
+          width={672}
+          height={352}
         />
         <Image
-          src="/images/error/404-dark.svg"
+          src="/404-25.png"
           alt="404"
           className="hidden dark:block"
-          width={472}
-          height={152}
+          width={672}
+          height={352}
         />
 
         <p className="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg">

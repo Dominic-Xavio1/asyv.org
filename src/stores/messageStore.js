@@ -1,86 +1,45 @@
-/**
- * Message Store for managing unread message counts and chat state
- */
-
 import { create } from 'zustand';
 
 export const useMessageStore = create((set, get) => ({
-  // Unread message counts by conversation ID
-  unreadCounts: {},
-  
-  // Total unread messages across all conversations
+  unreadCounts: {}, // Map of conversationId -> count
   totalUnreadCount: 0,
-  
-  // Last message in each conversation
-  lastMessages: {},
-  
-  // Update unread count for a specific conversation
-  updateUnreadCount: (conversationId, count) => {
-    set((state) => {
-      const newUnreadCounts = {
-        ...state.unreadCounts,
-        [conversationId]: count,
-      };
-      
-      // Calculate total unread count
-      const totalUnreadCount = Object.values(newUnreadCounts).reduce(
-        (total, count) => total + count, 
-        0
-      );
-      
-      return {
-        unreadCounts: newUnreadCounts,
-        totalUnreadCount,
-      };
-    });
+
+  // Set all unread counts (e.g., on initial load)
+  setUnreadCounts: (counts) => {
+    // counts is expected to be an object { conversationId: count }
+    const total = Object.values(counts).reduce((acc, curr) => acc + curr, 0);
+    set({ unreadCounts: counts, totalUnreadCount: total });
   },
-  
+
+  // Update a single conversation's count
+  updateUnreadCount: (conversationId, count) => {
+    const currentCounts = get().unreadCounts;
+    const newCounts = { ...currentCounts, [conversationId]: count };
+    const total = Object.values(newCounts).reduce((acc, curr) => acc + curr, 0);
+    set({ unreadCounts: newCounts, totalUnreadCount: total });
+  },
+
   // Increment unread count for a conversation
   incrementUnreadCount: (conversationId) => {
-    const currentCount = get().unreadCounts[conversationId] || 0;
-    get().updateUnreadCount(conversationId, currentCount + 1);
+    const currentCounts = get().unreadCounts;
+    const currentCount = currentCounts[conversationId] || 0;
+    const newCount = currentCount + 1;
+    const newCounts = { ...currentCounts, [conversationId]: newCount };
+    const total = Object.values(newCounts).reduce((acc, curr) => acc + curr, 0);
+    set({ unreadCounts: newCounts, totalUnreadCount: total });
   },
-  
-  // Mark conversation as read (reset unread count to 0)
-  markAsRead: (conversationId) => {
-    get().updateUnreadCount(conversationId, 0);
-  },
-  
-  // Update last message for a conversation
-  updateLastMessage: (conversationId, message) => {
-    set((state) => ({
-      lastMessages: {
-        ...state.lastMessages,
-        [conversationId]: message,
-      },
-    }));
-  },
-  
-  // Get unread count for a specific conversation
-  getUnreadCount: (conversationId) => {
-    return get().unreadCounts[conversationId] || 0;
-  },
-  
-  // Reset all unread counts
-  resetAllUnreadCounts: () => {
-    set({
-      unreadCounts: {},
-      totalUnreadCount: 0,
-    });
-  },
-  
-  // Initialize unread counts from server data
-  initializeUnreadCounts: (counts) => {
-    const totalUnreadCount = Object.values(counts).reduce(
-      (total, count) => total + count, 
-      0
-    );
-    
-    set({
-      unreadCounts: counts,
-      totalUnreadCount,
-    });
-  },
-}));
 
-export default useMessageStore;
+  // Mark all messages in a conversation as read
+  markAsRead: async (conversationId) => {
+    // Optimistically update UI
+    const currentCounts = get().unreadCounts;
+    if (!currentCounts[conversationId]) return; // Already 0 or undefined
+
+    const newCounts = { ...currentCounts, [conversationId]: 0 };
+    const total = Object.values(newCounts).reduce((acc, curr) => acc + curr, 0);
+    set({ unreadCounts: newCounts, totalUnreadCount: total });
+
+    // API call would happen in the component or we could add it here as a thunk
+    // For now, we assume the component calls the API and this updates the store
+  }
+}));

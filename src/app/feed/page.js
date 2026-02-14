@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { MessageCircle, Share2,ThumbsUp, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle, ExternalLink, X } from 'lucide-react';
+import { MessageCircle, Share2, ThumbsUp, Heart, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle, ExternalLink, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import Image from 'next/image';
 
@@ -350,7 +351,21 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
   const [liking, setLiking] = useState(false);
 
+  const [heartBurst, setHeartBurst] = useState(false);
+  const [hearts, setHearts] = useState([]);
 
+  const triggerHeartRain = () => {
+    const newHearts = Array.from({ length: 12 }).map((_, i) => ({
+      id: Date.now() + i, 
+      left: Math.random() * 80 + 10 + "%", 
+      duration: 1.5 + Math.random() * 1.5,
+      delay: Math.random() * 0.4,
+      size: 20 + Math.random() * 20 
+    }));
+  
+    setHearts(newHearts);
+    setTimeout(() => setHearts([]), 3500);
+  };
 
   useEffect(() => {
 
@@ -477,6 +492,10 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
         setLikes(data.likeCount);
 
         setIsLiked(data.isLiked);
+        // triggerHeartRain();
+        setHeartBurst(true);
+
+        setTimeout(() => setHeartBurst(false), 2600);
 
         if (onLikeUpdate) {
 
@@ -530,7 +549,46 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
   return (
 
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm">
+    <div className="relative bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm overflow-hidden">
+ <AnimatePresence>
+
+{heartBurst && (
+
+  <motion.div
+
+    initial={{ opacity: 0, scale: 0.3 }}
+
+    animate={{ opacity: 1, scale: 1.2 }}
+
+    exit={{ opacity: 0, scale: 1.4 }}
+
+    transition={{ duration: 0.35, ease: 'easeOut' }}
+
+    className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none bg-red-500/10 dark:bg-red-500/20"
+
+  >
+    <motion.div
+
+initial={{ scale: 0.5, opacity: 0.8 }}
+
+animate={{ scale: [0.5, 1.4, 1.2], opacity: [0.8, 1, 0.9] }}
+
+transition={{ duration: 0.5, ease: 'easeOut' }}
+
+className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
+
+>
+
+<Heart className="w-20 h-20 sm:w-24 sm:h-24 text-red-500 dark:text-red-400 fill-red-500 dark:fill-red-400" />
+
+</motion.div>
+
+</motion.div>
+
+)}
+
+
+      </AnimatePresence>
 
       <div className="p-4">
 
@@ -667,17 +725,10 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
             className="flex items-center gap-2 text-gray-200 border borde-gray-100 py-1 px-2 rounded-sm bg-green-800 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
 
           >
-
             <MessageCircle className="w-4 h-4 rounded-sm" />
-
             <span className="text-gray-200 dark:text-gray-200">{commentCount}</span>
-
           </button>
-
-          
-
           <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-800 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
-
             <Share2 className="w-5 h-5" />
 
             <span className="text-gray-800 dark:text-gray-200">{post.shares}</span>

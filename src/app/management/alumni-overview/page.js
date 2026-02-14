@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import toast from 'react-hot-toast';
 
 function StatCard({ icon: Icon, title, value, subtitle, accent = 'default' }) {
@@ -71,6 +78,18 @@ export default function AlumniOverviewPage() {
     filteredByGrade: false,
     gradeId: null,
   });
+
+  const [activeModal, setActiveModal] = useState(null); // 'education' or 'employment'
+  const [modalData, setModalData] = useState([]);
+
+  const openModal = (type) => {
+    setActiveModal(type);
+    if (type === 'education') {
+      setModalData(stats.continuedEducationStudents || []);
+    } else if (type === 'employment') {
+      setModalData(stats.employedStudents || []);
+    }
+  };
 
   const fetchStats = useCallback(
     async (gradeId = '') => {
@@ -128,8 +147,8 @@ export default function AlumniOverviewPage() {
     try {
       const user = JSON.parse(fullInfo);
       setRequestingUserId(String(user.id));
-      setIsSuperuser(user.is_superuser === true || user.is_crc===true);
-      console.log("Is supersuser ",isSuperuser);
+      setIsSuperuser(user.is_superuser === true || user.is_crc === true);
+      console.log("Is supersuser ", isSuperuser);
     } catch (e) {
       router.push('/login');
     }
@@ -160,8 +179,15 @@ export default function AlumniOverviewPage() {
 
   const selectedGrade = grades.find((g) => String(g.id) === selectedGradeId);
 
+  /* ... existing code ... */
+
+
+
+  /* ... existing code ... */
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-20 pb-12 px-4">
+      {/* ... header ... */}
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
@@ -183,7 +209,7 @@ export default function AlumniOverviewPage() {
           </p>
         </div>
 
-        {isSuperuser  && grades.length > 0 && (
+        {isSuperuser && grades.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Filter className="h-4 w-4" />
@@ -241,20 +267,24 @@ export default function AlumniOverviewPage() {
                 }
                 accent="default"
               />
-              <StatCard
-                icon={BookOpen}
-                title="Continued Education"
-                value={stats.continuedEducation}
-                subtitle={`${stats.continuedEducationPct}% of graduates`}
-                accent="blue"
-              />
-              <StatCard
-                icon={Briefcase}
-                title="Employed"
-                value={stats.employed}
-                subtitle={`${stats.employedPct}% of graduates`}
-                accent="amber"
-              />
+              <div onClick={() => openModal('education')} className="cursor-pointer">
+                <StatCard
+                  icon={BookOpen}
+                  title="Continued Education"
+                  value={stats.continuedEducation}
+                  subtitle={`${stats.continuedEducationPct}% of graduates`}
+                  accent="blue"
+                />
+              </div>
+              <div onClick={() => openModal('employment')} className="cursor-pointer">
+                <StatCard
+                  icon={Briefcase}
+                  title="Employed"
+                  value={stats.employed}
+                  subtitle={`${stats.employedPct}% of graduates`}
+                  accent="amber"
+                />
+              </div>
               <StatCard
                 icon={TrendingUp}
                 title="With Outcome Recorded"
@@ -282,7 +312,10 @@ export default function AlumniOverviewPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg bg-muted/50 p-4">
+                  <div
+                    className="rounded-lg bg-muted/50 p-4 cursor-pointer hover:bg-muted/70 transition-colors"
+                    onClick={() => openModal('education')}
+                  >
                     <p className="text-sm font-medium text-muted-foreground">
                       Further Education Rate
                     </p>
@@ -294,7 +327,10 @@ export default function AlumniOverviewPage() {
                       graduates continued to higher education
                     </p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-4">
+                  <div
+                    className="rounded-lg bg-muted/50 p-4 cursor-pointer hover:bg-muted/70 transition-colors"
+                    onClick={() => openModal('employment')}
+                  >
                     <p className="text-sm font-medium text-muted-foreground">
                       Employment Rate
                     </p>
@@ -312,6 +348,45 @@ export default function AlumniOverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Student List Modal */}
+      <Dialog open={!!activeModal} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {activeModal === 'education' ? 'Students in Further Education' : 'Employed Students'}
+            </DialogTitle>
+            <DialogDescription>
+              List of alumni {activeModal === 'education' ? 'continuing their education' : 'currently employed'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto mt-4 pr-2">
+            {modalData.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No students found for this category.</p>
+            ) : (
+              <div className="space-y-4">
+                {modalData.map((student, idx) => (
+                  <div key={student.id || idx} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                    <div>
+                      <h4 className="font-semibold text-sm">
+                        {student.first_name} {student.rwandan_name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">{student.email}</p>
+                    </div>
+                    {(student.institution || student.company) && (
+                      <div className="text-right">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                          {activeModal === 'education' ? student.institution : student.company}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

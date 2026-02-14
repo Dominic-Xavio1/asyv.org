@@ -107,7 +107,7 @@ const MobileBottomNav = () => {
                   whileTap={{ scale: 0.85 }}
                   className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all duration-300 relative mobile-nav-item ${
                     active
-                      ? 'text-blue-600 dark:text-blue-400 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/40 dark:to-blue-800/20 shadow-md'
+                      ? 'text-orange-600 dark:text-orange-400 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/40 dark:to-orange-800/20 shadow-md'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'
                   }`}
                 >
@@ -133,7 +133,7 @@ const MobileBottomNav = () => {
                   {active && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute -bottom-2 w-1.5 h-1.5 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 rounded-full shadow-lg"
+                      className="absolute -bottom-2 w-1.5 h-1.5 bg-gradient-to-r from-orange-600 to-purple-600 dark:from-orange-400 dark:to-purple-400 rounded-full shadow-lg"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
