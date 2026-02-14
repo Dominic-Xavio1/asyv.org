@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -88,14 +89,14 @@ export default function KidDetailPage() {
         throw new Error(err.error || 'Failed to fetch kid details');
       }
       const json = await res.json();
-      
+
       // Fetch reports separately
       const reportsRes = await fetch(
         `/api/manage/student-reports?studentId=${kidId}`,
         { headers: { 'x-user-id': requestingUserId } }
       );
       const reportsData = reportsRes.ok ? await reportsRes.json() : { reports: [] };
-      
+
       setData({
         kid: json.kid,
         family: json.family,
@@ -396,7 +397,7 @@ export default function KidDetailPage() {
 
   const handleFileUpload = async (file) => {
     if (!file) return;
-    
+
     setUploadingFile(true);
     try {
       const formData = new FormData();
@@ -418,7 +419,7 @@ export default function KidDetailPage() {
         ...prev,
         report_file: result.mediaUrl
       }));
-      
+
       toast.success('File uploaded successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to upload file');
@@ -437,10 +438,11 @@ export default function KidDetailPage() {
       };
 
       if (editingReport) {
-        const res = await fetch(`/api/manage/student-reports/${editingReport.id}`, {
+        console.log("Editing report ", editingReport);
+        const res = await fetch(`/api/manage/student-reports`, {
           method: 'PUT',
           headers: authHeaders(requestingUserId),
-          body: JSON.stringify(payload),
+          body: JSON.stringify(editingReport),
         });
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || 'Failed to update report');
@@ -455,7 +457,7 @@ export default function KidDetailPage() {
         if (!res.ok) throw new Error(result.error || 'Failed to add report');
         toast.success('Report added successfully');
       }
-      
+
       setReportDialogOpen(false);
       fetchDetails();
     } catch (err) {
@@ -466,9 +468,9 @@ export default function KidDetailPage() {
   const deleteReport = async (id) => {
     if (!confirm('Delete this report?')) return;
     try {
-      const res = await fetch(`/api/manage/student-reports/${id}?requestingUserId=${requestingUserId}`, {
+      const res = await fetch(`/api/manage/student-reports?id=${id}`, {
         method: 'DELETE',
-        headers: { 'x-user-id': requestingUserId },
+        headers: authHeaders(requestingUserId),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Failed to delete');
@@ -649,9 +651,9 @@ export default function KidDetailPage() {
                         )}
                         {report.report_file && (
                           <div className="flex items-center gap-2">
-                            <a 
-                              href={report.report_file} 
-                              target="_blank" 
+                            <a
+                              href={report.report_file}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
                             >
@@ -812,7 +814,7 @@ export default function KidDetailPage() {
             <div className="space-y-2">
               <Label>Grade</Label>
               {/* {kidForm.family_id != null ? String(kidForm.family_id) : 'none'} */}
-              <Select value={familyForm.grade_id != null? String(familyForm.grade_id):"none"} onValueChange={(v) => setFamilyForm((f) => ({ ...f, grade_id: v === null? null : Number(v) }))}>
+              <Select value={familyForm.grade_id != null ? String(familyForm.grade_id) : "none"} onValueChange={(v) => setFamilyForm((f) => ({ ...f, grade_id: v === null ? null : Number(v) }))}>
                 <SelectTrigger className="bg-white dark:bg-gray-800">
                   <SelectValue placeholder="Select grade" />
                 </SelectTrigger>
@@ -874,7 +876,7 @@ export default function KidDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>Combination</Label>
-              <Select value={academicForm.combination_id !=null?String(academicForm.combination_id):'none'} onValueChange={(v) => setAcademicForm((f) => ({ ...f, combination_id: v === null? null : Number(v) }))}>
+              <Select value={academicForm.combination_id != null ? String(academicForm.combination_id) : 'none'} onValueChange={(v) => setAcademicForm((f) => ({ ...f, combination_id: v === null ? null : Number(v) }))}>
                 <SelectTrigger className="bg-white dark:bg-gray-800">
                   <SelectValue placeholder="Select combination" />
                 </SelectTrigger>
@@ -905,7 +907,7 @@ export default function KidDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
-    {/* Report Add/Edit Dialog */}
+      {/* Report Add/Edit Dialog */}
       <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
         <DialogContent className="max-w-2xl bg-white dark:bg-gray-900">
           <DialogHeader>
@@ -917,14 +919,27 @@ export default function KidDetailPage() {
           <form onSubmit={submitReport} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Report Title *</Label>
-              <Input
+              {/* <Input
                 id="title"
                 required
                 value={reportForm.title}
                 onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
                 placeholder="e.g., Academic Performance Report"
                 className="bg-white dark:bg-gray-800"
-              />
+              /> */}
+              <Select
+                value={reportForm.title}
+                onValueChange={(value) => setReportForm({ ...reportForm, title: value })}
+              >
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="s4">S4 Results</SelectItem>
+                  <SelectItem value="s5">S5 Results</SelectItem>
+                  <SelectItem value="s6">S6 Results</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="report_type">Report Type</Label>
@@ -979,9 +994,9 @@ export default function KidDetailPage() {
               </div>
               {reportForm.report_file && (
                 <div className="mt-2">
-                  <a 
-                    href={reportForm.report_file} 
-                    target="_blank" 
+                  <a
+                    href={reportForm.report_file}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
                   >

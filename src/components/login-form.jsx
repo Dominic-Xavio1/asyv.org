@@ -646,6 +646,7 @@ export function LoginForm({
                       <rect x="20" y="92" width="140" height="28" rx="6" fill="#34D399" />
 
                     </svg>
+                    {/* <img src="/asyv.png" alt="ASYV" className="mx-auto mb-4 max-w-full h-auto" /> */}
 
                     <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Welcome to ASYV</h4>
 

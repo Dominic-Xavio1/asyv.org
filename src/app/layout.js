@@ -1,10 +1,12 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/layout/navagation";
+import NotificationManager from '@/components/NotificationManager'
+import ChatNotificationManager from '@/components/ChatNotificationManager'
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { FireworksBackground } from "@/components/animate-ui/components/backgrounds/fireworks"
 import { Providers } from "./provider"
-import {GoogleProvider} from '@/components/providers'
+import { GoogleProvider } from '@/components/providers'
 import { Toaster } from 'react-hot-toast'
 import ThemeProvider from '@/lib/theme'
 import AuthProvider from '@/components/auth/AuthProvider'
@@ -43,18 +45,20 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen`}
       >
         <GoogleProvider>
-        <Providers>
-          <ThemeProvider>
-            <AuthProvider>
-              <Toaster position="top-right" />
-              <NavBar />
-              <AuthGate />
-              {children}
-              <MobileBottomNav />
-              {/* <FireworksBackground /> */}
-            </AuthProvider>
-          </ThemeProvider>
-        </Providers>
+          <Providers>
+            <ThemeProvider>
+              <AuthProvider>
+                <AuthGate />
+                <Toaster position="top-right" />
+                <NavBar />
+                <NotificationManager />
+                <ChatNotificationManager />
+                {children}
+                <MobileBottomNav />
+                {/* <FireworksBackground /> */}
+              </AuthProvider>
+            </ThemeProvider>
+          </Providers>
         </GoogleProvider>
       </body>
     </html>

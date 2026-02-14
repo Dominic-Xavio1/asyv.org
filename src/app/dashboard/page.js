@@ -1769,7 +1769,6 @@ export default function Dashboard() {
                       }}
                     >
                       <div className=" h-6 w-6 flex">
-                        <span className="absolute h-full w-full h-5 w-5 animate-ping rounded-full bg-gray-400 opacity-75"></span>
                         <ArrowLeft className=" h-5 w-5" />
                       </div>
                     </motion.div>
@@ -1957,7 +1956,8 @@ export default function Dashboard() {
           <div className="space-y-4 sm:space-y-6">
             {/* My Posts */}
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6"
+              >
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
                   My Posts ({posts.length})
@@ -1976,7 +1976,8 @@ export default function Dashboard() {
                   <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
                 </div>
               ) : posts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
+                >
                   {posts.map((post) => (
                     <ContentCard
                       key={post.created_at}
@@ -2063,6 +2064,7 @@ export default function Dashboard() {
               ) : (
                 userContent.articles.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {console.log("articles", userContent.articles)}
                     {userContent.articles.map((article) => (
                       <ContentCard key={article.id} item={article} onDelete={(id) => handleDeleteContent(id, 'article')} />
                     ))}

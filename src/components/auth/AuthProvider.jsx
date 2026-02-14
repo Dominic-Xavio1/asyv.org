@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 const AuthContext = createContext(null)
 
@@ -37,16 +38,19 @@ export function AuthProvider({ children }) {
     setToken(newToken)
   }
 
-  const logout = () => {
+  const logout = async () => {
+    setToken(null)
     try {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
       localStorage.removeItem("fullInfo")
       localStorage.removeItem("second_name")
       localStorage.removeItem("theme")
-    } catch (e) { }
-    setToken(null)
-    router.push("/login")
+      await signOut({ redirect: false })
+    } catch (e) {
+      // ignore signOut errors; we still redirect
+    }
+    router.push("/")
   }
 
   const value = {

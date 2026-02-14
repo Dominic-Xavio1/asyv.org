@@ -10,6 +10,15 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request) {
   let userId = request.headers.get("x-user-id");
+  let totalGraduates;
+  let continuedEducation;
+  let employed;
+  let withEitherOutcome;
+  let continuedEducationPct;
+  let employedPct;
+  let withEitherOutcomePct;
+  let continuedEducationStudents;
+  let employedStudents;
   if (!userId) {
     const { searchParams } = new URL(request.url);
     userId = searchParams.get("requestingUserId");
@@ -38,10 +47,6 @@ export async function GET(request) {
     // Only apply grade filter if superuser and gradeId provided
     const filterByGrade = isSuperuser && gradeId;
 
-    let totalGraduates;
-    let continuedEducation;
-    let employed;
-
     if (filterByGrade) {
       // Alumni whose grade is resolved through family: user -> kid -> family -> grade
       const baseFrom = `
@@ -55,38 +60,50 @@ export async function GET(request) {
         [gradeId]
       );
       const feRes = await pool.query(
-        `SELECT COUNT(DISTINCT u.id) AS count ${baseFrom}
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+          (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution
+         ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)`,
         [gradeId]
       );
       const empRes = await pool.query(
-        `SELECT COUNT(DISTINCT u.id) AS count ${baseFrom}
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+          (SELECT company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) as company
+         ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_employment e WHERE e.alumn_id = u.id)`,
         [gradeId]
       );
+
       totalGraduates = parseInt(totalRes.rows[0]?.count ?? 0, 10);
-      continuedEducation = parseInt(feRes.rows[0]?.count ?? 0, 10);
-      employed = parseInt(empRes.rows[0]?.count ?? 0, 10);
+      continuedEducationStudents = feRes.rows;
+      continuedEducation = continuedEducationStudents.length;
+      employedStudents = empRes.rows;
+      employed = employedStudents.length;
     } else {
       // Global: all alumni
       const totalRes = await pool.query(
         "SELECT COUNT(*) AS count FROM api_user WHERE is_alumni = true"
       );
       const feRes = await pool.query(
-        `SELECT COUNT(DISTINCT u.id) AS count
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+         (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution
          FROM api_user u
          WHERE u.is_alumni = true
          AND EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)`
       );
       const empRes = await pool.query(
-        `SELECT COUNT(DISTINCT u.id) AS count
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+         (SELECT company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) as company
          FROM api_user u
          WHERE u.is_alumni = true
          AND EXISTS (SELECT 1 FROM api_employment e WHERE e.alumn_id = u.id)`
       );
+
       totalGraduates = parseInt(totalRes.rows[0]?.count ?? 0, 10);
-      continuedEducation = parseInt(feRes.rows[0]?.count ?? 0, 10);
-      employed = parseInt(empRes.rows[0]?.count ?? 0, 10);
+      continuedEducationStudents = feRes.rows;
+      continuedEducation = continuedEducationStudents.length;
+      employedStudents = empRes.rows;
+      employed = employedStudents.length;
     }
 
     // Count distinct alumni with either further education OR employment
@@ -133,6 +150,8 @@ export async function GET(request) {
       continuedEducationPct,
       employedPct,
       withEitherOutcomePct,
+      continuedEducationStudents, // Return list
+      employedStudents,           // Return list
       filteredByGrade: filterByGrade,
       gradeId: filterByGrade ? gradeId : null,
     });
