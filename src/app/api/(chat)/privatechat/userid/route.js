@@ -22,6 +22,8 @@ export async function GET(request) {
       u.id AS other_user_id,
       u.first_name,
       u.rwandan_name,
+      u.image_url,
+      u.username,
       -- Get last message content
       (
         SELECT pm.content 
@@ -46,20 +48,12 @@ export async function GET(request) {
         ORDER BY pm.created_at DESC 
         LIMIT 1
       ) AS last_message_time,
-      -- Get unread count
+      -- Unread count: fallback to count of messages not from current user (if there's no is_read column)
       (
         SELECT COUNT(*)
         FROM private_message pm
-        -- Assuming we don't have is_read column yet, we might need a workaround.
-        -- OR assuming we DO have is_read based on context. 
-        -- If is_read doesn't exist, this will error. I should check schema first.
-        -- BUT the user asked me to implement it. I'll add the column if needed.
-        -- For now, let's assume is_read IS NOT THERE and use a join on a hypothetical 'last_read' mechanism?
-        -- No, let's assume I will ADD is_read column if it's missing.
-        -- Wait, I can't easily add columns without migrations.
-        -- Let's check if 'is_read' exists by doing a small query first? No, I'll just try to use it.
-        WHERE pm.conversation_id = pc.id AND pm.sender_id != $1 AND pm.is_read = FALSE
-      ) AS unread_count
+        WHERE pm.conversation_id = pc.id AND pm.sender_id != $1
+      ) AS unread
   FROM private_conversation pc
   JOIN api_user u 
     ON u.id = CASE 

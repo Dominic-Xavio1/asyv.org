@@ -133,8 +133,8 @@ export default function LandingPage({ onAuthSuccess }) {
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen flex flex-col">
-      <header aria-label="Site" className="box-border caret-transparent flex-shrink-0">
+    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen">
+      <header aria-label="Site" className="box-border caret-transparent">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -267,7 +267,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </motion.div>
       </header>
 
-      <main className="box-border caret-transparent pt-16 md:pt-0 flex-1 min-h-0">
+      <main className="box-border caret-transparent pt-16 md:pt-0">
         {/* Hero Section */}
         <section className="box-border caret-transparent">
           <div className="relative bg-transparent box-border caret-transparent list-none min-h-[150px] z-[1] overflow-hidden mx-auto">
@@ -591,7 +591,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </motion.section>
 
         {/* Mentorship Section */}
-        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20 mb-0 pb-6 md:pb-20">
+        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20">
           <div className="box-border caret-transparent px-4 md:px-[8.33333%]">
             <motion.div
               initial="hidden"
@@ -658,7 +658,8 @@ export default function LandingPage({ onAuthSuccess }) {
           </div>
         </section>
       </main>
- <footer className="bg-gray-900 box-border caret-transparent w-full">
+
+      {/* <footer className="bg-gray-900 box-border caret-transparent w-full">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -756,7 +757,7 @@ export default function LandingPage({ onAuthSuccess }) {
             </div>
           </div>
         </motion.div>
-      </footer> 
+      </footer> */}
     </div>
   );
 }

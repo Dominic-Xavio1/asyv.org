@@ -65,7 +65,7 @@ const MobileBottomNav = () => {
     },
   ];
   const menuItems = [
-    { id: 'home', icon: Home, label: 'Dashboard', href: '/dashboard' },
+    { id: 'home', icon: Home, label: 'Dashboard', href: '/feed' },
     { id: 'notifications', icon: User, label: 'Dashboard', badge: unreadCount, href: '/dashboard' },
     { id: 'feed', icon: LayoutList, label: 'Feed', href: '/feed' },
     { id: 'alumni_overview', icon: BarChart3, label: 'Alumni Overview', href: '/management/alumni-overview' },
