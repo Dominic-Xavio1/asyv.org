@@ -11,6 +11,7 @@ import { Toaster } from 'react-hot-toast'
 import ThemeProvider from '@/lib/theme'
 import AuthProvider from '@/components/auth/AuthProvider'
 import AuthGate from '@/components/auth/AuthGate'
+import AIChatWidget from '@/components/chat/AIChatWidget'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +56,7 @@ export default function RootLayout({ children }) {
                 <ChatNotificationManager />
                 {children}
                 <MobileBottomNav />
+                <AIChatWidget />
                 {/* <FireworksBackground /> */}
               </AuthProvider>
             </ThemeProvider>
