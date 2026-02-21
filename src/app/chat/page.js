@@ -5,19 +5,11 @@ import { io } from "socket.io-client"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import  UserSearchDialog from "./userSearchBox"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuIndicator,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-} from "@/components/ui/navigation-menu"
+
 import toast from "react-hot-toast"
 import {
   Send,
@@ -25,12 +17,12 @@ import {
   Video,
   MoreVertical,
   Search,
-  Smile,
+  PartyPopper,
   ImageIcon,
   MessageSquare,
   FileText,
   Mic,
-  Film,
+  Lightbulb,
   ArrowLeft,
   X,
   Users,
@@ -45,7 +37,6 @@ import {
   Camera,
   Music,
 } from "lucide-react"
-import ComboboxPopover from "./combobox"
 import GroupMessageInput from "./GroupMessageInput"
 import dynamic from 'next/dynamic';
 import { useMessageStore } from '@/stores/messageStore';
@@ -224,14 +215,17 @@ export default function ChatPage() {
   const {
     unreadCounts,
     totalUnreadCount,
+    setUnreadCounts,
     updateUnreadCount,
     markAsRead,
-    incrementUnreadCount
+    incrementUnreadCount,
+    addParticipant,
+    removeParticipant
   } = useMessageStore();
 
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
-
+const [controlOpen,setControlOpen]= useState(false)
   const today = new Date();
   const formatted = today.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const result = `Today, ${formatted}`;
@@ -351,7 +345,19 @@ export default function ChatPage() {
     if (chat?.id) {
       const conversationId = String(chat.id)
       const isGroupChat = chat.isGroup || chat.type === 'group'
+      // Update store optimistically and persist to DB
       markAsRead(conversationId)
+      if (currentUser?.id) {
+        fetch("/api/chat/mark-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            conversationId,
+            conversationType: isGroupChat ? "group" : "private",
+          }),
+        }).catch((err) => console.error("Failed to mark conversation as read:", err))
+      }
       if (socket) {
         if (socket.connected) {
           if (isGroupChat) socket.emit("join_group", { groupId: conversationId })
@@ -416,8 +422,6 @@ export default function ChatPage() {
     } catch (err) { console.error("Error reading current user from localStorage:", err) }
   }, [])
 
-  const [placeholderOpen, setPlaceholderOpen] = useState(false)
-
   const startConversationWithUser = useCallback(async (user) => {
     if (!currentUser?.id || !user?.id) return
     try {
@@ -439,7 +443,7 @@ export default function ChatPage() {
     } catch (err) {
       console.error("Error starting conversation", err)
     } finally {
-      try { setPlaceholderOpen(false) } catch {}
+      try { setControlOpen(false) } catch {}
     }
   }, [currentUser, mapConversationToChat, handleChatSelect])
 
@@ -474,13 +478,20 @@ export default function ChatPage() {
           return timeB - timeA
         })
         setChats(allChats)
+        // Sync unread counts from API into store for badge display
+        const counts = {}
+        allChats.forEach((c) => {
+          const n = parseInt(c.unread || 0, 10)
+          if (n > 0) counts[c.id] = n
+        })
+        setUnreadCounts(counts)
       } catch (err) {
         console.error("Error loading conversations", err)
         setChats([])
       } finally { setIsLoadingChats(false) }
     }
     loadConversations()
-  }, [currentUser, mapConversationToChat, mapGroupToChat, loadMessagesForConversation, selectedChat])
+  }, [currentUser, mapConversationToChat, mapGroupToChat])//this were once in this dependency  loadMessagesForConversation, selectedChat
 
   const loadOnlineUsers = useCallback(async () => {
     if (!currentUser?.id) return
@@ -1140,11 +1151,9 @@ export default function ChatPage() {
                         </button>
                       )}
                     </div>
-                    <ComboboxPopover open={placeholderOpen} onClose={setOpen} onSelect={startConversationWithUser}>
-                      <Button variant="outline" size="icon" className={`h-9 w-9 border ${borderColor} ${hoverBg} flex-shrink-0`}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </ComboboxPopover>
+                    <Button variant="outline" className={`h-9 border ${borderColor} ${hoverBg} flex-shrink-0`} onClick={() => setControlOpen(!controlOpen)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                    </Button>
                   </div>
                 </div>
 
@@ -1160,11 +1169,9 @@ export default function ChatPage() {
                       <p className={`text-sm ${textMuted}`}>
                         {searchQuery ? `No chats for "${searchQuery}"` : "No conversations yet"}
                       </p>
-                      <ComboboxPopover onSelect={startConversationWithUser} open={placeholderOpen} onClose={setPlaceholderOpen}>
-                        <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white text-sm">
-                          Start new conversation
-                        </Button>
-                      </ComboboxPopover>
+                      <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white text-sm" onClick={() => setControlOpen(!controlOpen)}>
+                        Start Conversation
+                      </Button>
                     </div>
                   ) : (
                     <div className="p-2 space-y-1">
@@ -1224,7 +1231,7 @@ export default function ChatPage() {
                 ${mobileView === "chat" ? "slide-in-right" : "slide-out-right pointer-events-none"}
               `}
             >
-              <Card className={`h-full ${cardBg} ${borderColor} border flex flex-col`}>
+              <Card className={`h-[790px] ${cardBg} ${borderColor} border flex flex-col`}>
                 {!selectedChat ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
@@ -1298,11 +1305,9 @@ export default function ChatPage() {
                         </button>
                       )}
                     </div>
-                    <ComboboxPopover open={placeholderOpen} onClose={setOpen} onSelect={startConversationWithUser}>
-                      <Button variant="outline" size="icon" className={`border ${borderColor} ${hoverBg}`}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </ComboboxPopover>
+                    <Button variant="outline" className={`border ${borderColor} ${hoverBg} hover:cursor-pointer`} onClick={() => setControlOpen(!controlOpen)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                    </Button>
                   </div>
                   {searchQuery && (
                     <p className={`text-xs ${textMuted} mt-2`}>
@@ -1323,11 +1328,9 @@ export default function ChatPage() {
                       <p className={textMuted}>
                         {searchQuery ? `No chats found for "${searchQuery}"` : "No conversations yet"}
                       </p>
-                      <ComboboxPopover onSelect={startConversationWithUser} open={placeholderOpen} onClose={setPlaceholderOpen}>
-                        <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white">
-                          Start new conversation
-                        </Button>
-                      </ComboboxPopover>
+                      <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white" onClick={() => setControlOpen(!controlOpen)}>
+                        Start Conversation
+                      </Button>
                     </div>
                   ) : (
                     <div className="p-2 space-y-2 max-w-[330px]">
@@ -1340,11 +1343,9 @@ export default function ChatPage() {
                           <div className="flex items-start gap-3">
                             <div className="relative flex-shrink-0">
                               <Avatar className="h-12 w-12">
-                                {console.log("Chat data ",chat.user) }
                                 <AvatarImage src={chat.user.avatar || "/default.png"} alt={chat.user.name} />
                                 <AvatarFallback className={`${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}>
                                   {chat.type === 'group' ? <Users className="h-6 w-6" /> : chat.user.name.split(" ").map((n) => n[0]).join("")}
-                                  {console.log("Chat data ",chat.type!=='group')}
                                 </AvatarFallback>
                               </Avatar>
                               {onlineUsers.some(user => user.id === chat.user.id) && (
@@ -1388,12 +1389,19 @@ export default function ChatPage() {
                     </div>
                     <h3 className={`text-xl font-semibold ${textColor} mb-2`}>No conversation selected</h3>
                     <p className={`text-sm ${textMuted} mb-6`}>Select a conversation or start a new one to begin messaging.</p>
-                    <ComboboxPopover onSelect={startConversationWithUser} open={placeholderOpen} onClose={setPlaceholderOpen}>
-                      <Button className="bg-green-500 hover:bg-green-600 text-white">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Start conversation
-                      </Button>
-                    </ComboboxPopover>
+                    <Button className="bg-green-500 hover:bg-green-600 text-white"
+                    onClick={()=>{
+                      setControlOpen(!controlOpen)
+                    }}  
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Start Conversation
+                    </Button>
+                    <UserSearchDialog
+                    open={controlOpen}
+                    onOpenChange={setControlOpen}
+                    onSelect={startConversationWithUser}
+                    />
                   </div>
                 ) : (
                   <MobileChatContent
@@ -1539,11 +1547,35 @@ function MobileChatContent({
               <Search className={`h-10 w-10 ${textMuted} mx-auto mb-3`} />
               <p className={textMuted}>No messages found for "{searchQuery}"</p>
             </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className={`h-12 w-12 ${textMuted} mx-auto mb-4`} />
+              <h3 className={`text-lg font-semibold ${textColor} mb-2`}>No messages yet</h3>
+              <p className={`text-sm ${textMuted} mb-6`}>
+                Start the conversation with {isGroup ? 'the group' : selectedChat?.user?.name || 'this person'}
+              </p>
+              <div className={`flex flex-col items-center gap-3 ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl p-4 max-w-sm mx-auto`}>
+                <div className={`text-xs ${textMuted} text-center`}>
+                  <p className="mb-2 flex items-center gap-1"><Lightbulb className="w-4 h-4 text-yellow-500"/> <span>Tips for starting a great conversation:</span></p>
+                  <ul className="text-left space-y-1">
+                    <li>• Ask about their day or interests</li>
+                    <li>• Share something interesting you learned</li>
+                    <li>• Send a friendly greeting</li>
+                    <li className="flex gap-1">• <span>Use emojis to express yourself </span><PartyPopper className="w-4 h-4 text-purple-500"/></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               {(searchQuery ? filteredMessages : messages).map((message) => (
-                <div key={message.id}
-                  className={`flex items-end gap-2 group ${message.isOwn ? "flex-row-reverse" : ""}`}>
+                <div
+                  key={message.id}
+                  data-conversation-id={selectedChat?.id}
+                  data-message-id={message.id}
+                  data-is-own={message.isOwn}
+                  className={`flex items-end gap-2 group ${message.isOwn ? "flex-row-reverse" : ""}`}
+                >
                   {!message.isOwn && (
                     <Avatar className="h-7 w-7 flex-shrink-0">
                       <AvatarImage src={selectedChat?.user?.avatar || "/default.png"} alt={selectedChat?.user?.name} />
@@ -1557,7 +1589,8 @@ function MobileChatContent({
                       rounded-2xl px-3 py-2 break-words transition-all duration-200
                       ${message.isOwn
                         ? `${messageBgOwn} text-white rounded-br-sm`
-                        : `${messageBgOther} ${textColor} rounded-bl-sm border ${borderColor}`}
+                        : `${messageBgOther} ${textColor} rounded-bl-sm border ${borderColor}`
+                      }
                     `}>
                       {message.mediaUrl && (
                         <MediaMessage mediaUrl={message.mediaUrl} mediaType={message.mediaType}
@@ -1576,14 +1609,15 @@ function MobileChatContent({
                           <p className="text-sm break-words">{message.text}</p>
                         )
                       )}
-                      <p className={`text-[10px] mt-1 ${message.isOwn ? "text-white/60" : textMuted}`}>
-                        {message.timestamp}
-                      </p>
+                      <p className={`text-[11px] ${textMuted}`}>{message.timestamp}</p>
                     </div>
                     {message.isOwn && !message.isPending && (
                       <button
-                        onClick={() => handleDeleteMessage(message.id, isGroup)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 self-end"
+                        onClick={() => {
+                          if(!window.confirm("Are you sure you want to delete this message?")) return
+                          handleDeleteMessage(message.id, isGroup)
+                        }}
+                        className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 self-end"
                         title="Delete message">
                         <Trash2 className="h-3.5 w-3.5 text-red-400 hover:text-red-600" />
                       </button>

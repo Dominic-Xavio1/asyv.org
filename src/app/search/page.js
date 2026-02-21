@@ -534,7 +534,7 @@ export default function SearchResultsPage() {
             )}
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-12 max-w-[1000px] mx-auto' }>
             {filteredUsers.map((u) => {
               const parsedSkills = Array.isArray(u.skills) ? u.skills : (typeof u.skills === 'string' ? JSON.parse(u.skills || '[]') : []);
               
@@ -653,7 +653,7 @@ export default function SearchResultsPage() {
 
         {/* Profile Modal */}
         <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+          <DialogContent className="max-w-[410px] max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
                 User Profile

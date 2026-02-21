@@ -52,7 +52,7 @@ export default function AdvancedManagementPage() {
           </Link>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Advanced User Management
+          Our Students
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           View and manage kid records with family, grade, and academic information.

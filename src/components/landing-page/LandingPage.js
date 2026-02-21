@@ -659,7 +659,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </section>
       </main>
 
-      {/* <footer className="bg-gray-900 box-border caret-transparent w-full">
+      <footer className="bg-gray-900 box-border caret-transparent w-full">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -757,7 +757,7 @@ export default function LandingPage({ onAuthSuccess }) {
             </div>
           </div>
         </motion.div>
-      </footer> */}
+      </footer>
     </div>
   );
 }
