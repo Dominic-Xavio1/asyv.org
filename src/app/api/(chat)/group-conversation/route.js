@@ -232,9 +232,22 @@ export async function GET(request) {
               WHERE gm.group_id = gc.id 
               ORDER BY gm.created_at DESC 
               LIMIT 1
-            ) AS last_message_time
+            ) AS last_message_time,
+            -- Unread count: messages from others sent after user's last_read_at
+            (
+              SELECT COUNT(*)
+              FROM group_message gm
+              WHERE gm.group_id = gc.id 
+                AND gm.sender_id::text != $1::text
+                AND gm.created_at > COALESCE(
+                  (SELECT crs.last_read_at FROM chat_read_status crs 
+                   WHERE crs.user_id = $1::text AND crs.conversation_id = gc.id::text 
+                     AND crs.conversation_type = 'group' LIMIT 1),
+                  '1970-01-01'::timestamptz
+                )
+            ) AS unread
          FROM group_conversation gc
-         WHERE $1 = ANY(gc.members) -- Check if userId exists in the native array
+         WHERE $1::bigint = ANY(gc.members) -- Check if userId exists in the native array
          ORDER BY 
            -- Sort by last message time if exists, else by group creation
            COALESCE(

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {usePathname} from "next/navigation"
 import { ThemeTogglerButton } from "@/components/animate-ui/components/buttons/theme-toggler";
 import { ContainerTextFlip } from "@/components/ui/container-text-flip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -555,15 +556,15 @@ toast.success("Logout successfully!")
     </AnimatePresence>
 
       {/* Opportunities Sheet - mobile */}
-      <Sheet open={opportunitiesOpen} onOpenChange={setOpportunitiesOpen}>
-        <SheetContent side="bottom" className="h-[90dvh] max-h-[90dvh] rounded-t-2xl p-0 flex flex-col">
-          <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <SheetTitle className="flex items-center gap-2">
-              <Compass className="h-5 w-5 text-orange-500" />
-              Opportunities
-            </SheetTitle>
-          </SheetHeader>
-          <ScrollArea className="flex-1 p-4">
+          <Dialog open={opportunitiesOpen} onOpenChange={setOpportunitiesOpen}>
+  <DialogContent className="max-h-[85dvh] w-[90vw] max-w-lg flex flex-col p-0 rounded-2xl">
+    <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <DialogTitle className="flex items-center gap-2">
+        <Compass className="h-5 w-5 text-orange-500" />
+        Opportunities
+      </DialogTitle>
+    </DialogHeader>
+          <ScrollArea className="flex-1 p-4 overflow-y-auto">
             {opportunitiesLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader className="h-8 w-8 animate-spin text-orange-500" />
@@ -607,19 +608,19 @@ toast.success("Logout successfully!")
               <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No opportunities yet.</div>
             )}
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Trending Sheet - mobile */}
-      <Sheet open={trendingOpen} onOpenChange={setTrendingOpen}>
-        <SheetContent side="bottom" className="h-[90dvh] max-h-[90dvh] rounded-t-2xl p-0 flex flex-col">
-          <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <SheetTitle className="flex items-center gap-2">
-              <Flame className="h-5 w-5 text-orange-500" />
-              The International Brief
-            </SheetTitle>
-          </SheetHeader>
-          <ScrollArea className="flex-1 p-4">
+          <Dialog open={trendingOpen} onOpenChange={setTrendingOpen}>
+  <DialogContent className="max-h-[85dvh] w-[90vw] max-w-lg flex flex-col p-0 rounded-2xl">
+    <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <DialogTitle className="flex items-center gap-2">
+        <Compass className="h-5 w-5 text-orange-500" />
+        Trending News
+      </DialogTitle>
+    </DialogHeader>
+          <ScrollArea className="flex-1 p-4 overflow-y-auto">
             {trendingLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader className="h-8 w-8 animate-spin text-orange-500" />
@@ -646,8 +647,8 @@ toast.success("Logout successfully!")
               <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No trending news available.</div>
             )}
           </ScrollArea>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <DialogDemo open={editProfileOpen} setOpen={setEditProfileOpen} />
     </>

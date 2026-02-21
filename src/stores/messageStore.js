@@ -30,16 +30,10 @@ export const useMessageStore = create((set, get) => ({
   },
 
   // Mark all messages in a conversation as read
-  markAsRead: async (conversationId) => {
-    // Optimistically update UI
+  markAsRead: (conversationId) => {
     const currentCounts = get().unreadCounts;
-    if (!currentCounts[conversationId]) return; // Already 0 or undefined
-
     const newCounts = { ...currentCounts, [conversationId]: 0 };
     const total = Object.values(newCounts).reduce((acc, curr) => acc + curr, 0);
     set({ unreadCounts: newCounts, totalUnreadCount: total });
-
-    // API call would happen in the component or we could add it here as a thunk
-    // For now, we assume the component calls the API and this updates the store
   }
 }));

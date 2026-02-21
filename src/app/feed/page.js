@@ -396,7 +396,6 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
       const response = await fetch(url);
 
       const data = await response.json();
-
       if (data.success) {
 
         setLikes(data.likeCount || 0);
@@ -1728,7 +1727,6 @@ export default function SocialFeed() {
                               <div className="flex items-center gap-1 mt-2">
 
                                 <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 group-hover:underline">
-
                                   View more
 
                                   <ExternalLink className="w-3 h-3" />

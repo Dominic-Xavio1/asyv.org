@@ -73,7 +73,7 @@ const MobileBottomNav = () => {
     { id: 'advanced_management', icon: Users, label: 'Advanced User Management', href: '/management/advanced' },
     { id: 'create_profile', icon: UserPlus, label: 'Create your profile', href: '/profile/create' },
     { id: 'change_password', icon: ShieldCheck, label: 'Change Password', href: '/profile/change-password' },
-    { id: 'logout', icon: LogOut, label: 'Logout', isLogout: true },
+    // { id: 'logout', icon: LogOut, label: 'Logout', isLogout: true },
   ];
 
 
@@ -203,49 +203,9 @@ const MobileBottomNav = () => {
             >
 
               {/* Menu Items with staggered animation */}
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-2 mb-[290px]">
                 {menuItems.map((item, index) => {
                   const Icon = item.icon;
-
-                  if (item.isLogout) {
-                    return (
-                      <motion.button
-                        key={item.label}
-                        initial={{ x: -30, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ 
-                          delay: index * 0.06,
-                          type: 'spring',
-                          stiffness: 200,
-                          damping: 20
-                        }}
-                        onClick={() => {
-                          handleLogout();
-                          setSideMenuOpen(false);
-                        }}
-                        whileHover={{ x: 4 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
-                            className="p-2 rounded-lg bg-red-100/50 dark:bg-red-900/30 group-hover:bg-red-200/50 dark:group-hover:bg-red-900/50 transition-colors"
-                          >
-                            <Icon className="w-5 h-5" strokeWidth={1.5} />
-                          </motion.div>
-                          <span className="font-semibold">{item.label}</span>
-                        </div>
-                        <motion.div
-                          initial={{ opacity: 0, x: -4 }}
-                          whileHover={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <ChevronRight className="w-4 h-4" strokeWidth={2} />
-                        </motion.div>
-                      </motion.button>
-                    );
-                  }
 
                   return (
                     <Link key={item.label} href={item.href}>
@@ -286,7 +246,49 @@ const MobileBottomNav = () => {
               </div>
 
               {/* Footer section in menu */}
+              <div>
+                 {/* if (item.isLogout) {
+                    return ( */}
+                      <motion.button
+                        key="logout"
+                        initial={{ x: -30, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ 
+                          delay: 0.06,
+                          type: 'spring',
+                          stiffness: 200,
+                          damping: 20
+                        }}
+                        onClick={() => {
+                          handleLogout();
+                          setSideMenuOpen(false);
+                        }}
+                        whileHover={{ x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <motion.div
+                            whileHover={{ scale: 1.1 }}
+                            className="p-2 rounded-lg bg-red-100/50 dark:bg-red-900/30 group-hover:bg-red-200/50 dark:group-hover:bg-red-900/50 transition-colors"
+                          >
+                            <LogOut className="w-ver5 h-5" strokeWidth={1.5} />
+                          </motion.div>
+                          <span className="font-semibold">Logout</span>
+                        </div>
+                        <motion.div
+                          initial={{ opacity: 0, x: -4 }}
+                          whileHover={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronRight className="w-4 h-4" strokeWidth={2} />
+                        </motion.div>
+                      </motion.button>
+                    {/* );
+                  } */}
+              </div>
               <div className="sticky bottom-0 p-4 bg-gradient-to-t from-gray-50 dark:from-gray-800 to-transparent border-t border-gray-200 dark:border-gray-700">
+              
                 <p className="text-xs text-gray-500 dark:text-gray-400 text-center font-medium">
                   © 2026 asyv.org Platform
                 </p>

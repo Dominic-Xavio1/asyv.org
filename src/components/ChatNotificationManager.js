@@ -34,16 +34,18 @@ export default function ChatNotificationManager() {
 
                 if (privateData?.success && Array.isArray(privateData.data)) {
                     privateData.data.forEach(chat => {
-                        if (chat.unread_count > 0) {
-                            counts[chat.id] = parseInt(chat.unread_count)
+                        const count = parseInt(chat.unread || chat.unread_count || 0, 10)
+                        if (count > 0) {
+                            counts[chat.id] = count
                         }
                     })
                 }
 
                 if (groupData?.success && Array.isArray(groupData.data)) {
                     groupData.data.forEach(chat => {
-                        if (chat.unread_count > 0) {
-                            counts[chat.id] = parseInt(chat.unread_count)
+                        const count = parseInt(chat.unread || chat.unread_count || 0, 10)
+                        if (count > 0) {
+                            counts[chat.id] = count
                         }
                     })
                 }

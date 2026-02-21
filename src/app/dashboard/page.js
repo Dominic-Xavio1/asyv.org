@@ -1340,7 +1340,7 @@ export default function Dashboard() {
     { id: 'feed', icon: LayoutList, label: 'Feed' },
     { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
     { id: "management", icon: UserCog, label: "Manage Users" },
-    { id: "advanced_management", icon: Users, label: "Advanced User Management" },
+    { id: "advanced_management", icon: Users, label: "Our Students" },
     { id: "create_profile", icon: UserPlus, label: "Create your profile" },
     { id: "change_password", icon: ShieldCheck, label: "Change Password" },
   ];
