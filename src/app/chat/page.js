@@ -1231,7 +1231,7 @@ const [controlOpen,setControlOpen]= useState(false)
                 ${mobileView === "chat" ? "slide-in-right" : "slide-out-right pointer-events-none"}
               `}
             >
-              <Card className={`h-[790px] ${cardBg} ${borderColor} border flex flex-col`}>
+              <Card className={`min-h-[calc(100vh-84px)] ${cardBg} ${borderColor} border flex flex-col`}>
                 {!selectedChat ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
@@ -1338,7 +1338,7 @@ const [controlOpen,setControlOpen]= useState(false)
                         <Card key={`${chat.type}-${chat.id}`}
                           onClick={() => handleChatSelect(chat)}
                           className={`p-3 ${hoverBg} transition-all duration-200 cursor-pointer ${cardBg} border ${borderColor} ${selectedChat?.id === chat.id
-                            ? `ring-1 ring-green-500 ring-offset-2 ${isDark ? 'ring-offset-gray-800' : 'ring-offset-white'}`
+                            ? `ring-1 ring-orange-500 ring-offset-2 ${isDark ? 'ring-offset-gray-800' : 'ring-offset-white'}`
                             : ''}`}>
                           <div className="flex items-start gap-3">
                             <div className="relative flex-shrink-0">
@@ -1361,7 +1361,7 @@ const [controlOpen,setControlOpen]= useState(false)
                                     const storeUnread = unreadCounts[chat.id] || 0;
                                     const display = storeUnread > 0 ? storeUnread : chat.unread || 0;
                                     return display > 0 ? (
-                                      <Badge className="bg-green-500 text-white text-xs px-2 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                                      <Badge className="bg-orange-500 text-white text-xs px-2 py-0 h-5 min-w-[20px] flex items-center justify-center">
                                         {display}
                                       </Badge>
                                     ) : null;
