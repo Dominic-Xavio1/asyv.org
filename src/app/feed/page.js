@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
-
+  import HeartBurst from './Heartburst';
 import { MessageCircle, Share2, ThumbsUp, Heart, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle, ExternalLink, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -379,7 +379,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
   }, [post.id, currentUserId]);
 
-
+const [burstOrigin, setBurstOrigin] = useState(null);
 
   const fetchLikeStatus = async () => {
 
@@ -492,9 +492,9 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
         setIsLiked(data.isLiked);
         // triggerHeartRain();
-        setHeartBurst(true);
+        // setHeartBurst(true);
 
-        setTimeout(() => setHeartBurst(false), 2600);
+        // setTimeout(() => setHeartBurst(false), 2600);
 
         if (onLikeUpdate) {
 
@@ -703,7 +703,11 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
 
           <button 
 
-            onClick={handleLike}
+            onClick={(e) => {
+               const rect = e.currentTarget.getBoundingClientRect();
+              setBurstOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+              handleLike()
+            }}
 
             disabled={!currentUserId || liking}
 
@@ -711,7 +715,7 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
 
           >
 
-            <ThumbsUp className={`w4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+            <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
 
             <span className="text-gray-200 dark:text-gray-200">{likes}</span>
 
@@ -729,11 +733,11 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
           </button>
           <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-800 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
             <Share2 className="w-5 h-5" />
-
+a
             <span className="text-gray-800 dark:text-gray-200">{post.shares}</span>
 
           </button>
-
+<HeartBurst origin={burstOrigin} onDone={() => setBurstOrigin(null)} />
         </div>
 
       </div>
@@ -795,8 +799,7 @@ export default function SocialFeed() {
   const [currentUserId, setCurrentUserId] = useState(null);
 
   const router = useRouter();
-
-
+ 
 
   // Get auth from localStorage (client-side only)
 
@@ -1285,9 +1288,6 @@ export default function SocialFeed() {
             </div>
 
           </div>
-
-
-
           {/* Main Feed */}
 
           <div className="lg:col-span-2 space-y-4 mt-16">
@@ -1721,18 +1721,12 @@ export default function SocialFeed() {
                                   <span className="text-xs text-gray-500 dark:text-gray-400">{timeAgo}</span>
 
                                 )}
-
                               </div>
-
                               <div className="flex items-center gap-1 mt-2">
-
                                 <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 group-hover:underline">
                                   View more
-
                                   <ExternalLink className="w-3 h-3" />
-
                                 </span>
-
                               </div>
 
                             </div>

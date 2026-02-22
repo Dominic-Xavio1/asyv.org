@@ -309,11 +309,8 @@ export default function AIChatWidget() {
 
   return (
     <>
-      {/* Only show floating widget on desktop/tablet */}
-      {!isMobile && (
-        <>
-          {/* Floating Button */}
-          <motion.div
+      {/* Floating Button */}
+      <motion.div
         ref={dragRef}
         className={`fixed z-[9999] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${isDragged ? 'shadow-2xl' : 'shadow-lg'}`}
         style={{
@@ -333,11 +330,10 @@ export default function AIChatWidget() {
             if (!isDragged) {
               toggleChat();
             }
-            // Reset isDragged after a short delay to allow next interaction
             setTimeout(() => setIsDragged(false), 100);
           }}
           size="lg"
-          className={`h-14 w-14 rounded-full transition-all duration-300 bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700 border-0 ${isDragged ? 'hover:scale-100' : 'hover:scale-110 hover:shadow-xl'}`}
+          className={`hidden lg:block h-14 w-14 rounded-full transition-all duration-300 bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700 border-0 ${isDragged ? 'hover:scale-100' : 'hover:scale-110 hover:shadow-xl'}`}
         >
           <AnimatePresence mode="wait">
             {isOpen ? (
@@ -432,9 +428,19 @@ export default function AIChatWidget() {
                     </motion.div>
                     <span className="text-lg font-semibold">ASYV AI Assistant</span>
                   </div>
-                  <div className="flex items-center gap-1 text-xs bg-white/20 px-2 py-1 er">
-                    <div className="h-2 w-2 bg-emerald-300 rounded-full animate-pulse" />
-                    <span>Online</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-xs bg-white/20 px-2 py-1 rounded">
+                      <div className="h-2 w-2 bg-emerald-300 rounded-full animate-pulse" />
+                      <span>Online</span>
+                    </div>
+                    <Button
+                      onClick={() => setIsOpen(false)}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -646,9 +652,7 @@ export default function AIChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-      </>
-    )}
-  </>
+    </>
   );
 }
 
