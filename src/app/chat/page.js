@@ -2,6 +2,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { useTheme } from '@/lib/theme'
 import { io } from "socket.io-client"
+// import { FireworksBackground } from "@/components/animate-ui/components/backgrounds/fireworks"
+import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -211,7 +213,7 @@ export default function ChatPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [typingUsers, setTypingUsers] = useState([])
-
+  const { resolvedTheme } = useTheme();
   const {
     unreadCounts,
     totalUnreadCount,
@@ -1024,7 +1026,9 @@ const [controlOpen,setControlOpen]= useState(false)
   return (
     <>
       <StyleInjector />
+      {/* <StarsBackground starColor={resolvedTheme === 'orange' ? '#FFA500' : '#FFA500'} className="absolute bg-white inset-0 flex items-center justify-center rounded-xl" /> */}
       <div className={`min-h-screen ${bgColor} ${textColor} transition-colors duration-300 pt-16`}>
+      
         <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 p-4">
 
           {/* ── Desktop: Online users sidebar ── */}
@@ -1169,7 +1173,7 @@ const [controlOpen,setControlOpen]= useState(false)
                       <p className={`text-sm ${textMuted}`}>
                         {searchQuery ? `No chats for "${searchQuery}"` : "No conversations yet"}
                       </p>
-                      <Button className="mt-4 bg-green-500 hover:bg-green-600 text-white text-sm" onClick={() => setControlOpen(!controlOpen)}>
+                      <Button className="mt-4 bg-orange-400 hover:bg-orange-500 text-white text-sm" onClick={() => setControlOpen(!controlOpen)}>
                         Start Conversation
                       </Button>
                     </div>
@@ -1237,9 +1241,9 @@ const [controlOpen,setControlOpen]= useState(false)
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
                       <MessageSquare className="h-12 w-12 text-green-500" />
                     </div>
-                    <h3 className={`text-xl font-semibold ${textColor} mb-2`}>No conversation selected</h3>
+                    <h3 className={`text-xl font-semibold  mb-2`}>No conversation selected</h3>
                     <p className={`text-sm ${textMuted} mb-4 text-center`}>Select a conversation to begin.</p>
-                    <Button onClick={handleBackToChats} className="bg-green-500 hover:bg-green-600 text-white">
+                    <Button onClick={handleBackToChats} className="bg-orange-400 hover:bg-orange-500 text-white">
                       <ArrowLeft className="h-4 w-4 mr-2" /> Back to chats
                     </Button>
                   </div>
@@ -1354,7 +1358,7 @@ const [controlOpen,setControlOpen]= useState(false)
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-1">
-                                <p className={`text-sm font-semibold ${textColor} truncate`}>{chat.user.name}</p>
+                                <p className={`text-sm font-semibold truncate`}>{chat.user.name}</p>
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
                                   <span className={`text-xs ${textMuted}`}>{chat.timestamp}</span>
                                   {(() => {
@@ -1385,11 +1389,11 @@ const [controlOpen,setControlOpen]= useState(false)
                 {!selectedChat ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
-                      <MessageSquare className="h-12 w-12 text-green-500" />
+                      <MessageSquare className="h-12 w-12 text-orange-500" />
                     </div>
                     <h3 className={`text-xl font-semibold ${textColor} mb-2`}>No conversation selected</h3>
                     <p className={`text-sm ${textMuted} mb-6`}>Select a conversation or start a new one to begin messaging.</p>
-                    <Button className="bg-green-500 hover:bg-green-600 text-white"
+                    <Button className="bg-orange-400 hover:bg-orange-500 text-white"
                     onClick={()=>{
                       setControlOpen(!controlOpen)
                     }}  
@@ -1491,7 +1495,7 @@ function MobileChatContent({
               )}
             </div>
             <div className="flex flex-col min-w-0">
-              <h2 className={`font-semibold text-sm ${textColor} truncate`}>{selectedChat?.user?.name}</h2>
+              <h2 className={`font-semibold text-sm  truncate`}>{selectedChat?.user?.name}</h2>
               <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'}`}>
                 {isGroup
                   ? `${selectedChat.user.memberCount} members`

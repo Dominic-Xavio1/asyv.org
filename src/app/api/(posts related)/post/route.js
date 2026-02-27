@@ -107,7 +107,9 @@ export async function GET(){
     COALESCE(
       up.full_name,
       u.first_name || ' ' || '')
-     AS full_name
+     AS full_name,
+    (SELECT COUNT(*) FROM api_like WHERE post_id = p.id) as likes,
+    (SELECT COUNT(*) FROM api_comment WHERE post_id = p.id) as comments
   FROM api_post p
   JOIN api_user u ON p.created_by = u.id
   LEFT JOIN user_profile up ON up.created_by = u.id

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef,useCallback } from 'react';
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
   BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
@@ -18,13 +17,63 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import toast from 'react-hot-toast';
 import { useSession, signOut } from "next-auth/react"
-import { useAuth } from '@/components/auth/AuthProvider' // Import useAuth hook
+import { useAuth } from '@/components/auth/AuthProvider'
 import GroupImageDropzone from './GroupImageDropzone'
 import MemberSelector from './MemberSelector'
 import DialogDemo from "@/components/ui/dialogeDemo"
 import { userUnreadNotificationStore } from '../notification/page.js'
 
 import { io } from "socket.io-client"
+
+// ─────────────────────────────────────────────────────────────
+// StatCard & StatRow — reusable components for the overview
+// ─────────────────────────────────────────────────────────────
+const accentMap = {
+  blue:   { header: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40", dot: "bg-blue-500" },
+  purple: { header: "bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/40", dot: "bg-purple-500" },
+  indigo: { header: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/40", dot: "bg-indigo-500" },
+  amber:  { header: "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40", dot: "bg-amber-500" },
+};
+
+const StatCard = ({ title, subtitle, children, accentColor = "blue", scrollable = false }) => {
+  const accent = accentMap[accentColor] ?? accentMap.blue;
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col">
+      <div className={`px-5 py-3 border-b ${accent.header}`}>
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${accent.dot}`} />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h3>
+            {subtitle && <p className="text-[11px] text-gray-500 dark:text-gray-400">{subtitle}</p>}
+          </div>
+        </div>
+      </div>
+      <div className={`p-4 space-y-2.5 ${scrollable ? "max-h-56 overflow-y-auto" : ""}`}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const StatRow = ({ label, count, pct, barColor = "bg-blue-500", onClick }) => (
+  <div className={`space-y-1 ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate flex-1 mr-3" title={label}>
+        {label}
+      </span>
+      <span className="text-[11px] tabular-nums text-gray-500 dark:text-gray-400 flex-shrink-0">
+        {count.toLocaleString()} <span className="text-gray-400 dark:text-gray-500">· {pct}%</span>
+      </span>
+    </div>
+    <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+      <div className={`h-full rounded-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────
+// AnimatedModal
+// ─────────────────────────────────────────────────────────────
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
@@ -415,7 +464,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
       if (link) formData.append('link', link);
       if (organization) formData.append('organization', organization);
       if (location) formData.append('location', location);
-      formData.append('approved', 'true'); // Auto-approve for CRC/superuser
+      formData.append('approved', 'true');
 
       let response;
       if (existingOpportunity) {
@@ -441,7 +490,6 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
         onSubmit(result.opportunity);
       }
 
-      // Reset form
       setTitle('');
       setOpType('');
       setDescription('');
@@ -503,17 +551,6 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
           <option value="other">Other</option>
         </select>
       </div>
-      {/* 
-<Select value={opType} onValueChange={setOpType}>
-                <SelectTrigger className="w-full sm:w-48 h-11">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="popular">Most Popular</SelectItem>
-                </SelectContent>
-              </Select> */}
       <div className="space-y-2">
         <label htmlFor="opportunity-description" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Description
@@ -627,10 +664,9 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
   const [existingImage, setExistingImage] = useState(existingGroup?.image || null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const imageDropzoneRef = useRef(null);
-  const wordLimit = 70; // raised to 70 per previous changes
+  const wordLimit = 70;
 
   useEffect(() => {
-    // When editing an existing group, populate fields
     if (existingGroup) {
       setGroupName(existingGroup.name || '');
       setDescription(existingGroup.description || '');
@@ -679,7 +715,6 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
       formData.append('description', description);
       formData.append('members', JSON.stringify(selectedMembers));
 
-      // For creation include created_by
       if (!existingGroup) {
         formData.append('created_by', userId);
       }
@@ -689,7 +724,6 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         formData.append('image', imageFile);
       }
 
-      // If editing and user removed existing image
       if (existingGroup && removeExistingImage && !imageFile) {
         formData.append('removeImage', 'true');
       }
@@ -718,12 +752,10 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         toast.success('Group created successfully!');
       }
 
-      // Call onSubmit with the created/updated group data
       if (onSubmit) {
         onSubmit(data.data);
       }
 
-      // Reset form
       setGroupName('');
       setDescription('');
       setSelectedMembers([]);
@@ -761,7 +793,6 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Group Image (Optional)
         </label>
-        {/* Show existing image when editing */}
         {existingImage && !removeExistingImage && (
           <div className="flex items-center gap-3">
             <div className="w-24 h-24 rounded overflow-hidden border border-neutral-200 dark:border-gray-700">
@@ -1197,15 +1228,11 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
 };
 
 export default function Dashboard() {
-  // const session = await auth();
   const { data: session, status } = useSession();
 
   if (status === "loading") {
-    console.log("Authentication is loading...");
   } else if (!session) {
-    console.log("Not authenticated by google", session);
   } else {
-    console.log("Authenticated by google", session);
   }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false)
@@ -1221,13 +1248,56 @@ export default function Dashboard() {
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const [onlySuperuser, setOnlySuperuser] = useState(false);
   const [isAlumni, setIsAlumni] = useState(false);
+  const [openingFurtherEducation, setOpeningFurtherEducation] = useState(false);
   const unreadCount = userUnreadNotificationStore((state) => state.unreadCount);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [hideChangePassword, setHideChangePassword] = useState(false);
-  // const session = await auth();
+  const [overviewGrades, setOverviewGrades] = useState([]);
+  const [selectedOverviewGradeIds, setSelectedOverviewGradeIds] = useState([]);
+  const [overviewStats, setOverviewStats] = useState({
+    totalGraduates: 0,
+    continuedEducation: 0,
+    employed: 0,
+    withEitherOutcome: 0,
+    continuedEducationPct: 0,
+    employedPct: 0,
+    withEitherOutcomePct: 0,
+    filteredByGrade: false,
+    gradeId: null,
+    degreeStats: [],
+    outcomesByYear: [],
+    degreeLevelDistribution: [],
+    degreeLevelStudents: {},
+    areasOfStudy: [],
+    areasOfStudyStudents: {},
+    collegesByCountry: [],
+    collegesByCountryStudents: {},
+    industryDistribution: [],
+    industryDistributionStudents: {},
+    topEmployers: [],
+    topEmployersStudents: {},
+    outcomesByYearStudents: {},
+  });
+  const [overviewListOpen, setOverviewListOpen] = useState(false);
+  const [overviewListTitle, setOverviewListTitle] = useState('');
+  const [overviewListDescription, setOverviewListDescription] = useState('');
+  const [overviewListItems, setOverviewListItems] = useState([]);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [sortedDegreeData, setSortedDegreeData] = useState([]);
+  
+  useEffect(() => {
+    if (overviewStats.degreeLevelDistribution && overviewStats.degreeLevelDistribution.length > 0) {
+      const sorted = [...overviewStats.degreeLevelDistribution].sort((a, b) => {
+        return Number(b.count) - Number(a.count);
+      });
+      setSortedDegreeData(sorted);
+    } else {
+      setSortedDegreeData([]);
+    }
+  }, [overviewStats.degreeLevelDistribution]);
 
   const [badgeCount, setBadgeCount] = useState(0);
   const router = useRouter();
@@ -1243,7 +1313,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Fetch notifications on dashboard load and set up socket connection
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!currentUser?.id) return;
@@ -1258,7 +1327,6 @@ export default function Dashboard() {
         console.log("notifications", data);
         if (data.success) {
           setBadgeCount(data.data.length);
-          // Update the store with unread count
           setUnreadCount(data.unreadCount || 0);
         }
       }
@@ -1269,7 +1337,6 @@ export default function Dashboard() {
 
     fetchNotifications();
 
-    // Set up Socket.IO connection for real-time notifications
     if (currentUser?.id && !socketRef.current && typeof window !== "undefined") {
       console.log("🔌 Setting up socket connection for dashboard notifications...");
       try {
@@ -1286,10 +1353,8 @@ export default function Dashboard() {
 
         socketInstance.on("new_notification", (notification) => {
           console.log("🔔 Dashboard received new notification:", notification);
-          // Update unread count when new notification arrives
           setUnreadCount((prev) => prev + 1);
 
-          // Show toast for message notifications
           if (notification.type === 'message') {
             console.log("📢 Showing toast for message notification in dashboard:", notification.title);
             toast.success(notification.title);
@@ -1332,27 +1397,40 @@ export default function Dashboard() {
     username: 'User',
     bio: 'Community member'
   });
-  const menuItems = [
-    { id: 'home', icon: Home, label: 'Dashboard' },
-    { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
-    // { id: 'groups', icon: Users, label: 'Groups' },
-    // { id: 'events', icon: Calendar, label: 'Events' },
-    { id: 'feed', icon: LayoutList, label: 'Feed' },
-    { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
-    { id: "management", icon: UserCog, label: "Manage Users" },
-    { id: "advanced_management", icon: Users, label: "Our Students" },
-    { id: "create_profile", icon: UserPlus, label: "Create your profile" },
-    { id: "change_password", icon: ShieldCheck, label: "Change Password" },
-  ];
+  const menuItems = (() => {
+    const items = [
+      { id: 'home', icon: Home, label: 'Dashboard' },
+      { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
+      { id: 'feed', icon: LayoutList, label: 'Feed' },
+      { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
+      { id: "management", icon: UserCog, label: "Manage Users" },
+      { id: "advanced_management", icon: Users, label: "Our Students" },
+    ];
+
+    if (isCrcOrSuperuser) {
+      items.push(
+        { id: 'create_post', icon: MessageSquare, label: 'Create Post' },
+        { id: 'post_opportunity', icon: BookOpen, label: 'Post Opportunity' },
+        { id: 'create_group', icon: Users, label: 'Create Group Chat' },
+      );
+    }
+
+    items.push(
+      { id: "create_profile", icon: UserPlus, label: "Create your profile" },
+      { id: "change_password", icon: ShieldCheck, label: "Change Password" },
+    );
+
+    return items;
+  })();
+
   useEffect(() => {
-    // Check user role 
     if (typeof window !== 'undefined') {
       const fullInfo = localStorage.getItem('fullInfo');
       if (fullInfo) {
         try {
           const user = JSON.parse(fullInfo);
           setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
-          setOnlySuperuser(user.is_superuser === true);
+          setOnlySuperuser(user.is_superuser === true || user.is_crc === true);
           setIsAlumni(user.is_alumni === true);
           setCurrentUser(user);
         } catch (e) {
@@ -1362,19 +1440,15 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Sync NextAuth session to LocalStorage for app compatibility
-  const { login: authLogin } = useAuth(); // Destructure login from useAuth
+  const { login: authLogin } = useAuth();
 
-  // Sync NextAuth session to LocalStorage for app compatibility
   useEffect(() => {
     if (session?.customToken && session?.user && session?.fullInfo) {
-      // Check if localStorage is already set to avoid loops or redundant sets
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
       if (!currentToken || currentToken !== session.customToken) {
         console.log("Syncing Google session to LocalStorage...");
 
-        // Use the auth context's login function to update state AND localStorage
         authLogin(session.customToken);
 
         localStorage.setItem("user", JSON.stringify(session.user));
@@ -1383,17 +1457,188 @@ export default function Dashboard() {
           localStorage.setItem("second_name", JSON.stringify(session.user.second_name));
         }
 
-        // Update state immediately (legacy support)
         const user = session.fullInfo;
         setCurrentUser(user);
         setIsCrcOrSuperuser(user.is_crc === true || user.is_superuser === true);
-        setOnlySuperuser(user.is_superuser === true);
+        setOnlySuperuser(user.is_superuser === true || user.is_crc === true);
         setIsAlumni(user.is_alumni === true);
 
         toast.success("Login synced successfully");
       }
     }
   }, [session, authLogin]);
+
+  const fetchOverviewGrades = useCallback(async () => {
+    if (!currentUser?.id || !isCrcOrSuperuser) return;
+    try {
+      const res = await fetch(
+        `/api/manage/grades?requestingUserId=${encodeURIComponent(currentUser.id)}`,
+        { headers: { 'x-user-id': String(currentUser.id) } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOverviewGrades(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch overview grades:', e);
+    }
+  }, [currentUser, isCrcOrSuperuser]);
+
+  const fetchOverviewStats = useCallback(async () => {
+    if (!currentUser?.id || !isCrcOrSuperuser) return;
+    setOverviewLoading(true);
+    try {
+      const params = new URLSearchParams({
+        requestingUserId: String(currentUser.id),
+      });
+      if (selectedOverviewGradeIds.length > 0) {
+        params.set('gradeIds', selectedOverviewGradeIds.join(','));
+      }
+      const res = await fetch(`/api/manage/alumni-overview?${params.toString()}`, {
+        headers: { 'x-user-id': String(currentUser.id) },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to load overview');
+      }
+      const data = await res.json();
+      setOverviewStats({
+        totalGraduates: data.totalGraduates ?? 0,
+        continuedEducation: data.continuedEducation ?? 0,
+        employed: data.employed ?? 0,
+        withEitherOutcome: data.withEitherOutcome ?? 0,
+        continuedEducationPct: data.continuedEducationPct ?? 0,
+        employedPct: data.employedPct ?? 0,
+        withEitherOutcomePct: data.withEitherOutcomePct ?? 0,
+        filteredByGrade: data.filteredByGrade ?? false,
+        gradeId: data.gradeId ?? null,
+        degreeStats: Array.isArray(data.degreeStats) ? data.degreeStats : [],
+        outcomesByYear: Array.isArray(data.outcomesByYear) ? data.outcomesByYear : [],
+        degreeLevelDistribution: Array.isArray(data.degreeLevelDistribution) ? data.degreeLevelDistribution : [],
+        degreeLevelStudents: data.degreeLevelStudents || {},
+        areasOfStudy: Array.isArray(data.areasOfStudy) ? data.areasOfStudy : [],
+        areasOfStudyStudents: data.areasOfStudyStudents || {},
+        collegesByCountry: Array.isArray(data.collegesByCountry) ? data.collegesByCountry : [],
+        collegesByCountryStudents: data.collegesByCountryStudents || {},
+        industryDistribution: Array.isArray(data.industryDistribution) ? data.industryDistribution : [],
+        industryDistributionStudents: data.industryDistributionStudents || {},
+        topEmployers: Array.isArray(data.topEmployers) ? data.topEmployers : [],
+        topEmployersStudents: data.topEmployersStudents || {},
+        outcomesByYearStudents: data.outcomesByYearStudents || {},
+      });
+      console.log("overviewStats", overviewStats);
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || 'Failed to load alumni overview');
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, [currentUser, isCrcOrSuperuser, selectedOverviewGradeIds]);
+  const processedDegrees = (() => {
+    const total = overviewStats?.totalGraduates || 0;
+    const stats = overviewStats?.degreeStats || [];
+  
+    let major = [];
+    let otherCount = 0;
+  
+    stats.forEach((row) => {
+      const count = parseInt(row.count ?? 0, 10) || 0;
+      const pct = total ? (count / total) * 100 : 0;
+  
+      if (pct < 1) {
+        otherCount += count;
+      } else {
+        major.push({
+          degree: row.degree,
+          count
+        });
+      }
+    });
+  
+    if (otherCount > 0) {
+      major.push({
+        degree: "Other degrees",
+        count: otherCount
+      });
+    }
+  
+    return major;
+  })();
+  useEffect(() => {
+    if (isCrcOrSuperuser && currentUser?.id) {
+      fetchOverviewGrades();
+    }
+  }, [isCrcOrSuperuser, currentUser, fetchOverviewGrades]);
+
+  useEffect(() => {
+    if (isCrcOrSuperuser && currentUser?.id) {
+      fetchOverviewStats();
+    }
+  }, [isCrcOrSuperuser, currentUser, fetchOverviewStats]);
+
+  const openOverviewList = (type, value = null) => {
+    if (!overviewStats) return;
+    let items = [];
+    let title = '';
+    let description = '';
+
+    if (type === 'education') {
+      items = overviewStats.continuedEducationStudents || [];
+      title = 'Alumni in Further Education';
+      description = 'List of alumni who have at least one further education record within the selected grades.';
+    } else if (type === 'employment') {
+      items = overviewStats.employedStudents || [];
+      title = 'Employed Alumni';
+      description = 'List of alumni who have at least one employment record within the selected grades.';
+    } else if (type === 'either') {
+      items = overviewStats.eitherOutcomeStudents || [];
+      title = 'Alumni with Recorded Outcomes';
+      description = 'List of alumni who have at least one further education or employment record within the selected grades.';
+    } else if (type === 'degreeLevel') {
+      items = overviewStats.degreeLevelStudents[value] || [];
+      title = `${value} Graduates`;
+      description = `List of alumni who have a ${value} degree within the selected grades.`;
+    } else if (type === 'areaOfStudy') {
+      items = overviewStats.areasOfStudyStudents[value] || [];
+      title = `${value} Graduates`;
+      description = `List of alumni who studied ${value} within the selected grades.`;
+    } else if (type === 'country') {
+      items = overviewStats.collegesByCountryStudents[value] || [];
+      title = `Graduates in ${value}`;
+      description = `List of alumni who attended colleges in ${value} within the selected grades.`;
+    } else if (type === 'industry') {
+      items = overviewStats.industryDistributionStudents[value] || [];
+      title = `${value} Industry Graduates`;
+      description = `List of alumni working in the ${value} industry within the selected grades.`;
+    } else if (type === 'employer') {
+      items = overviewStats.topEmployersStudents[value] || [];
+      title = `Graduates at ${value}`;
+      description = `List of alumni employed at ${value} within the selected grades.`;
+    } else if (type === 'outcomeYear') {
+      const yearData = overviewStats.outcomesByYearStudents[value];
+      if (yearData) {
+        items = [
+          ...yearData.employment_only || [],
+          ...yearData.fe_only || [],
+          ...yearData.both || [],
+          ...yearData.neither || []
+        ];
+      }
+      title = `Class of ${value} Outcomes`;
+      description = `List of all graduates from the class of ${value} with their employment and education outcomes.`;
+    }
+
+    if (!items || items.length === 0) {
+      toast.error('No matching alumni found for this statistic.');
+      return;
+    }
+
+    setOverviewListItems(items);
+    setOverviewListTitle(title);
+    setOverviewListDescription(description);
+    setOverviewListOpen(true);
+  };
 
 
   useEffect(() => {
@@ -1412,7 +1657,6 @@ export default function Dashboard() {
     fetchAll();
   }, [currentUser, isCrcOrSuperuser])
 
-  // Move fetchPosts to component scope so other handlers can refresh posts
   const fetchPosts = async () => {
     if (!currentUser?.id) return;
     try {
@@ -1436,8 +1680,6 @@ export default function Dashboard() {
     }
   };
 
-
-  // Delete post
   const handleDeletePost = async (postId) => {
     if (!confirm('Are you sure you want to delete this post?')) {
       return;
@@ -1471,10 +1713,8 @@ export default function Dashboard() {
       } else {
         toast.success('Post created successfully');
       }
-      // Optionally, if a single post object is provided, prepend it for instant UI feedback
       if (postData && postData.id) {
         setPosts((prev) => {
-          // if exists replace, else add to start
           const exists = prev.find(p => p.id === postData.id);
           if (exists) return prev.map(p => p.id === postData.id ? postData : p);
           return [postData, ...prev];
@@ -1484,6 +1724,7 @@ export default function Dashboard() {
       console.error('Error refreshing posts:', error);
     }
   };
+
   const fetchOpportunities = async () => {
     try {
       if (!currentUser?.id) return;
@@ -1498,7 +1739,6 @@ export default function Dashboard() {
       if (!data.success) {
         throw new Error(data.error || 'Failed to fetch opportunities');
       }
-      // backend may return an array `opportunities` or a single `opportunity` (legacy)
       const payload = data.opportunities ?? data.opportunity ?? [];
       const opsArray = Array.isArray(payload) ? payload : [payload];
       setOpportunities(opsArray);
@@ -1508,9 +1748,10 @@ export default function Dashboard() {
       toast.error('Failed to fetch opportunities');
     }
   }
+
   const handleOpportunitySubmit = async (opportunityData) => {
     try {
-      await fetchOpportunities(); // Refresh opportunities after creation/update
+      await fetchOpportunities();
       if (editingOpportunity) {
         toast.success('Opportunity updated successfully');
         setEditingOpportunity(null);
@@ -1522,7 +1763,6 @@ export default function Dashboard() {
     }
   };
 
-  // Delete opportunity
   const handleDeleteOpportunity = async (opportunityId) => {
     if (!confirm('Are you sure you want to delete this opportunity?')) {
       return;
@@ -1535,7 +1775,6 @@ export default function Dashboard() {
 
       const result = await response.json();
 
-
       if (result.success) {
         setOpportunities(opportunities.filter(opp => opp.id !== opportunityId));
         toast.success('Opportunity deleted successfully');
@@ -1547,6 +1786,7 @@ export default function Dashboard() {
       toast.error(error.message || 'Failed to delete opportunity');
     }
   };
+
   function handleNavigate(word) {
     switch (word) {
       case "feed":
@@ -1562,12 +1802,15 @@ export default function Dashboard() {
       case "notifications":
         return "/notification";
       case "change_password":
-        return "#"; // Don't navigate, will open slide panel
+        return "#";
+      case "create_post":
+      case "post_opportunity":
+      case "create_group":
+        return "#";
       default:
         return "/";
     }
   }
-
 
   const fetchGroups = async () => {
     try {
@@ -1575,7 +1818,6 @@ export default function Dashboard() {
       const response = await fetch(`/api/group-conversation?userId=${currentUser.id}`);
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
-        // Only show groups created by current user
         const myGroups = data.data.filter(group => String(group.created_by) === String(currentUser.id));
         setUserContent(prev => ({ ...prev, groups: myGroups }));
       }
@@ -1591,15 +1833,11 @@ export default function Dashboard() {
   }, [currentUser]);
 
   const handleCreateContent = async (data) => {
-    // #region agent log
     const timestamp = Date.now();
     fetch('http://127.0.0.1:7242/ingest/a5c05f7c-9e65-48f3-bf13-130a70f52554', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'dashboard/page.js:759', message: 'handleCreateContent called', data: { timestamp, dataType: data.type }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-    // #endregion
 
-    // For groups, data is already the created group from API
     if (data.id && data.name) {
-      // This is a group from API
-      await fetchGroups(); // Refresh groups list
+      await fetchGroups();
       return;
     }
 
@@ -1629,7 +1867,7 @@ export default function Dashboard() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchGroups(); // Refresh groups list
+        await fetchGroups();
         toast.success('Group deleted successfully');
       } else {
         throw new Error(result.message || 'Failed to delete group');
@@ -1657,12 +1895,9 @@ export default function Dashboard() {
     setProfile(data);
   };
 
-  // ... (keep existing imports)
-
   const handleLogout = async () => {
     toast.success('Logged out successfully!');
 
-    // Clear local storage
     if (typeof window !== 'undefined') {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
@@ -1670,7 +1905,6 @@ export default function Dashboard() {
       localStorage.removeItem("second_name")
       localStorage.removeItem("theme");
     }
-    // Sign out from NextAuth (caches, cookies, etc.)
     await signOut({ redirect: false });
 
     router.push('/login');
@@ -1700,7 +1934,7 @@ export default function Dashboard() {
 
         <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item) => {
-            if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
+            if ((item.id === "management" || item.id === "advanced_management"||item.id==="alumni_overview") && !onlySuperuser) {
               return null;
             }
             return (
@@ -1709,28 +1943,40 @@ export default function Dashboard() {
                 href={handleNavigate(item.id)}>
                 <button
                   onClick={(e) => {
-                    // Open edit profile modal without navigating
                     if (item.id === "create_profile") {
                       e.preventDefault();
                       setEditProfileOpen(true);
                       return;
                     }
 
-                    // Handle change password clicks: first click opens, second click hides permanently
                     if (item.id === 'change_password') {
                       setShowChangePassword(true);
-                      // e.preventDefault();
                       setCountClick((prev) => {
                         const next = Math.min(prev + 1, 2);
-                        if (next === 1) {
-
-                        } else if (next >= 2) {
-                          // setShowChangePassword(false);
+                        if (next >= 2) {
                           setHideChangePassword(true);
                           try { localStorage.setItem('hideChangePassword', 'true'); } catch (err) { }
                         }
                         return next;
                       });
+                      return;
+                    }
+                    if (item.id === 'create_post') {
+                      e.preventDefault();
+                      setEditingPost(null);
+                      setActiveModal('post');
+                      return;
+                    }
+                    if (item.id === 'post_opportunity') {
+                      e.preventDefault();
+                      setEditingOpportunity(null);
+                      setActiveModal('opportunity');
+                      return;
+                    }
+                    if (item.id === 'create_group') {
+                      e.preventDefault();
+                      setEditingGroup(null);
+                      setActiveModal('group');
                       return;
                     }
                     setActiveTab(item.id);
@@ -1758,7 +2004,6 @@ export default function Dashboard() {
                     </span>
                   )}
 
-                  {/* Left pointer indicator: show only for change_password and only when not permanently hidden */}
                   {(item.id === 'change_password' && !hideChangePassword && countClick < 2) && (
                     <motion.div
                       animate={{ x: [0, 10, 0] }}
@@ -1790,6 +2035,7 @@ export default function Dashboard() {
           </button>
         </div>
       </aside>
+
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
@@ -1817,7 +2063,7 @@ export default function Dashboard() {
 
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
-                if ((item.id === "management" || item.id === "advanced_management") && !onlySuperuser) {
+                if ((item.id === "management" || item.id === "advanced_management"||item.id==="alumni_overview") && !onlySuperuser) {
                   return null;
                 }
                 return (
@@ -1830,6 +2076,15 @@ export default function Dashboard() {
                         router.push('/feed');
                       } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management") {
                         router.push(handleNavigate(item.id));
+                      } else if (item.id === "create_post") {
+                        setEditingPost(null);
+                        setActiveModal('post');
+                      } else if (item.id === "post_opportunity") {
+                        setEditingOpportunity(null);
+                        setActiveModal('opportunity');
+                      } else if (item.id === "create_group") {
+                        setEditingGroup(null);
+                        setActiveModal('group');
                       }
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
@@ -1849,7 +2104,6 @@ export default function Dashboard() {
               })}
             </nav>
             <div className="p-3 border-t border-neutral-200 dark:border-gray-700 space-y-1">
-
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
@@ -1864,100 +2118,553 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-0">
-        {/* Top Bar */}
-
-
         {/* Dashboard Content */}
         <div className="p-3 sm:p-4 lg:p-8 space-y-4 sm:space-y-6 mt-4 md:mt-6">
-          {session && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-bold text-blue-800 dark:text-blue-300 mb-2">Google Session Debug Info</h3>
-              <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">
-                This section displays the information captured from Google. Use this to verify data capture.
-              </p>
-              <div className="bg-gray-900 text-green-400 p-4 rounded overflow-auto max-h-60 text-xs font-mono">
-                <pre>{JSON.stringify(session, null, 2)}</pre>
+
+          {/* ════════════════════════════════════════════════════════
+              ALUMNI OVERVIEW — CRC / Superuser only
+          ════════════════════════════════════════════════════════ */}
+          {isCrcOrSuperuser && (
+            <div className="space-y-6 mb-8">
+
+              {/* Header row */}
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50 flex items-center gap-2">
+                    <BarChart3 className="h-6 w-6 text-ney So Faemerald-600 dark:text-emerald-400" />
+                    The Journey So Far
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Real-time snapshot of graduate outcomes across all cohorts
+                  </p>
+                </div>
+                <span className="text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 self-start sm:self-auto">
+                  {selectedOverviewGradeIds.length === 0
+                    ? "All Grades"
+                    : `${selectedOverviewGradeIds.length} Grade${selectedOverviewGradeIds.length > 1 ? "s" : ""} Selected`}
+                </span>
+              </div>
+
+              {/* Filter sidebar + stats layout */}
+              <div>
+
+                {/* ── Grade Filter Panel ── */}
+                <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg">
+            <Filter className="h-4 w-4" />
+            Filter by Grade
+          </div>
+        </div>
+                <div className="mt-4 flex flex-wrap items-center gap-4 pt-4 border-t border-neutral-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+              checked={selectedOverviewGradeIds.length === 0}
+              onChange={() => setSelectedOverviewGradeIds([])}
+            />
+            <span className="text-gray-700 dark:text-gray-300 font-medium">
+              All Grades
+            </span>
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {overviewGrades.map((g) => {
+            const id = String(g.id);
+            const checked = selectedOverviewGradeIds.includes(id);
+            return (
+              <label
+                key={id}
+                className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${
+                  checked 
+                    ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700' 
+                    : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  checked={checked}
+                  onChange={(e) => {
+                    setSelectedOverviewGradeIds((prev) => {
+                      if (e.target.checked) {
+                        return [...prev, id];
+                      }
+                      return prev.filter((x) => x !== id);
+                    });
+                  }}
+                />
+                <span className="text-gray-700 dark:text-gray-300">
+                  {g.grade_name || `Grade ${g.id}`}
+                  {g.graduation_year_to_asyv && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                      ({g.graduation_year_to_asyv})
+                    </span>
+                  )}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+                {/* ── Stats Area ── */}
+                <div className="space-y-4 min-w-0">
+                  {overviewLoading ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="rounded-xl border border-neutral-200 dark:border-gray-700 p-4 animate-pulse bg-white dark:bg-gray-900">
+                          <div className="h-2 w-20 rounded bg-neutral-200 dark:bg-gray-700 mb-3" />
+                          <div className="h-8 w-14 rounded bg-neutral-200 dark:bg-gray-700 mb-2" />
+                          <div className="h-2 w-24 rounded bg-neutral-200 dark:bg-gray-700" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      {/* KPI Cards */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* Total Graduates */}
+                        <button
+                          type="button"
+                          onClick={() => openOverviewList('total')}
+                          className="text-left bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-4 shadow-sm hover:border-green-500 hover:shadow-md transition"
+                        >
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Total Graduates</p>
+                          <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 tabular-nums">
+                            {overviewStats.totalGraduates.toLocaleString()}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
+                            {overviewStats.filteredByGrade ? "Selected grades" : "All cohorts"}
+                          </p>
+                        </button>
+
+                        {/* Continued Education */}
+                        <button
+                          type="button"
+                          onClick={() => openOverviewList('education')}
+                          className="text-left bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900/50 p-4 shadow-sm hover:border-emerald-500 hover:shadow-md transition"
+                        >
+                          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Further Education</p>
+                          <p className="text-3xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">
+                            {overviewStats.continuedEducation.toLocaleString()}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="flex-1 h-1 rounded-full bg-emerald-200 dark:bg-emerald-900 overflow-hidden">
+                              <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${overviewStats.continuedEducationPct}%` }} />
+                            </div>
+                            <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                              {overviewStats.continuedEducationPct}%
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Employed */}
+                        <button
+                          type="button"
+                          onClick={() => openOverviewList('employment')}
+                          className="text-left bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-100 dark:border-sky-900/50 p-4 shadow-sm hover:border-sky-500 hover:shadow-md transition"
+                        >
+                          <p className="text-xs font-medium text-sky-700 dark:text-sky-400 mb-2">Employed</p>
+                          <p className="text-3xl font-bold text-sky-800 dark:text-sky-300 tabular-nums">
+                            {overviewStats.employed.toLocaleString()}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="flex-1 h-1 rounded-full bg-sky-200 dark:bg-sky-900 overflow-hidden">
+                              <div className="h-full bg-sky-500 transition-all duration-500" style={{ width: `${overviewStats.employedPct}%` }} />
+                            </div>
+                            <span className="text-[11px] font-semibold text-sky-700 dark:text-sky-400 tabular-nums">
+                              {overviewStats.employedPct}%
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* With Any Outcome */}
+                        <button
+                          type="button"
+                          onClick={() => openOverviewList('either')}
+                          className="text-left bg-violet-50 dark:bg-violet-950/40 rounded-xl border border-violet-100 dark:border-violet-900/50 p-4 shadow-sm hover:border-violet-500 hover:shadow-md transition"
+                        >
+                          <p className="text-xs font-medium text-violet-700 dark:text-violet-400 mb-2">Outcome Recorded</p>
+                          <p className="text-3xl font-bold text-violet-800 dark:text-violet-300 tabular-nums">
+                            {(overviewStats.withEitherOutcome ?? 0).toLocaleString()}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="flex-1 h-1 rounded-full bg-violet-200 dark:bg-violet-900 overflow-hidden">
+                              <div className="h-full bg-violet-500 transition-all duration-500" style={{ width: `${overviewStats.withEitherOutcomePct ?? 0}%` }} />
+                            </div>
+                            <span className="text-[11px] font-semibold text-violet-700 dark:text-violet-400 tabular-nums">
+                              {overviewStats.withEitherOutcomePct ?? 0}%
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Employment Breakdown Bar */}
+                      {overviewStats.totalGraduates > 0 && (() => {
+                        const total = overviewStats.totalGraduates || 1;
+                        const employed = overviewStats.employed || 0;
+                        const withEither = overviewStats.withEitherOutcome || 0;
+                        const noOutcome = Math.max(total - withEither, 0);
+                        const feOnly = Math.max(withEither - employed, 0);
+                        const employedPct = Math.round((employed / total) * 100);
+                        const noOutcomePct = Math.round((noOutcome / total) * 100);
+                        const feOnlyPct = Math.max(0, 100 - employedPct - noOutcomePct);
+                        return (
+                          <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Employment Breakdown</h3>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{total.toLocaleString()} total graduates</span>
+                            </div>
+                            <div className="h-5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex gap-0.5">
+                              <div className="h-full bg-emerald-500 rounded-l-full transition-all duration-700" style={{ width: `${employedPct}%` }} />
+                              <div className="h-full bg-sky-400 transition-all duration-700" style={{ width: `${feOnlyPct}%` }} />
+                              <div className="h-full bg-rose-400 rounded-r-full transition-all duration-700" style={{ width: `${noOutcomePct}%` }} />
+                            </div>
+                            <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
+                              {[
+                                { color: "bg-emerald-500", label: "Employed", count: employed, pct: employedPct },
+                                { color: "bg-sky-400", label: "Further ed. only", count: feOnly, pct: feOnlyPct },
+                                { color: "bg-rose-400", label: "No outcome", count: noOutcome, pct: noOutcomePct },
+                              ].map(({ color, label, count, pct }) => (
+                                <div key={label} className="flex items-center gap-2">
+                                  <span className={`h-2.5 w-2.5 rounded-sm flex-shrink-0 ${color}`} />
+                                  <span className="text-xs text-gray-600 dark:text-gray-300">
+                                    {label}{" "}
+                                    <span className="font-semibold text-gray-800 dark:text-gray-100">{count.toLocaleString()}</span>{" "}
+                                    <span className="text-gray-400">({pct}%)</span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 2-column grid for distribution cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        {/* Degree Level Distribution */}
+                        {sortedDegreeData.length > 0 && (
+                          <StatCard title="Degree Level Distribution" subtitle="Levels attained by graduates" accentColor="blue">
+                            {sortedDegreeData.map((item) => {
+                              const count = parseInt(item.count ?? 0, 10) || 0;
+                              const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
+                              return (
+                                <StatRow 
+                                  key={item.level_label || "Unknown"} 
+                                  label={item.level_label || "Unknown Level"} 
+                                  count={count} 
+                                  pct={pct} 
+                                  barColor="bg-blue-500"
+                                  onClick={() => openOverviewList('degreeLevel', item.level_label || "Unknown Level")}
+                                />
+                              );
+                            })}
+                          </StatCard>
+                        )}
+
+                        {/* Areas of Study */}
+                        {overviewStats.areasOfStudy.length > 0 && (
+                          <StatCard title="Areas of Study" subtitle="Top fields among graduates" accentColor="purple" scrollable>
+                            {overviewStats.areasOfStudy.slice(0, 10).map((item) => {
+                              const count = parseInt(item.count ?? 0, 10) || 0;
+                              const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
+                              return (
+                                <StatRow 
+                                  key={item.degree || "Unknown"} 
+                                  label={item.degree || "Unknown Field"} 
+                                  count={count} 
+                                  pct={pct} 
+                                  barColor="bg-purple-500"
+                                  onClick={() => openOverviewList('areaOfStudy', item.degree || "Unknown Field")}
+                                />
+                              );
+                            })}
+                          </StatCard>
+                        )}
+
+                        {/* Colleges by Country */}
+                        {overviewStats.collegesByCountry.length > 0 && (
+                          <StatCard title="Colleges by Country" subtitle="Where graduates study abroad" accentColor="indigo" scrollable>
+                            {overviewStats.collegesByCountry.map((item) => {
+                              const count = parseInt(item.count ?? 0, 10) || 0;
+                              const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
+                              return (
+                                <StatRow 
+                                  key={item.country || "Unknown"} 
+                                  label={item.country || "Unknown Country"} 
+                                  count={count} 
+                                  pct={pct} 
+                                  barColor="bg-indigo-500"
+                                  onClick={() => openOverviewList('country', item.country || "Unknown Country")}
+                                />
+                              );
+                            })}
+                          </StatCard>
+                        )}
+
+                        {/* Industry Distribution */}
+                        {overviewStats.industryDistribution.length > 0 && (
+                          <StatCard title="Industry Distribution" subtitle="Sectors where graduates work" accentColor="amber" scrollable>
+                            {overviewStats.industryDistribution.slice(0, 10).map((item) => {
+                              const count = parseInt(item.count ?? 0, 10) || 0;
+                              const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
+                              return (
+                                <StatRow 
+                                  key={item.industry || "Not specified"} 
+                                  label={item.industry || "Not specified"} 
+                                  count={count} 
+                                  pct={pct} 
+                                  barColor="bg-amber-500"
+                                  onClick={() => openOverviewList('industry', item.industry || "Not specified")}
+                                />
+                              );
+                            })}
+                          </StatCard>
+                        )}
+                      </div>
+
+                      {/* Top Employers — full width */}
+                      {overviewStats.topEmployers.length > 0 && (
+                        <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Top Employers</h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Companies hiring the most graduates</p>
+                            </div>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">{overviewStats.topEmployers.length} companies</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {overviewStats.topEmployers.map((item, index) => {
+                              const count = parseInt(item.count ?? 0, 10) || 0;
+                              const company = item.company || "Not specified";
+                              const medals = ["🥇", "🥈", "🥉"];
+                              return (
+                                <button
+                                  key={company}
+                                  onClick={() => openOverviewList('employer', company)}
+                                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer ${
+                                    index < 3
+                                      ? "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20"
+                                      : "border-neutral-100 dark:border-gray-800 bg-neutral-50/50 dark:bg-gray-800/30"
+                                  }`}
+                                >
+                                  <span className="text-base w-6 text-center flex-shrink-0">
+                                    {index < 3 ? medals[index] : <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{index + 1}</span>}
+                                  </span>
+                                  <span className="flex-1 text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{company}</span>
+                                  <span className="flex-shrink-0 text-xs font-bold tabular-nums text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-neutral-200 dark:border-gray-700">
+                                    {count.toLocaleString()}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Further Education collapsible */}
+                      <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpeningFurtherEducation(!openingFurtherEducation)}
+                          className="w-full flex items-center justify-between px-5 py-4 hover:bg-neutral-50 dark:hover:bg-gray-800/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                              <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Further Education by Degree</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Breakdown of degree types pursued</p>
+                            </div>
+                          </div>
+                          <ChevronRight
+                            className={`h-4 w-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 flex-shrink-0 ${openingFurtherEducation ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                        {openingFurtherEducation && (
+  <div className="border-t border-neutral-100 dark:border-gray-800 p-5">
+    {!overviewStats.degreeStats?.length ? (
+      <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
+        No further education records for the selected scope yet.
+      </p>
+    ) : (
+      <div className="space-y-2.5">
+        {processedDegrees.map((row) => {
+          const count = row.count;
+          const pct = overviewStats.totalGraduates
+            ? Math.round((count / overviewStats.totalGraduates) * 100)
+            : 0;
+
+          return (
+            <StatRow
+              key={row.degree || "Unspecified"}
+              label={row.degree || "Unspecified degree"}
+              count={count}
+              pct={pct}
+              barColor="bg-emerald-500"
+            />
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
+                      </div>
+
+                      {/* Outcomes by Year */}
+                      {overviewStats.outcomesByYear.length > 0 && (
+                        <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Outcomes by Graduation Year</h3>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cohort-by-cohort employment & education outcomes</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {overviewStats.outcomesByYear.map((yearData) => {
+                              const total = parseInt(yearData.total ?? 0, 10) || 1;
+                              const employed = parseInt(yearData.employment_only ?? 0, 10) || 0;
+                              const feOnly = parseInt(yearData.fe_only ?? 0, 10) || 0;
+                              const both = parseInt(yearData.both ?? 0, 10) || 0;
+                              const neither = parseInt(yearData.neither ?? 0, 10) || 0;
+                              const gradYear = yearData.grad_year || "Unknown";
+                              const employedTotal = employed + both;
+                              const feTotal = feOnly + both;
+                              const employedPct = Math.round((employedTotal / total) * 100);
+                              const fePct = Math.round((feTotal / total) * 100);
+                              const bothPct = Math.round((both / total) * 100);
+                              const neitherPct = Math.round((neither / total) * 100);
+
+                              return (
+                                <button
+                                  key={gradYear}
+                                  onClick={() => openOverviewList('outcomeYear', gradYear)}
+                                  className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-800/30 p-4 space-y-3 text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Class of {gradYear}</span>
+                                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-neutral-200 dark:border-gray-700 tabular-nums">
+                                      {total.toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  {/* Stacked bar */}
+                                  <div className="h-3 w-full rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden flex gap-0.5">
+                                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${employedPct}%` }} />
+                                    <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${Math.max(0, fePct - employedPct)}%` }} />
+                                    <div className="h-full bg-rose-400 transition-all duration-500" style={{ width: `${neitherPct}%` }} />
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                    {[
+                                      { dot: "bg-emerald-500", label: "Employed", val: `${employedTotal} (${employedPct}%)` },
+                                      { dot: "bg-blue-400", label: "Education", val: `${feTotal} (${fePct}%)` },
+                                      { dot: "bg-emerald-200", label: "Both", val: `${both} (${bothPct}%)` },
+                                      { dot: "bg-rose-400", label: "Neither", val: `${neither} (${neitherPct}%)` },
+                                    ].map(({ dot, label, val }) => (
+                                      <div key={label} className="flex items-center gap-1.5">
+                                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dot}`} />
+                                        <span className="text-[10px] text-gray-500 dark:text-gray-400">{label}:</span>
+                                        <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 tabular-nums">{val}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* Create Buttons */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-            <button
-              onClick={() => setActiveModal('post')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
-            >
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">Create Post</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share thoughts</p>
-              </div>
-            </button>
+          {!isCrcOrSuperuser && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+              <button
+                onClick={() => setActiveModal('post')}
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
+              >
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">Create Post</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share thoughts</p>
+                </div>
+              </button>
 
-            {isCrcOrSuperuser ? (
-              <button
-                onClick={() => setActiveModal('opportunity')}
-                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
-              >
-                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Post Opportunity</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share opportunity</p>
-                </div>
-              </button>
-            ) : (
-              <button
-                onClick={() => setActiveModal('article')}
-                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
-              >
-                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Write Article</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share story</p>
-                </div>
-              </button>
-            )}
-            <button
-              onClick={() => setActiveModal('group')}
-              className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
-            >
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">New Group</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Start chat</p>
-              </div>
-            </button>
-            {isAlumni && (
-              <Link href="/alumni/forms">
+              {isCrcOrSuperuser ? (
                 <button
-                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group w-full"
+                  onClick={() => setActiveModal('opportunity')}
+                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
                 >
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-200 text-orange-500 dark:text-orange-400 group-hover:bg-orange-400 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                    <UserCircle className="w-5 h-5" />
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                    <BookOpen className="w-5 h-5" />
                   </div>
                   <div className="text-center sm:text-left">
-                    <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-700 dark:group-hover:text-green-500">Alumni Profile Forms</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Update your profile, education & employment</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Post Opportunity</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share opportunity</p>
                   </div>
                 </button>
-              </Link>
-            )}
-          </div>
+              ) : (
+                <button
+                  onClick={() => setActiveModal('article')}
+                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
+                >
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Write Article</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share story</p>
+                  </div>
+                </button>
+              )}
+              <button
+                onClick={() => setActiveModal('group')}
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
+              >
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 group-hover:bg-green-700 dark:group-hover:bg-green-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="text-center sm:text-left">
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">New Group</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Start chat</p>
+                </div>
+              </button>
+              {isAlumni && (
+                <Link href="/alumni/forms">
+                  <button
+                    className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group w-full"
+                  >
+                    <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-200 text-orange-500 dark:text-orange-400 group-hover:bg-orange-400 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
+                      <UserCircle className="w-5 h-5" />
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-700 dark:group-hover:text-green-500">Alumni Profile Forms</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Update your profile, education & employment</p>
+                    </div>
+                  </button>
+                </Link>
+              )}
+            </div>
+          )}
 
           {/* User Content Sections */}
           <div className="space-y-4 sm:space-y-6">
             {/* My Posts */}
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
-              <div className="flex items-center justify-between mb-4 sm:mb-6"
-              >
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
                   My Posts ({posts.length})
@@ -1976,8 +2683,7 @@ export default function Dashboard() {
                   <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
                 </div>
               ) : posts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
-                >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {posts.map((post) => (
                     <ContentCard
                       key={post.created_at}
@@ -2064,7 +2770,6 @@ export default function Dashboard() {
               ) : (
                 userContent.articles.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    {console.log("articles", userContent.articles)}
                     {userContent.articles.map((article) => (
                       <ContentCard key={article.id} item={article} onDelete={(id) => handleDeleteContent(id, 'article')} />
                     ))}
@@ -2090,14 +2795,12 @@ export default function Dashboard() {
                     e.preventDefault();
                     const term = groupSearchTerm.trim();
                     if (!term) return;
-                    // Try exact then includes
                     const found = userContent.groups.find(g => g.name && g.name.toLowerCase() === term.toLowerCase()) || userContent.groups.find(g => g.name && g.name.toLowerCase().includes(term.toLowerCase()));
                     if (found) {
                       setEditingGroup(found);
                       setActiveModal('group');
                       setGroupSearchTerm('');
                     } else {
-                      // Prefill create modal with name
                       setEditingGroup({ name: term, members: [String(currentUser?.id)], description: '' });
                       setActiveModal('group');
                       setGroupSearchTerm('');
@@ -2206,6 +2909,67 @@ export default function Dashboard() {
       </AnimatedModal>
 
       <AnimatedModal
+        isOpen={overviewListOpen}
+        onClose={() => setOverviewListOpen(false)}
+        title={overviewListTitle || "Alumni"}
+      >
+        <div className="space-y-3">
+          {overviewListDescription && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {overviewListDescription}
+            </p>
+          )}
+          <div className="max-h-[60vh] overflow-y-auto space-y-2">
+            {(!overviewListItems || overviewListItems.length === 0) ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No alumni found for this statistic.
+              </p>
+            ) : (
+              overviewListItems.map((alumn) => (
+                <div
+                  key={alumn.id}
+                  className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {alumn.first_name} {alumn.rwandan_name}
+                    </p>
+                    {alumn.email && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {alumn.email}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {alumn.institution && (
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                          🎓 {alumn.institution}
+                        </span>
+                      )}
+                      {alumn.company && (
+                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                          💼 {alumn.company}
+                        </span>
+                      )}
+                      {alumn.position && (
+                        <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                          {alumn.position}
+                        </span>
+                      )}
+                      {alumn.college_name && (
+                        <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">
+                          🏛️ {alumn.college_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </AnimatedModal>
+
+      <AnimatedModal
         isOpen={activeModal === 'profile'}
         onClose={() => setActiveModal(null)}
         title="Edit Profile"
@@ -2218,7 +2982,6 @@ export default function Dashboard() {
         className={`fixed inset-y-0 left-0 z-50 w-full top-25 sm:w-96 bg-white dark:bg-gray-900 max-h-[80vh] rounded-md shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${(showChangePassword) ? 'translate-x-150' : '-translate-x-full'
           }`}
       >
-        {/* Panel Header */}
         <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -2237,7 +3000,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Panel Content */}
         <div className="p-4 sm:p-6">
           <ChangePasswordForm
             onClose={() => setShowChangePassword(false)}

@@ -444,7 +444,7 @@ export default function GroupMessageInput({
           disabled={disabled}
           className={`
             flex-1 min-w-0 h-9 text-sm rounded-xl
-            ${inputBg} ${borderColor} ${textColor}
+            ${inputBg} ${borderColor} 
           `}
         />
         <button
@@ -476,7 +476,7 @@ export default function GroupMessageInput({
             ${(!messageInput.trim() && !selectedFile) || disabled
               ? isDark ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-green-500 hover:bg-green-600 active:scale-95 text-white shadow-sm"
+              : "bg-orange-400 hover:bg-orange-500 active:scale-95 text-white shadow-sm"
             }
           `}
         >
