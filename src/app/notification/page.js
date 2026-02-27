@@ -113,7 +113,7 @@ export default function NotificationPage() {
       } else {
         fetchSentNotifications()
       }
-      a
+      
       // Initialize Socket.IO connection
       if (!socketRef.current && typeof window !== "undefined") {
         try {

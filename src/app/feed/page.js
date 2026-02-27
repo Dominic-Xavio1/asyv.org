@@ -711,7 +711,7 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
 
             disabled={!currentUserId || liking}
 
-            className={`flex items-center border bg-green-800 border-gray-100 py-1 px-2 rounded-sm gap-2 ${isLiked ? 'text-red-500 dark:text-red-400' : 'text-gray-200 dark:text-gray-400'} hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`flex items-center border bg-green-700 border-gray-100 py-1 px-2 rounded-sm gap-2 ${isLiked ? 'text-red-500 dark:text-red-400' : 'text-gray-200 dark:text-gray-400'} hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
 
           >
 
@@ -725,17 +725,15 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
 
             onClick={() => setShowComments(!showComments)}
 
-            className="flex items-center gap-2 text-gray-200 border borde-gray-100 py-1 px-2 rounded-sm bg-green-800 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
+            className="flex items-center gap-2 text-gray-200 border borde-gray-100 py-1 px-2 rounded-sm bg-green-700 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
 
           >
             <MessageCircle className="w-4 h-4 rounded-sm" />
             <span className="text-gray-200 dark:text-gray-200">{commentCount}</span>
           </button>
-          <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-800 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-500 transition-colors">
+          <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-700 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-orange-600 dark:hover:text-ornage-500 transition-colors">
             <Share2 className="w-5 h-5" />
-a
-            <span className="text-gray-800 dark:text-gray-200">{post.shares}</span>
-
+            <span className="text-white dark:text-white">{post.shares}</span>
           </button>
 <HeartBurst origin={burstOrigin} onDone={() => setBurstOrigin(null)} />
         </div>
@@ -889,9 +887,9 @@ export default function SocialFeed() {
 
               mediaType: post.media_type,
 
-              likes: 0, // TODO: Add likes functionality
+              likes: post.likes || 0,
 
-              comments: 0, // TODO: Add comments functionality
+              comments: post.comments || 0,
 
               shares: 0,
 
@@ -1081,7 +1079,7 @@ export default function SocialFeed() {
 
       } else if (sortBy === 'popular') {
 
-        return b.likes - a.likes;
+        return (b.likes + b.comments) - (a.likes + a.comments);
 
       }
 
