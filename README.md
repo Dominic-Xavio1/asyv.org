@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+ASYV Platform
 
-## Getting Started
+ASYV Platform is a web application designed to help Agahozo Shalom Youth Village (ASYV) school administrators efficiently manage and track students’ progress, even after graduation. The platform also serves as a global network connecting ASYV alumni, staff, and community members around the world.
+Features
+Student Management: Track student academic performance, personal information, and progression post-high school.
+Alumni Engagement: Facilitate connections between alumni, enabling networking and mentorship opportunities.
+Global Community: Create a platform for ASYV members worldwide to communicate and collaborate.
+Administrative Dashboard: Provide school administrators with an intuitive interface to manage students and programs efficiently.
+Secure Access: Role-based authentication ensures that only authorized personnel can access sensitive information.
+Technology Stack
+Frontend and backend: nextjs
+Database: postgres
+Authentication & Authorization: JWT (JSON Web Tokens)
 
-First, run the development server:
-
-```bash
+Installation
+Clone the repository:
+git clone https://github.com/Dominic-Xavio1/asyv.org.git
+Navigate to the project directory:
+cd asyv.org
+Install dependencies for backend and frontend:
+npm install
+Set up environment variables (.env) for database connection and JWT secrets.
+Start the application:
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
