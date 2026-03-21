@@ -39,7 +39,7 @@ const navItems = [
   },
   {
     title: "Stories",
-    message: "Your voice is our legacy. Share the journey you’ve walked and be the light for those following in your footsteps.",
+    message: "Your voice is our legacy. Share the journey you've walked and be the light for those following in your footsteps.",
     image: ijabo
   },
   {
@@ -133,7 +133,7 @@ export default function LandingPage({ onAuthSuccess }) {
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden min-h-screen">
+    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden flex flex-col bg-gray-900">
       <header aria-label="Site" className="box-border caret-transparent">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
@@ -219,7 +219,7 @@ export default function LandingPage({ onAuthSuccess }) {
                     <motion.button
                       whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push('/login?mode=signup')}
+                      onClick={() => router.push('/login?mode=login')}
                       className="bg-green-700 text-white text-xs md:text-sm font-medium box-border caret-transparent px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-green-800 transition-all duration-300 transform-gpu"
                     >
                       Join Community
@@ -266,14 +266,13 @@ export default function LandingPage({ onAuthSuccess }) {
           )}
         </motion.div>
       </header>
-
-      <main className="box-border caret-transparent pt-16 md:pt-0">
+      <main className="box-border caret-transparent pt-16 md:pt-0 flex-1 bg-white">
         {/* Hero Section */}
         <section className="box-border caret-transparent">
-          <div className="relative bg-transparent box-border caret-transparent list-none min-h-[150px] z-[1] overflow-hidden mx-auto">
+          <div className="relative bg-transparent box-border caret-transparent list-none z-[1] mx-auto">
             <div className="relative caret-transparent flex h-full w-full z-[1]">
               <div className="relative box-border caret-transparent shrink-0 h-full w-full">
-                <div className="relative bg-cover box-border caret-transparent h-64 md:h-80 lg:h-[900px] overflow-hidden bg-center">
+                <div className="relative bg-cover box-border caret-transparent h-[560px] sm:h-[500px] md:h-80 lg:h-[900px] bg-center overflow-hidden">
                   <div className="box-border caret-transparent w-full">
                     <div className="absolute inset-0 bg-neutral-900">
                       {carouselImages.map((imageObj, index) => (
@@ -409,7 +408,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </section>
 
         {/* Features Section */}
-        <section className="box-border sm:mt-2 caret-transparent py-10 md:py-20 bg-neutral-50">
+        <section className="box-border sm:mt-2 caret-transparent mt-10 md:py-20 bg-neutral-50">
           <div className="max-w-[1800px] mx-auto px-4 md:px-[6.25%]">
             <motion.div
               initial="hidden"

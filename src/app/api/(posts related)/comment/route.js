@@ -115,8 +115,8 @@ export async function GET(request) {
 export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const commentId = searchParams.get('id');
-    
+    const commentId = Number(searchParams.get('id'));
+    console.log(" comment Id",typeof(commentId))
     if (!commentId) {
       return NextResponse.json(
         { success: false, error: "Comment id is required" },

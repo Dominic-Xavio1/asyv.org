@@ -45,7 +45,7 @@ export async function GET(request) {
                  FROM api_furthereducation AS fe JOIN api_college AS c ON fe.college_id = c.id
                  WHERE fe.alumn_id = $1`,
                 [userId]
-            );sh
+            );
             if(educationResult.rows.length>0){
                 response.furtherEducation = educationResult.rows;
             }

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef,useCallback } from 'react';
+import {motion as framerMotion, AnimatePresence } from "framer-motion"
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
   BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
   UserCircle, UserPlus,
-  Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3
+  Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3, Calendar, MapPin, Newspaper
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
@@ -869,6 +870,268 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
 };
 
 
+// VillageEventForm Component
+const VillageEventForm = ({ onClose, onSubmit, userId, existingEvent = null }) => {
+  const [title, setTitle] = useState(existingEvent?.title || '');
+  const [content, setContent] = useState(existingEvent?.content || '');
+  const [eventType, setEventType] = useState(existingEvent?.event_type || 'news');
+  const [location, setLocation] = useState(existingEvent?.location || '');
+  const [eventDate, setEventDate] = useState(existingEvent?.event_date ? existingEvent.event_date.split('T')[0] : '');
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(existingEvent?.image_url || null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      if (!title || !content) {
+        throw new Error('Title and content are required');
+      }
+
+      const formData = new FormData();
+      formData.append('created_by', userId);
+      formData.append('title', title);
+      formData.append('content', content);
+      formData.append('event_type', eventType);
+      
+      if (location) formData.append('location', location);
+      if (eventDate) formData.append('event_date', eventDate);
+      
+      if (image) {
+        formData.append('image_url', image);
+      } else if (existingEvent?.image_url && !image) {
+        formData.append('image_url', existingEvent.image_url);
+      }
+
+      let response;
+      if (existingEvent) {
+        formData.append('id', existingEvent.id);
+        response = await fetch('/api/village-events', {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        response = await fetch('/api/village-events', {
+          method: 'POST',
+          body: formData
+        });
+      }
+
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save village event');
+      }
+
+      toast.success(existingEvent ? 'Event updated successfully!' : 'Event created successfully!');
+      
+      if (onSubmit) {
+        onSubmit(result.event || existingEvent);
+      }
+
+      setTitle('');
+      setContent('');
+      setEventType('news');
+      setLocation('');
+      setEventDate('');
+      setImage(null);
+      setImagePreview(null);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save village event:', error);
+      setError(error.message || 'Failed to save village event. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImage(null);
+      setImagePreview(null);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <label htmlFor="event-title" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Title <span className="text-red-500">*</span>
+        </label>
+        <Input
+          id="event-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter event or news title..."
+          className="w-full"
+          required
+          disabled={loading}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="event-type" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Type
+        </label>
+        <select
+          id="event-type"
+          value={eventType}
+          onChange={(e) => setEventType(e.target.value)}
+          className="w-full px-3 py-2 border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+          disabled={loading}
+        >
+          <option value="news">News</option>
+          <option value="event">Event</option>
+          <option value="announcement">Announcement</option>
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="event-content" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Content <span className="text-red-500">*</span>
+        </label>
+        <Textarea
+          id="event-content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Share the details with the community..."
+          className="w-full min-h-[120px] resize-none"
+          required
+          disabled={loading}
+        />
+      </div>
+
+      {(eventType === 'event' || eventType === 'announcement') && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="event-location" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+              Location {eventType === 'event' && <span className="text-red-500">*</span>}
+            </label>
+            <Input
+              id="event-location"
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g., Community Hall, ASYV Campus"
+              className="w-full"
+              required={eventType === 'event'}
+              disabled={loading}
+            />
+          </div>
+
+          {eventType === 'event' && (
+            <div className="space-y-2">
+              <label htmlFor="event-date" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+                Event Date <span className="text-red-500">*</span>
+              </label>
+              <Input
+                id="event-date"
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="w-full"
+                required={eventType === 'event'}
+                disabled={loading}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
+          Add Image (Optional)
+        </label>
+        <div className="border-2 border-dashed border-neutral-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-green-500 dark:hover:border-green-400 transition-colors cursor-pointer bg-neutral-50 dark:bg-gray-800/50">
+          <input
+            type="file"
+            id="event-image"
+            className="hidden"
+            accept="image/*"
+            onChange={handleImageChange}
+            disabled={loading}
+          />
+          <label htmlFor="event-image" className="cursor-pointer block space-y-2">
+            <p className="text-sm text-neutral-600 dark:text-gray-400">
+              {image ? image.name : imagePreview ? 'Click to change image' : 'Click to upload image'}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-gray-500">
+              Supports: JPG, PNG, GIF, WebP
+            </p>
+          </label>
+        </div>
+        {imagePreview && (
+          <div className="mt-2">
+            <div className="relative w-full h-48 rounded-lg overflow-hidden">
+              <Image
+                src={imagePreview}
+                alt="Preview"
+                fill
+                className="object-cover"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setImagePreview(null);
+                  setImage(null);
+                }}
+                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      <div className="flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={loading}
+          className="px-6"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="bg-green-600 hover:bg-green-700 px-6"
+          disabled={loading}
+        >
+          {loading ? (existingEvent ? 'Updating...' : 'Publishing...') : (existingEvent ? 'Update Event' : 'Publish Event')}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 // ProfileForm Component
 const ProfileForm = ({ onClose, onSubmit, currentProfile }) => {
   const [username, setUsername] = useState(currentProfile?.username || 'John Doe');
@@ -1147,7 +1410,9 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
     switch (item.type) {
       case 'post': return MessageSquare;
       case 'article': return BookOpen;
+      case 'opportunity': return BookOpen;
       case 'group': return Users;
+      case 'village_event': return Newspaper;
       default: return MessageSquare;
     }
   };
@@ -1158,11 +1423,11 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-4 hover:shadow-md dark:hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          {item.type === 'group' && item.image ? (
+          {(item.type === 'group' && item.image) || (item.type === 'village_event' && item.image_url) ? (
             <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-neutral-200 dark:border-gray-700">
               <Image
-                src={item.image}
-                alt={item.name || 'Group'}
+                src={item.type === 'village_event' ? item.image_url : item.image}
+                alt={item.title || item.name || 'Event'}
                 width={48}
                 height={48}
                 className="w-full h-full object-cover"
@@ -1181,6 +1446,12 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
               {item.created_at ? new Date(item.created_at).toLocaleDateString() : item.date}
               {item.type === 'group' && item.members && (
                 <span className="ml-2">• {Array.isArray(item.members) ? item.members.length : 0} members</span>
+              )}
+              {item.type === 'village_event' && item.event_type && (
+                <span className="ml-2">• {item.event_type.charAt(0).toUpperCase() + item.event_type.slice(1)}</span>
+              )}
+              {item.type === 'village_event' && item.location && (
+                <span className="ml-2">• {item.location}</span>
               )}
             </p>
           </div>
@@ -1240,17 +1511,19 @@ export default function Dashboard() {
   const [countClick, setCountClick] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
+  const [editingOpportunity, setEditingOpportunity] = useState(null);
+  const [editingVillageEvent, setEditingVillageEvent] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
+  const [villageEvents, setVillageEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
   const [onlySuperuser, setOnlySuperuser] = useState(false);
   const [isAlumni, setIsAlumni] = useState(false);
   const [openingFurtherEducation, setOpeningFurtherEducation] = useState(false);
   const unreadCount = userUnreadNotificationStore((state) => state.unreadCount);
-  const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -1287,7 +1560,7 @@ export default function Dashboard() {
   const [overviewListItems, setOverviewListItems] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [sortedDegreeData, setSortedDegreeData] = useState([]);
-  
+  const [chooseGrade,setChooseGrade] = useState(false);
   useEffect(() => {
     if (overviewStats.degreeLevelDistribution && overviewStats.degreeLevelDistribution.length > 0) {
       const sorted = [...overviewStats.degreeLevelDistribution].sort((a, b) => {
@@ -1402,7 +1675,7 @@ export default function Dashboard() {
       { id: 'home', icon: Home, label: 'Dashboard' },
       { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
       { id: 'feed', icon: LayoutList, label: 'Feed' },
-      { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
+      // { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
       { id: "management", icon: UserCog, label: "Manage Users" },
       { id: "advanced_management", icon: Users, label: "Our Students" },
     ];
@@ -1411,6 +1684,7 @@ export default function Dashboard() {
       items.push(
         { id: 'create_post', icon: MessageSquare, label: 'Create Post' },
         { id: 'post_opportunity', icon: BookOpen, label: 'Post Opportunity' },
+        { id: 'create_village_event', icon: Newspaper, label: 'Create Village Event' },
         { id: 'create_group', icon: Users, label: 'Create Group Chat' },
       );
     }
@@ -1526,8 +1800,11 @@ export default function Dashboard() {
         topEmployers: Array.isArray(data.topEmployers) ? data.topEmployers : [],
         topEmployersStudents: data.topEmployersStudents || {},
         outcomesByYearStudents: data.outcomesByYearStudents || {},
+        continuedEducationStudents: data.continuedEducationStudents || [],
+        employedStudents: data.employedStudents || [],
+        eitherOutcomeStudents: data.eitherOutcomeStudents || [],
       });
-      console.log("overviewStats", overviewStats);
+      // console.log("overviewStats", overviewStats);
     } catch (e) {
       console.error(e);
       toast.error(e.message || 'Failed to load alumni overview');
@@ -1535,6 +1812,7 @@ export default function Dashboard() {
       setOverviewLoading(false);
     }
   }, [currentUser, isCrcOrSuperuser, selectedOverviewGradeIds]);
+  const [openStatistics, setOpenStatistics] = useState(false);
   const processedDegrees = (() => {
     const total = overviewStats?.totalGraduates || 0;
     const stats = overviewStats?.degreeStats || [];
@@ -1582,6 +1860,7 @@ export default function Dashboard() {
     let items = [];
     let title = '';
     let description = '';
+    console.log("education ",type)
 
     if (type === 'education') {
       items = overviewStats.continuedEducationStudents || [];
@@ -1648,7 +1927,9 @@ export default function Dashboard() {
         await fetchPosts();
         if (isCrcOrSuperuser) {
           await fetchOpportunities();
+          await fetchVillageEvents();
         }
+        
       } finally {
         setLoading(false);
       }
@@ -1759,7 +2040,76 @@ export default function Dashboard() {
         toast.success('Opportunity posted successfully');
       }
     } catch (error) {
-      console.error('Error refreshing opportunities:', error);
+      console.error('Error handling opportunity submit:', error);
+      toast.error('Failed to save opportunity');
+    }
+  }
+
+
+  const fetchVillageEvents = async () => {
+    try {
+      if (!currentUser?.id) return;
+      const response = await fetch(`/api/village-events?user_id=${currentUser.id}`);
+      if (!response.ok) {
+        // throw new Error('Failed to fetch village events');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setVillageEvents(data.events || []);
+      } else {
+        setVillageEvents([]);
+      }
+    } catch (err) {
+      console.error('Error fetching village events:', err);
+      // toast.error('Failed to fetch village events');
+      setVillageEvents([]);
+    }
+  }
+
+  const handleEditVillageEvent = (event) => {
+    setEditingVillageEvent(event);
+    setActiveModal('village_event');
+  };
+
+  const handleDeleteVillageEvent = async (eventId) => {
+    if (!confirm('Are you sure you want to delete this village event?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/village-events/${eventId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${auth?.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete village event');
+      }
+
+      await fetchVillageEvents();
+      toast.success('Village event deleted successfully');
+    } catch (error) {
+      console.error('Error deleting village event:', error);
+      toast.error('Failed to delete village event');
+    }
+  };
+
+  const handleVillageEventSubmit = async (eventData) => {
+    try {
+      await fetchVillageEvents();
+      if (editingVillageEvent) {
+        toast.success('Village event updated successfully');
+        setEditingVillageEvent(null);
+      } else {
+        toast.success('Village event created successfully');
+      }
+    } catch (error) {
+      console.error('Error handling village event submit:', error);
+      toast.error('Failed to save village event');
     }
   };
 
@@ -1932,7 +2282,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav
+        className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             if ((item.id === "management" || item.id === "advanced_management"||item.id==="alumni_overview") && !onlySuperuser) {
               return null;
@@ -1941,7 +2292,9 @@ export default function Dashboard() {
               <Link
                 key={item.id}
                 href={handleNavigate(item.id)}>
-                <button
+                <framerMotion.button
+                  whileHover={{scale:1.02}}
+                  whileTap={{scale:0.95}}
                   onClick={(e) => {
                     if (item.id === "create_profile") {
                       e.preventDefault();
@@ -1971,6 +2324,12 @@ export default function Dashboard() {
                       e.preventDefault();
                       setEditingOpportunity(null);
                       setActiveModal('opportunity');
+                      return;
+                    }
+                    if (item.id === 'create_village_event') {
+                      e.preventDefault();
+                      setEditingVillageEvent(null);
+                      setActiveModal('village_event');
                       return;
                     }
                     if (item.id === 'create_group') {
@@ -2019,7 +2378,7 @@ export default function Dashboard() {
                     </motion.div>
                   )}
 
-                </button>
+                </framerMotion.button>
               </Link>
             )
           })}
@@ -2167,46 +2526,64 @@ export default function Dashboard() {
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               All Grades
             </span>
+            <button className="p-2 bg-gray-200 rounded-sm text-black font-bold" onClick={() => 
+             setTimeout(() => {
+              setChooseGrade(prev => !prev)
+              }, 100)}  
+              >Choose a grade</button>
           </label>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {overviewGrades.map((g) => {
-            const id = String(g.id);
-            const checked = selectedOverviewGradeIds.includes(id);
-            return (
-              <label
-                key={id}
-                className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${
-                  checked 
-                    ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700' 
-                    : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  checked={checked}
-                  onChange={(e) => {
-                    setSelectedOverviewGradeIds((prev) => {
-                      if (e.target.checked) {
-                        return [...prev, id];
-                      }
-                      return prev.filter((x) => x !== id);
-                    });
-                  }}
-                />
-                <span className="text-gray-700 dark:text-gray-300">
-                  {g.grade_name || `Grade ${g.id}`}
-                  {g.graduation_year_to_asyv && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                      ({g.graduation_year_to_asyv})
-                    </span>
-                  )}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        <AnimatePresence>
+          {chooseGrade && (
+            
+            <framerMotion.div
+            key="open-overiewGrade"
+            initial={{opacity:0,x:-100}}
+            animate={{opacity:1,x:0}}
+            exit={{opacity:0,x:-100}}
+            transition={{duration:0.4,ease:"backOut"}}
+            className="flex flex-wrap gap-2"
+            >
+    {overviewGrades.map((g) => {
+      const id = String(g.id);
+      const checked = selectedOverviewGradeIds.includes(id);
+      return (
+        <label
+          key={id}
+          className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${
+            checked 
+              ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700' 
+              : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            checked={checked}
+            onChange={(e) => {
+              setSelectedOverviewGradeIds((prev) => {
+                if (e.target.checked) {
+                  return [...prev, id];
+                }
+                return prev.filter((x) => x !== id);
+              });
+            }}
+          />
+          <span className="text-gray-700 dark:text-gray-300">
+            {g.grade_name || `Grade ${g.id}`}
+            {g.graduation_year_to_asyv && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                ({g.graduation_year_to_asyv})
+              </span>
+            )}
+          </span>
+        </label>
+      );
+    })}
+  </framerMotion.div>
+          )}
+        </AnimatePresence>
+
       </div>
 
                 {/* ── Stats Area ── */}
@@ -2228,7 +2605,7 @@ export default function Dashboard() {
                         {/* Total Graduates */}
                         <button
                           type="button"
-                          onClick={() => openOverviewList('total')}
+                          // onClick={() => openOverviewList('total')}
                           className="text-left bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-4 shadow-sm hover:border-green-500 hover:shadow-md transition"
                         >
                           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Total Graduates</p>
@@ -2248,14 +2625,15 @@ export default function Dashboard() {
                         >
                           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Further Education</p>
                           <p className="text-3xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">
-                            {overviewStats.continuedEducation.toLocaleString()}
+                            {/* {overviewStats.continuedEducation.toLocaleString()} */}
+                            {Math.max(overviewStats.withEitherOutcome - overviewStats.employed, 0).toLocaleString()}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <div className="flex-1 h-1 rounded-full bg-emerald-200 dark:bg-emerald-900 overflow-hidden">
                               <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${overviewStats.continuedEducationPct}%` }} />
                             </div>
                             <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                              {overviewStats.continuedEducationPct}%
+                            {Math.max((overviewStats.withEitherOutcome - overviewStats.employed) / overviewStats.totalGraduates * 100, 0).toLocaleString()}%
                             </span>
                           </div>
                         </button>
@@ -2283,10 +2661,10 @@ export default function Dashboard() {
                         {/* With Any Outcome */}
                         <button
                           type="button"
-                          onClick={() => openOverviewList('either')}
+                          // onClick={() => openOverviewList('either')}
                           className="text-left bg-violet-50 dark:bg-violet-950/40 rounded-xl border border-violet-100 dark:border-violet-900/50 p-4 shadow-sm hover:border-violet-500 hover:shadow-md transition"
                         >
-                          <p className="text-xs font-medium text-violet-700 dark:text-violet-400 mb-2">Outcome Recorded</p>
+                          <p className="text-xs font-medium text-violet-700 dark:text-violet-400 mb-2">Graduates with Emploment or Further Education</p>
                           <p className="text-3xl font-bold text-violet-800 dark:text-violet-300 tabular-nums">
                             {(overviewStats.withEitherOutcome ?? 0).toLocaleString()}
                           </p>
@@ -2300,8 +2678,8 @@ export default function Dashboard() {
                           </div>
                         </button>
                       </div>
-
                       {/* Employment Breakdown Bar */}
+                      {/* {console.log("overviewStats", overviewStats)} */}
                       {overviewStats.totalGraduates > 0 && (() => {
                         const total = overviewStats.totalGraduates || 1;
                         const employed = overviewStats.employed || 0;
@@ -2485,8 +2863,17 @@ export default function Dashboard() {
                             className={`h-4 w-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 flex-shrink-0 ${openingFurtherEducation ? "rotate-90" : ""}`}
                           />
                         </button>
+                        <AnimatePresence>
                         {openingFurtherEducation && (
-  <div className="border-t border-neutral-100 dark:border-gray-800 p-5">
+                          <framerMotion.div
+                          key="further-ed-content"
+                          initial={{opacity:0,x:-100}}
+                          animate={{opacity:1,x:0}}
+                          exit={{opacity:0,x:-100}}
+                          transition={{duration:0.5,ease:"backOut"}}
+                          className="border-t border-neutral-100 dark:border-gray-800 p-5"
+                          >
+  {/* <div > */}
     {!overviewStats.degreeStats?.length ? (
       <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
         No further education records for the selected scope yet.
@@ -2511,11 +2898,13 @@ export default function Dashboard() {
         })}
       </div>
     )}
-  </div>
-)}
+  {/* </div> */}
+  </framerMotion.div>
+)} </AnimatePresence>
                       </div>
 
                       {/* Outcomes by Year */}
+                     
                       {overviewStats.outcomesByYear.length > 0 && (
                         <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
                           <div className="flex items-center justify-between mb-4">
@@ -2523,8 +2912,28 @@ export default function Dashboard() {
                               <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Outcomes by Graduation Year</h3>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cohort-by-cohort employment & education outcomes</p>
                             </div>
+
+<framerMotion.button
+  whileHover={{ scale: 1.02 }} // Slightly grows when hovered
+  whileTap={{ scale: 0.95 }}   // Slightly shrinks when clicked (feels like a real button)
+  onClick={() => setOpenStatistics(prev => !prev)}
+  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg 
+             transition-colors shadow-sm active:shadow-inner w-full sm:w-auto"
+>
+  {openStatistics ? "Close Statistics" : "Open Statistics"}
+</framerMotion.button>
+
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                          <AnimatePresence>
+                          {openStatistics&&(
+                          
+                            <framerMotion.div 
+                            key="statistics-content"
+                            initial={{opacity:0,x:-100}}
+                            animate={{opacity:1,x:0}}
+                            exit={{opacity:0,x:-100}}
+                            transition={{duration:0.5,ease:"backOut"}}
+                            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                             {overviewStats.outcomesByYear.map((yearData) => {
                               const total = parseInt(yearData.total ?? 0, 10) || 1;
                               const employed = parseInt(yearData.employment_only ?? 0, 10) || 0;
@@ -2576,7 +2985,11 @@ export default function Dashboard() {
                                 </button>
                               );
                             })}
-                          </div>
+                          
+                          </framerMotion.div>
+                          )}
+                          </AnimatePresence>
+                          
                         </div>
                       )}
 
@@ -2586,11 +2999,11 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
-          {/* Create Buttons */}
           {!isCrcOrSuperuser && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-              <button
+              <framerMotion.button
+              whileHover={{scale:1.05}}
+              whileTap={{scale:0.95}}
                 onClick={() => setActiveModal('post')}
                 className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
               >
@@ -2601,9 +3014,16 @@ export default function Dashboard() {
                   <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500">Create Post</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share thoughts</p>
                 </div>
-              </button>
-
-              {isCrcOrSuperuser ? (
+              </framerMotion.button>
+{/* <framerMotion.div
+  initial={{ opacity: 0, y: 50 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ once: false, amount: 0.5 }} 
+  transition={{ duration: 0.5 }}
+>
+  I appear only when you scroll to me!
+</framerMotion.div> */}
+              {isCrcOrSuperuser && (
                 <button
                   onClick={() => setActiveModal('opportunity')}
                   className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
@@ -2616,20 +3036,9 @@ export default function Dashboard() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share opportunity</p>
                   </div>
                 </button>
-              ) : (
-                <button
-                  onClick={() => setActiveModal('article')}
-                  className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group"
-                >
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 group-hover:bg-orange-500 dark:group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 flex-shrink-0">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-orange-600 dark:group-hover:text-orange-500">Write Article</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share story</p>
-                  </div>
-                </button>
               )}
+              
+            
               <button
                 onClick={() => setActiveModal('group')}
                 className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
@@ -2711,7 +3120,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                   <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-                  {isCrcOrSuperuser ? `My Opportunities (${opportunities.length})` : `My Articles (${userContent.articles.length})`}
+                  {isCrcOrSuperuser ? `Shared Opportunities (${opportunities.length})` : `My Articles (${userContent.articles.length})`}
                 </h3>
                 {isCrcOrSuperuser && (
                   <button
@@ -2783,13 +3192,66 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* My Village Events */}
+            {isCrcOrSuperuser && (
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                    Events I shared ({villageEvents.length})
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setEditingVillageEvent(null);
+                      setActiveModal('village_event');
+                    }}
+                    className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">New Event</span>
+                    <span className="sm:hidden">New</span>
+                  </button>
+                </div>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400">Loading village events...</p>
+                  </div>
+                ) : villageEvents.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {villageEvents.map((event) => (
+                      <ContentCard
+                        key={event.id}
+                        item={{
+                          ...event,
+                          type: 'village_event',
+                          title: event.title,
+                          content: event.content,
+                          event_type: event.event_type,
+                          location: event.location,
+                          event_date: event.event_date,
+                          image_url: event.image_url
+                        }}
+                        onDelete={handleDeleteVillageEvent}
+                        onEdit={handleEditVillageEvent}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
+                    <Newspaper className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No village events yet. Create your first event!</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* My Groups */}
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div className="flex-1">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                     <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
-                    My Groups ({userContent.groups.length})
+                    Created Groups ({userContent.groups.length})
                   </h3>
                   <form onSubmit={(e) => {
                     e.preventDefault();
@@ -2867,25 +3329,48 @@ export default function Dashboard() {
       </AnimatedModal>
 
       {isCrcOrSuperuser ? (
-        <AnimatedModal
-          isOpen={activeModal === 'opportunity'}
-          onClose={() => {
-            setActiveModal(null);
-            setEditingOpportunity(null);
-          }}
-          title={editingOpportunity ? "Edit Opportunity" : "Post New Opportunity"}
-        >
-          <OpportunityForm
+        <>
+          <AnimatedModal
+            isOpen={activeModal === 'opportunity'}
             onClose={() => {
               setActiveModal(null);
               setEditingOpportunity(null);
             }}
-            onSubmit={handleOpportunitySubmit}
-            userId={currentUser?.id}
-            existingOpportunity={editingOpportunity}
-          />
-        </AnimatedModal>
-      ) : (
+            title={editingOpportunity ? "Edit Opportunity" : "Post New Opportunity"}
+          >
+            <OpportunityForm
+              onClose={() => {
+                setActiveModal(null);
+                setEditingOpportunity(null);
+              }}
+              onSubmit={handleOpportunitySubmit}
+              userId={currentUser?.id}
+              existingOpportunity={editingOpportunity}
+            />
+          </AnimatedModal>
+
+          <AnimatedModal
+            isOpen={activeModal === 'village_event'}
+            onClose={() => {
+              setActiveModal(null);
+              setEditingVillageEvent(null);
+            }}
+            title={editingVillageEvent ? "Edit Village Event" : "Create Village Event"}
+          >
+            <VillageEventForm
+              onClose={() => {
+                setActiveModal(null);
+                setEditingVillageEvent(null);
+              }}
+              onSubmit={handleVillageEventSubmit}
+              userId={currentUser?.id}
+              existingEvent={editingVillageEvent}
+            />
+          </AnimatedModal>
+        </>
+      ) 
+      : 
+      (
         <AnimatedModal
           isOpen={activeModal === 'article'}
           onClose={() => setActiveModal(null)}
@@ -2893,7 +3378,8 @@ export default function Dashboard() {
         >
           <ArticleForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
         </AnimatedModal>
-      )}
+      )
+      }
 
       <AnimatedModal
         isOpen={activeModal === 'group'}
@@ -2932,7 +3418,7 @@ export default function Dashboard() {
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {alumn.first_name} {alumn.rwandan_name}
+                      {alumn.first_name} {alumn.rwandan_name}{console.log("overviewListitems ",overviewListItems)}
                     </p>
                     {alumn.email && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">

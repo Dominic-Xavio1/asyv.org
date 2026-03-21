@@ -835,7 +835,7 @@ export function DataTableDemo({ className }) {
           <DialogHeader>
             <DialogTitle className="text-gray-800 dark:text-gray-200">Create New User</DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Fill in the details to create a new user account.
+              Fill in the details to create a new user account. 
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit}>
@@ -880,6 +880,7 @@ export function DataTableDemo({ className }) {
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+                    required
                   />
                 </div>
               </div>
