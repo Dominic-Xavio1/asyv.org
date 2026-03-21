@@ -164,7 +164,6 @@ export function KidsTable({ requestingUserId, className }) {
       setIsLoading(false);
     }
   }, [requestingUserId]);
-
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);

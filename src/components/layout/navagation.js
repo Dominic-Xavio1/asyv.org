@@ -2,7 +2,7 @@
 
 import React, { useState,useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, CreditCard, Compass, Flame, ChevronRight, Loader, ExternalLink } from 'lucide-react';
+import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, Bell, Users, UserCog, Compass, Calendar, ChevronRight, Loader, ExternalLink } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
 import { ShimmeringText } from "@/components/animate-ui/primitives/texts/shimmering";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,12 +45,12 @@ export default function Navbar() {
   const {visible,setVisible,clearVisible} = chatDarkModeStore();
   const [isMobile, setIsMobile] = useState(false);
   const [opportunitiesOpen, setOpportunitiesOpen] = useState(false);
-  const [trendingOpen, setTrendingOpen] = useState(false);
+  const [villageEventsOpen, setVillageEventsOpen] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
-  const [trendingNews, setTrendingNews] = useState([]);
+  const [villageEvents, setVillageEvents] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
-  const [trendingLoading, setTrendingLoading] = useState(false);
-
+  const [villageEventsLoading, setVillageEventsLoading] = useState(false);
+const [fullInformation,setFullInformation ]= useState(null)
   useEffect(() => {
     if (!opportunitiesOpen) return;
     setOpportunitiesLoading(true);
@@ -64,23 +64,18 @@ export default function Navbar() {
       .finally(() => setOpportunitiesLoading(false));
   }, [opportunitiesOpen]);
   useEffect(() => {
-    if (!trendingOpen) return;
-    setTrendingLoading(true);
-    fetch('/api/news')
+    if (!villageEventsOpen) return;
+    setVillageEventsLoading(true);
+    fetch('/api/village-events')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.trending) {
-          const flat = [];
-          Object.entries(data.trending).forEach(([category, articles]) => {
-            (articles || []).forEach((a) => flat.push({ ...a, category }));
-          });
-          flat.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-          setTrendingNews(flat);
-        } else setTrendingNews([]);
+        if (data.success && data.events) {
+          setVillageEvents(data.events);
+        } else setVillageEvents([]);
       })
-      .catch(() => setTrendingNews([]))
-      .finally(() => setTrendingLoading(false));
-  }, [trendingOpen]);
+      .catch(() => setVillageEvents([]))
+      .finally(() => setVillageEventsLoading(false));
+  }, [villageEventsOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -112,9 +107,10 @@ const pathname = usePathname();
   }, []);
   const [userProfileImage,setUserProfileImage]=useState(null);
   useEffect(()=>{
-    const fullInformation = localStorage.getItem("fullInfo");
-    if(fullInformation){
-      setUserProfileImage(JSON.parse(fullInformation));
+    const fullInfo = localStorage.getItem("fullInfo");
+    setFullInformation(fullInfo);
+    if(fullInfo){
+      setUserProfileImage(JSON.parse(fullInfo));
     }
     console.log("user profile image",userProfileImage)
   },[])
@@ -201,6 +197,7 @@ console.log("data which I am fetching ",data);
           setCurrentUser(null);
         }
         const fullInformation = localStorage.getItem('fullInfo');
+        setFullInformation(fullInformation);
         if (fullInformation) {
           setUserProfileImage(JSON.parse(fullInformation));
         } else {
@@ -306,21 +303,6 @@ console.log("data which I am fetching ",data);
     };
   }, [currentUser]);
   
-  const handleViewNews = (article) => {
-
-    try {
-
-      sessionStorage.setItem('trending-news-article', JSON.stringify(article));
-
-      router.push('/feed/news/article');
-
-    } catch (e) {
-
-      console.error('Error storing article:', e);
-
-    }
-
-  };
   const navItems = [
     { path: '/feed', icon: Home, label: 'Feed' },
     { path: '/chat', icon: MessageCircle, label: 'Chat' },
@@ -366,26 +348,28 @@ switch(label){
         <div className="flex justify-between items-center h-14 lg:h-16">
           {/* Logo */}
           <div className="flex items-center cursor-pointer">
-            <img src="/agahozo.png" alt="ASYV Logo" className="hidden md:block w-[70px] h-auto object-cover" />
-            <img src="/asyv.png" alt="ASYV Small" className="md:hidden w-[42px] h-auto object-cover" />
+           <Link href="/feed"><img src="/agahozo.png" alt="ASYV Logo" className="hidden md:block w-[70px] h-auto object-cover" /></Link> 
+            <Link href="/feed"><img src="/agahozo.png" alt="ASYV Small" className="md:hidden w-[52px] h-auto object-cover" /></Link>
             {/* <ContainerTextFlip  words={["CHOOSE","LISTEN","BRIGHT"]}/> */}
             { (isMobile || !pathname.includes("/dashboard")) && (
+              <Link href="/feed">
               <ShimmeringText
                 text="Village Hub"
                 className="text-lg md:text-3xl font-bold ml-3"
                 duration={2}
                 color="#f97316"
-                // #0c8438
-                // #864108ff 
                 shimmeringColor="#864108ff "
-              />
+              /></Link>
             )}
           </div>
-         
+          
+            
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navItems.map(({ path, icon: Icon, label }) => (
               <Link key={path} href={getHref(label)}>
-              <div
+              <motion.button
+              whileHover={{scale:1.02}}
+              whileTap={{scale:0.95}}
                 role="link"
                 data-path={path}
                 className="flex items-center space-x-2 px-2 lg:px-3 py-2 rounded-lg transition-colors duration-200 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 relative"
@@ -404,11 +388,10 @@ switch(label){
                     </span>
                   </span>
                 )}
-              </div>
+              </motion.button>
               </Link>
             ))}
           </div>
-
           {/* Desktop User Actions */}
           <div className="hidden md:flex items-center space-x-2 lg:space-x-3">
             <ProfileDropdown theme={theme} toggleTheme={toggle} onLogout={()=>{
@@ -481,11 +464,11 @@ switch(label){
                 </motion.div>
                 <motion.div custom={1} initial="hidden" animate="visible" variants={itemVariants}>
                   <div
-                    onClick={() => { setTrendingOpen(true); setMobileMenuOpen(false); }}
+                    onClick={() => { setVillageEventsOpen(true); setMobileMenuOpen(false); }}
                     className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 cursor-pointer"
                   >
-                    <Flame className="h-5 w-5 text-orange-500" />
-                    <span className="font-medium">Trending</span>
+                    <Calendar className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium">Village Events</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />
                   </div>
                 </motion.div>
@@ -526,7 +509,9 @@ switch(label){
                   animate="visible"
                   variants={itemVariants}
                 >
-                  <div
+                  <motion.button
+                    whileHover={{scale:1.02}}
+                    whileTap={{scale:0.95}}
                     onClick={() => {
                       
                       window.dispatchEvent(new CustomEvent('openAIChat'));
@@ -537,7 +522,7 @@ switch(label){
                     <MessageCircle className="h-5 w-5 text-green-500" />
                     <span className="font-medium">AI Assistant</span>
                     <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />
-                  </div>
+                  </motion.button>
                 </motion.div>
               </div>
               <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
@@ -633,48 +618,48 @@ toast.success("Logout successfully!")
         </DialogContent>
       </Dialog>
 
-      {/* Trending Sheet - mobile */}
-          <Dialog open={trendingOpen} onOpenChange={setTrendingOpen}>
+      {/* Village Events Sheet - mobile */}
+          <Dialog open={villageEventsOpen} onOpenChange={setVillageEventsOpen}>
   <DialogContent className="max-h-[85dvh] w-[90vw] max-w-lg flex flex-col p-0 rounded-2xl">
     <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
       <DialogTitle className="flex items-center gap-2">
-        <Compass className="h-5 w-5 text-orange-500" />
-        Trending News
+        <Calendar className="h-5 w-5 text-orange-500" />
+        Village Events
       </DialogTitle>
     </DialogHeader>
           <ScrollArea className="flex-1 p-4 overflow-y-auto">
-            {trendingLoading ? (
+            {villageEventsLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader className="h-8 w-8 animate-spin text-orange-500" />
-                <span className="text-sm text-gray-500 dark:text-gray-400">Loading news...</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Loading village events...</span>
               </div>
-            ) : trendingNews.length > 0 ? (
+            ) : villageEvents.length > 0 ? (
               <div className="space-y-3 pb-6">
-                {trendingNews.slice(0, 30).map((news, index) => {
-                  const shortDesc = (news.description || news.content || '').replace(/\[\+?\d* chars\]/g, '').trim().slice(0, 100);
-                  const categoryLabel = (news.category || '').charAt(0).toUpperCase() + (news.category || '').slice(1);
+                {villageEvents.slice(0, 30).map((event, index) => {
+                  const shortDesc = (event.content || '').replace(/\[\+?\d* chars\]/g, '').trim().slice(0, 100);
+                  const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : '';
                   return (
                     <div
-                      key={`${news.title}-${index}`}
+                      key={`${event.id}-${index}`}
                       className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors"
-                      
                     >
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">{news.title}</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">{event.title}</p>
                       {shortDesc && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{shortDesc}...</p>}
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs">{categoryLabel}</span>
-                      <button 
-                        className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400 font-medium group-hover:underline"
-                        onClick={() => handleViewNews(news)}
-                      >
-                        View more
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
+                      {event.event_type && (
+                        <span className="inline-block mt-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs">{event.event_type}</span>
+                      )}
+                      {eventDate && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{eventDate}</p>
+                      )}
+                      {event.location && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1"> {event.location}</p>
+                      )}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No trending news available.</div>
+              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No village events available.</div>
             )}
           </ScrollArea>
         </DialogContent>
@@ -712,7 +697,7 @@ toast.success("Logout successfully!")
             <span className="absolute right-0 bottom-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-64 hover:cursor-pointer">
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
@@ -729,12 +714,42 @@ toast.success("Logout successfully!")
           <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
             {theme === 'dark' ? <Sun /> : <Moon />}
             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            {/* <ThemeTogglerButton /> */}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setEditProfileOpen(true)}>
             <User className="mr-2 h-4 w-4" />
             Create Profile
+          </DropdownMenuItem>
+         {(() => {
+    try {
+      const parsedInfo = fullInformation ? JSON.parse(fullInformation) : null;
+      return parsedInfo && (parsedInfo.is_crc || parsedInfo?.is_superuser === true);
+    } catch (e) {
+      return false;
+    }
+  })() ? (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/management">
+              <UserCog className="mr-2 h-4 w-4" />
+              Manage Users
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/management/advanced">
+              <Users className="mr-2 h-4 w-4" />
+              Our Students
+              </Link>
+            </DropdownMenuItem>
+          </>
+         ) : null} 
+         
+
+          <DropdownMenuItem asChild>
+            <Link href="/notification">
+              <Bell className="mr-2 h-4 w-4" />
+              Notifications
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="text-red-600 dark:text-red-400 cursor-pointer">

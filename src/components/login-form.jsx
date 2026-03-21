@@ -84,7 +84,7 @@ export function LoginForm({
 
   useEffect(() => {
     const q = searchParams?.get?.("mode")
-    if (q === "signup") setMode("signup")
+    if (q === "signupPm") setMode("signu")
 
     const error = searchParams?.get("error");
     if (error === "EmailNotRegistered") {
@@ -109,7 +109,6 @@ export function LoginForm({
 
 
   const { currentUser, setCurrentUser } = useUserStore();
-
   const { login: authLogin } = useAuth();
 
 
@@ -196,7 +195,7 @@ export function LoginForm({
 
   useEffect(() => {
 
-    if (mode === "signup") {
+    if (mode === "signupPm") {
 
       async function LoadUsers() {
 
@@ -521,7 +520,10 @@ export function LoginForm({
                   variant="outline"
 
                   type="button"
-
+onClick={()=>{
+  handleGoogleLogin();
+  setIsLoading(true);
+}}
                   className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 sm:p-3 h-10 sm:h-11"
 
                 >
@@ -576,7 +578,10 @@ export function LoginForm({
                   type="button"
 
                   className="border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 sm:p-3 h-10 sm:h-11"
-
+onClick={()=>{
+  handleGoogleLogin();
+  setIsLoading(true);
+}}
                 >
 
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5">
@@ -598,16 +603,16 @@ export function LoginForm({
 
 
               <FieldDescription className="text-center text-gray-600 dark:text-gray-400 text-xs sm:text-sm lg:text-base mt-3 sm:mt-4">
-
+{/* 
                 {mode === "signin" ? (
 
-                  <>Don't have an account? <button type="button" onClick={switchTo("signup")} className="text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 font-medium">Sign up</button></>
+                  <>Don't have an account? <button type="button" onClick={switchTo("signin")} className="text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 font-medium">Sign up</button></>
 
                 ) : (
 
                   <>Already have an account? <button type="button" onClick={switchTo("signin")} className="text-green-600 dark:text-green-500 hover:text-green-700 dark:hover:text-green-400 font-medium">Sign in</button></>
 
-                )}
+                )} */}
 
               </FieldDescription>
 
@@ -623,7 +628,7 @@ export function LoginForm({
 
             <div className="p-4 h-full">
 
-              {mode === "signup" ? (
+              {mode === "signupPM" ? (
 
                 <DataTableDemo className="h-full" />
 
@@ -686,7 +691,7 @@ export function LoginForm({
 
                 <div className="h-full overflow-auto">
 
-                  {mode === "signup" ? (
+                  {mode === "signupPm" ? (
 
                     <DataTableDemo />
 

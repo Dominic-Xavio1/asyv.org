@@ -5,32 +5,19 @@
 import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
-  import HeartBurst from './Heartburst';
-import { MessageCircle, Share2, ThumbsUp, Heart, Eye, Clock, TrendingUp, Search, Filter, ChevronRight, Compass, BookOpen, Users, Calendar, Flame, Loader, AlertCircle, ExternalLink, X } from 'lucide-react';
+import { MessageCircle, Share2, Heart, Search, Filter,Calendar, ChevronRight, Compass, Flame, Loader, AlertCircle, ExternalLink, X, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Image from 'next/image';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-
-import { Button } from "@/components/ui/button"
-
+import { Avatar, AvatarImage } from '@/components/ui/avatar'
 import {
-
   Card,
-
-  CardAction,
-
   CardContent,
-
   CardDescription,
-
   CardFooter,
-
   CardHeader,
-
   CardTitle,
-
 } from "@/components/ui/card"
 
 import { Input } from "@/components/ui/input"
@@ -41,15 +28,6 @@ import defaultAvatar from '../../../public/default.png';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const dummyArticles = [
-
-  { id: 1, title: 'Building Sustainable Communities Through Education', views: 856, discussions: 42 },
-
-  { id: 2, title: 'The Power of Mentorship in Youth Development', views: 734, discussions: 38 },
-
-  { id: 3, title: 'Creating Inclusive Spaces for Growth', views: 612, discussions: 29 },
-
-];
 
 const TRENDING_DESCRIPTION_LENGTH = 100;
 
@@ -72,10 +50,7 @@ const NEWS_CATEGORIES = [
 ];
 
 
-
-// Comment Section Component
-
-const CommentSection = ({ postId, isOpen, comments: initialComments, currentUserId, onCommentAdded }) => {
+const CommentSection = ({ postId, isOpen, comments: initialComments, currentUserId, onCommentAdded, setCommentCount }) => {
 
   const [newComment, setNewComment] = useState('');
 
@@ -84,6 +59,24 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
   const [loading, setLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+
+  const deleteComment = async (id) => {
+    try {
+      const res = await fetch(`/api/comment?id=${id}`, {
+        method: "DELETE"
+      })
+      const data = await res.json()
+      if (data.success) {
+        setComments(comments.filter(comment => comment.id !== id))
+        setCommentCount(prev => prev - 1)
+      } else {
+        alert(data.error || 'Failed to delete comment')
+      }
+    } catch (error) {
+      console.error("Error deleting comment:", error)
+      alert('Failed to delete comment. Please try again.')
+    }
+  };
 
 
 
@@ -241,11 +234,24 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
                 <div className="bg-neutral-50 dark:bg-gray-800 rounded-lg p-3">
 
-                  <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">
-
-                    {comment.full_name || comment.username || 'Unknown User'}
-
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">
+                      {comment.full_name || comment.username || 'Unknown User'}
+                    </p>
+                    {currentUserId === comment.user_id && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.90 }}
+                        onClick={() => {
+                          if (!window.confirm("Are you sure you want to delete this comment?")) return
+                          deleteComment(comment.id)
+                        }}
+                        className="ml-2 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    )}
+                  </div>
 
                   <p className="text-sm text-neutral-700 dark:text-gray-300 mt-1">{comment.content}</p>
 
@@ -337,21 +343,51 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
 };
 
-
+// REPLACE your current LikeParticles component with this:
+const LikeParticles = ({ trigger, burstKey }) => {
+  const particles = Array.from({ length: 8 });
+  const colors = ['#ef4444', '#fb923c', '#fbbf24', '#f472b6'];
+  return (
+    <AnimatePresence>
+      {trigger && particles.map((_, i) => {
+        const angle = (i / 8) * Math.PI * 2;
+        const dist = 50 + Math.random() * 30;
+        return (
+          <motion.span
+            key={`${burstKey}-${i}`}
+            initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+            animate={{
+              x: Math.cos(angle) * dist,
+              y: Math.sin(angle) * dist,
+              scale: 0,
+              opacity: 0,
+            }}
+            transition={{ duration: 0.9, ease: [0.2, 0.8, 0.4, 1] }}
+            style={{
+              position: 'absolute', width: 7, height: 7,
+              borderRadius: '50%', background: colors[i % colors.length],
+              top: '50%', left: '50%', marginTop: -2.5, marginLeft: -2.5,
+              pointerEvents: 'none', zIndex: 10,
+            }}
+          />
+        );
+      })}
+    </AnimatePresence>
+  );
+};
 
 const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) => {
 
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
-
+const [burstKey, setBurstKey] = useState(0);
   const [likes, setLikes] = useState(post.likes || 0);
 
+  const [commentBurstKey, setCommentBurstKey] = useState(0);
   const [commentCount, setCommentCount] = useState(post.comments || 0);
 
   const [showComments, setShowComments] = useState(false);
 
   const [liking, setLiking] = useState(false);
-
-  const [heartBurst, setHeartBurst] = useState(false);
   const [hearts, setHearts] = useState([]);
 
   const triggerHeartRain = () => {
@@ -487,20 +523,12 @@ const [burstOrigin, setBurstOrigin] = useState(null);
       const data = await response.json();
 
       if (data.success) {
-
-        setLikes(data.likeCount);
-
-        setIsLiked(data.isLiked);
-        // triggerHeartRain();
-        // setHeartBurst(true);
-
-        // setTimeout(() => setHeartBurst(false), 2600);
-
-        if (onLikeUpdate) {
-
-          onLikeUpdate(post.id, data.likeCount, data.isLiked);
-
-        }
+  setLikes(data.likeCount);
+  setIsLiked(data.isLiked);
+  if (data.isLiked) setBurstKey(k => k + 1); // re-triggers particles each like
+  if (onLikeUpdate) {
+    onLikeUpdate(post.id, data.likeCount, data.isLiked);
+  }
 
       } else {
 
@@ -533,15 +561,11 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
 
   const handleCommentAdded = () => {
-
     setCommentCount(commentCount + 1);
-
+    setCommentBurstKey(k => k + 1); // triggers comment animation
     if (onCommentUpdate) {
-
       onCommentUpdate(post.id, commentCount + 1);
-
     }
-
   };
 
 
@@ -550,42 +574,6 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
     <div className="relative bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm overflow-hidden">
  <AnimatePresence>
-
-{heartBurst && (
-
-  <motion.div
-
-    initial={{ opacity: 0, scale: 0.3 }}
-
-    animate={{ opacity: 1, scale: 1.2 }}
-
-    exit={{ opacity: 0, scale: 1.4 }}
-
-    transition={{ duration: 0.35, ease: 'easeOut' }}
-
-    className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none bg-red-500/10 dark:bg-red-500/20"
-
-  >
-    <motion.div
-
-initial={{ scale: 0.5, opacity: 0.8 }}
-
-animate={{ scale: [0.5, 1.4, 1.2], opacity: [0.8, 1, 0.9] }}
-
-transition={{ duration: 0.5, ease: 'easeOut' }}
-
-className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
-
->
-
-<Heart className="w-20 h-20 sm:w-24 sm:h-24 text-red-500 dark:text-red-400 fill-red-500 dark:fill-red-400" />
-
-</motion.div>
-
-</motion.div>
-
-)}
-
 
       </AnimatePresence>
 
@@ -701,41 +689,95 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
 
         <div className="flex items-center justify-start gap-4 border-t border-b border-neutral-100 dark:border-gray-800 py-2">
 
+         <button
+  onClick={() => handleLike()}
+  disabled={!currentUserId || liking}
+  className={`
+    inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
+    transition-all duration-150 active:scale-95
+    disabled:opacity-40 disabled:cursor-not-allowed
+    ${isLiked
+      ? 'text-red-500 border-red-300 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30'
+      : 'text-gray-500 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800/50'
+    }
+  `}
+>
+  {/* Icon + particles wrapper */}
+  <span className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
+    <LikeParticles trigger={isLiked} burstKey={burstKey} />
+    <motion.div
+      animate={isLiked ? { scale: [0.6, 1.3, 1] } : { scale: [0.8, 1] }}
+      transition={{ duration: 0.4, type: 'keyframes', ease: [0.34, 1.56, 0.64, 1] }}
+    >
+      <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+    </motion.div>
+  </span>
+
+  {/* Label */}
+  <span>{isLiked ? 'Liked' : 'Like'}</span>
+
+  {/* Animated like count */}
+  <AnimatePresence mode="popLayout">
+    <motion.span
+      key={likes}
+      initial={{ y: -8, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 8, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      className={`
+        inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
+        rounded-full text-[11px] font-semibold
+        ${isLiked
+          ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300'
+          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+        }
+      `}
+    >
+      {likes}
+    </motion.span>
+  </AnimatePresence>
+</button>
+
           <button 
-
-            onClick={(e) => {
-               const rect = e.currentTarget.getBoundingClientRect();
-              setBurstOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-              handleLike()
-            }}
-
-            disabled={!currentUserId || liking}
-
-            className={`flex items-center border bg-green-700 border-gray-100 py-1 px-2 rounded-sm gap-2 ${isLiked ? 'text-red-500 dark:text-red-400' : 'text-gray-200 dark:text-gray-400'} hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-
-          >
-
-            <ThumbsUp className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-
-            <span className="text-gray-200 dark:text-gray-200">{likes}</span>
-
-          </button>
-
-          <button 
-
             onClick={() => setShowComments(!showComments)}
-
-            className="flex items-center gap-2 text-gray-200 border borde-gray-100 py-1 px-2 rounded-sm bg-green-700 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-500 transition-colors"
-
+            className={`
+              inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
+              transition-all duration-150 active:scale-95
+              ${showComments
+                ? 'text-blue-700 border-blue-300 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30'
+                : 'text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/20 dark:hover:bg-blue-900/30'
+              }
+            `}
           >
-            <MessageCircle className="w-4 h-4 rounded-sm" />
-            <span className="text-gray-200 dark:text-gray-200">{commentCount}</span>
+            {/* Icon + particles wrapper */}
+            <span className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
+              <MessageCircle className={`w-5 h-5 `} />
+            </span>
+
+            {/* Label */}
+            <span>{showComments ? 'Commenting' : 'Comment'}</span>
+
+            {/* Animated comment count */}
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={commentCount}
+                initial={{ y: -8, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 8, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                className={`
+                  inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
+                  rounded-full text-[11px] font-semibold
+                  ${showComments
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  }
+                `}
+              >
+                {commentCount}
+              </motion.span>
+            </AnimatePresence>
           </button>
-          <button className="flex items-center border border-gray-200 py-1 px-2 bg-green-700 rounded-sm  gap-2 text-gray-200 dark:text-gray-400 hover:text-orange-600 dark:hover:text-ornage-500 transition-colors">
-            <Share2 className="w-5 h-5" />
-            <span className="text-white dark:text-white">{post.shares}</span>
-          </button>
-<HeartBurst origin={burstOrigin} onDone={() => setBurstOrigin(null)} />
         </div>
 
       </div>
@@ -745,15 +787,11 @@ className="drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]"
       {showComments && (
 
         <CommentSection 
-
           postId={post.id}
-
           isOpen={showComments}
-
           currentUserId={currentUserId}
-
           onCommentAdded={handleCommentAdded}
-
+          setCommentCount={setCommentCount}
         />
 
       )}
@@ -772,15 +810,15 @@ export default function SocialFeed() {
 
   const [opportunities, setOpportunities] = useState([]);
 
-  const [trendingNews, setTrendingNews] = useState([]);
+  const [villageEvents, setVillageEvents] = useState([]);
 
-  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
-  const [newsSearchQuery, setNewsSearchQuery] = useState('');
+  const [eventsSearchQuery, setEventsSearchQuery] = useState('');
 
-  const [newsCategoryFilter, setNewsCategoryFilter] = useState('all');
+  const [eventsCategoryFilter, setEventsCategoryFilter] = useState('all');
 
-  const [newsSortBy, setNewsSortBy] = useState('newest');
+  const [eventsSortBy, setEventsSortBy] = useState('newest');
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -959,107 +997,79 @@ export default function SocialFeed() {
 
   useEffect(() => {
 
-    const fetchTrendingNews = async () => {
+    const fetchVillageEvents = async () => {
 
-      setTrendingLoading(true);
+      setEventsLoading(true);
 
       try {
 
-        const res = await fetch('/api/news');
+        const res = await fetch('/api/village-events');
 
         const data = await res.json();
 
-        if (data.success && data.trending) {
+        if (data.success && data.events) {
 
-          const flat = [];
-
-          Object.entries(data.trending).forEach(([category, articles]) => {
-
-            (articles || []).forEach((a) => flat.push({ ...a, category }));
-
-          });
-
-          flat.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-
-          setTrendingNews(flat);
+          setVillageEvents(data.events);
 
         } else {
 
-          setTrendingNews([]);
+          setVillageEvents([]);
 
         }
 
       } catch (err) {
 
-        console.error('Error fetching trending news:', err);
+        console.error('Error fetching village events:', err);
 
-        setTrendingNews([]);
+        setVillageEvents([]);
 
       } finally {
 
-        setTrendingLoading(false);
+        setEventsLoading(false);
 
       }
 
     };
 
-    fetchTrendingNews();
+    fetchVillageEvents();
 
   }, []);
 
 
 
-  const handleViewNews = (article) => {
+  const filteredVillageEvents = villageEvents
 
-    try {
+    .filter((event) => {
 
-      sessionStorage.setItem('trending-news-article', JSON.stringify(article));
-
-      router.push('/feed/news/article');
-
-    } catch (e) {
-
-      console.error('Error storing article:', e);
-
-    }
-
-  };
-
-
-
-  const filteredTrendingNews = trendingNews
-
-    .filter((news) => {
-
-      const matchesCategory = newsCategoryFilter === 'all' || news.category === newsCategoryFilter;
-
-      const q = newsSearchQuery.toLowerCase().trim();
+      const q = eventsSearchQuery.toLowerCase().trim();
 
       const matchesSearch =
 
         !q ||
 
-        (news.title || '').toLowerCase().includes(q) ||
+        (event.title || '').toLowerCase().includes(q) ||
 
-        (news.description || '').toLowerCase().includes(q) ||
+        (event.description || '').toLowerCase().includes(q) ||
 
-        (news.source || '').toLowerCase().includes(q);
+        (event.location || '').toLowerCase().includes(q);
 
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
 
     })
 
     .sort((a, b) => {
 
-      const dateA = new Date(a.publishedAt || 0).getTime();
+      const dateA = new Date(a.event_date || 0).getTime();
 
-      const dateB = new Date(b.publishedAt || 0).getTime();
+      const dateB = new Date(b.event_date || 0).getTime();
 
-      return newsSortBy === 'newest' ? dateB - dateA : dateA - dateB;
+      return eventsSortBy === 'newest' ? dateB - dateA : dateA - dateB;
 
     });
 
-
+  const handleEventClick = (eventId) => {
+    router.push(`/feed/news/article/${eventId}`);
+  };
 
   const filteredPosts = posts
 
@@ -1504,7 +1514,7 @@ export default function SocialFeed() {
 
             <div className="sticky top-20 space-y-4">
 
-              {/* Activity Feed - Trending News */}
+              {/* Activity Feed - Village Events */}
 
               <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm mt-24 ">
 
@@ -1512,19 +1522,19 @@ export default function SocialFeed() {
 
                   <div className="flex items-center justify-between">
 
-                    <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">The International Brief</h3>
+                    <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">Village Events</h3>
 
-                    <Flame className="w-4 h-4 text-orange-500" />
+                    <Calendar className="w-4 h-4 text-green-500" />
 
                   </div>
 
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Blazing New All Over The World</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Upcoming ASYV Community Events</p>
 
                 </div>
 
 
 
-                {/* News Search */}
+                {/* Events Search */}
 
                 <div className="p-3 border-b border-neutral-100 dark:border-gray-800 space-y-3">
 
@@ -1536,23 +1546,23 @@ export default function SocialFeed() {
 
                       type="text"
 
-                      value={newsSearchQuery}
+                      value={eventsSearchQuery}
 
-                      onChange={(e) => setNewsSearchQuery(e.target.value)}
+                      onChange={(e) => setEventsSearchQuery(e.target.value)}
 
-                      placeholder="Search by title, source..."
+                      placeholder="Search events by title, location..."
 
                       className="w-full pl-8 pr-7 py-2 text-xs border border-neutral-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
 
                     />
 
-                    {newsSearchQuery && (
+                    {eventsSearchQuery && (
 
                       <button
 
                         type="button"
 
-                        onClick={() => setNewsSearchQuery('')}
+                        onClick={() => setEventsSearchQuery('')}
 
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-gray-700 text-gray-500"
 
@@ -1572,31 +1582,9 @@ export default function SocialFeed() {
 
                     <select
 
-                      value={newsCategoryFilter}
+                      value={eventsSortBy}
 
-                      onChange={(e) => setNewsCategoryFilter(e.target.value)}
-
-                      className="flex-1 min-w-0 text-xs py-1.5 px-2 border border-neutral-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-green-500"
-
-                    >
-
-                      {NEWS_CATEGORIES.map((c) => (
-
-                        <option key={c.value} value={c.value}>
-
-                          {c.label}
-
-                        </option>
-
-                      ))}
-
-                    </select>
-
-                    <select
-
-                      value={newsSortBy}
-
-                      onChange={(e) => setNewsSortBy(e.target.value)}
+                      onChange={(e) => setEventsSortBy(e.target.value)}
 
                       className="flex-1 min-w-0 text-xs py-1.5 px-2 border border-neutral-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-green-500"
 
@@ -1610,11 +1598,11 @@ export default function SocialFeed() {
 
                   </div>
 
-                  {(newsSearchQuery || newsCategoryFilter !== 'all') && (
+                  {eventsSearchQuery && (
 
                     <p className="text-xs text-gray-500 dark:text-gray-400">
 
-                      Showing {filteredTrendingNews.length} of {trendingNews.length} articles
+                      Showing {filteredVillageEvents.length} of {villageEvents.length} events
 
                     </p>
 
@@ -1623,84 +1611,53 @@ export default function SocialFeed() {
                 </div>
 
                 
-
                 <div className="h-96 overflow-y-auto p-4 space-y-3">
 
-                  {trendingLoading ? (
+                  {eventsLoading ? (
 
                     <div className="flex flex-col items-center justify-center py-12 gap-3">
 
                       <Loader className="w-8 h-8 animate-spin text-green-600" />
 
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Loading news...</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Loading events...</span>
 
                     </div>
 
-                  ) : trendingNews.length > 0 ? (
+                  ) : villageEvents.length > 0 ? (
 
-                    filteredTrendingNews.length > 0 ? (
+                    filteredVillageEvents.length > 0 ? (
 
-                    filteredTrendingNews.map((news, index) => {
+                    filteredVillageEvents.map((event, index) => {
 
-                      const shortDesc = (news.description || news.content || '')
-
-                        .replace(/\[\+?\d* chars\]/g, '')
-
-                        .trim()
-
-                        .slice(0, TRENDING_DESCRIPTION_LENGTH);
-
-                      const categoryLabel = (news.category || '').charAt(0).toUpperCase() + (news.category || '').slice(1);
-
-                      const timeAgo = news.publishedAt
-
-                        ? (() => {
-
-                            const diff = Date.now() - new Date(news.publishedAt).getTime();
-
-                            const mins = Math.floor(diff / 60000);
-
-                            const hours = Math.floor(diff / 3600000);
-
-                            if (mins < 60) return `${mins}m ago`;
-
-                            if (hours < 24) return `${hours}h ago`;
-
-                            return `${Math.floor(hours / 24)}d ago`;
-
-                          })()
-
-                        : '';
+                      const eventDate = event.event_date 
+                        ? new Date(event.event_date).toLocaleDateString() 
+                        : 'TBD';
 
                       return (
 
                         <div
-
-                          key={`${news.title}-${index}`}
-
+                          key={`${event.title}-${index}`}
                           className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
-
-                          onClick={() => handleViewNews(news)}
-
+                          onClick={() => handleEventClick(event.id)}
                         >
 
                           <div className="flex items-start gap-2">
 
-                            <Flame className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                            <Calendar className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
 
                             <div className="flex-1 min-w-0">
 
                               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors line-clamp-2">
 
-                                {news.title}
+                                {event.title}
 
                               </p>
 
-                              {shortDesc && (
+                              {event.description && (
 
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2">
 
-                                  {shortDesc}{shortDesc.length >= TRENDING_DESCRIPTION_LENGTH ? '...' : ''}
+                                  {event.description}
 
                                 </p>
 
@@ -1708,23 +1665,22 @@ export default function SocialFeed() {
 
                               <div className="flex items-center gap-2 mt-2 flex-wrap">
 
-                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
+                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs font-medium">
 
-                                  {categoryLabel}
+                                  {eventDate}
 
                                 </span>
 
-                                {timeAgo && (
+                                {event.location && (
 
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">{timeAgo}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+
+                                    📍 {event.location}
+
+                                  </span>
 
                                 )}
-                              </div>
-                              <div className="flex items-center gap-1 mt-2">
-                                <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 group-hover:underline">
-                                  View more
-                                  <ExternalLink className="w-3 h-3" />
-                                </span>
+
                               </div>
 
                             </div>
@@ -1741,7 +1697,7 @@ export default function SocialFeed() {
 
                       <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
 
-                        No articles match your search. Try different filters.
+                        No events match your search. Try different filters.
 
                       </div>
 
@@ -1751,7 +1707,7 @@ export default function SocialFeed() {
 
                     <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
 
-                      No trending news available. Try again later.
+                      No village events available. Try again later.
 
                     </div>
 

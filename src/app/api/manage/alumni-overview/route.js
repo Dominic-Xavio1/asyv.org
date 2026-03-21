@@ -782,7 +782,7 @@ export async function GET(request) {
           const studentRes = await pool.query(
             `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
              (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution,
-             (SELECT c.college_education FROM api_college c WHERE c.id = fe.college_id LIMIT 1) as college_name
+             (SELECT c.college_name FROM api_college c WHERE c.id = fe.college_id LIMIT 1) as college_name
              FROM api_furthereducation fe
              INNER JOIN api_user u ON u.id = fe.alumn_id
              INNER JOIN api_kid k ON k.user_id = u.id
@@ -1018,7 +1018,7 @@ export async function GET(request) {
         }
       }
     }
-
+    
     const continuedEducationPct =
       totalGraduates > 0
         ? Math.round((continuedEducation / totalGraduates) * 100)

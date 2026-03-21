@@ -1,84 +1,75 @@
-"use client"
+'use client'
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Heart } from "lucide-react";
 
-import { TrendingUp } from "lucide-react"
-import { Pie, PieChart } from "recharts"
+export default function LikeButton() {
+  const [isLiked, setIsLiked] = useState(false);
+  const [showSparks, setShowSparks] = useState(false);
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
+  const toggleLike = () => {
+    if (!isLiked) {
+      setShowSparks(true);
+      setTimeout(() => setShowSparks(false), 800);
+    }
+    setIsLiked(!isLiked);
+  };
 
-export const description = "A pie chart with a label"
+  // Heart animation states
+const heartVariants = {
+  unliked: { 
+    scale: 1, 
+    rotate: 0, 
+    color: "#6b7280" 
+  },
+  liked: { 
+    // The "Shake" sequence: 0 -> -15° -> 15° -> -10° -> 10° -> 0°
+    rotate: [0, -15, 15, -10, 10, 0],
+    scale: [1, 1.2, 1], // Small pulse while shaking
+    color: "#ef4444",
+    transition: { 
+      duration: 0.4, 
+      type: "tween", 
+      ease: "easeInOut" 
+    }
+  }
+};
 
-const chartData = [
-  { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },
-  { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
-  { browser: "firefox", visitors: 187, fill: "var(--color-firefox)" },
-  { browser: "edge", visitors: 173, fill: "var(--color-edge)" },
-  { browser: "other", visitors: 90, fill: "var(--color-other)" },
-]
 
-const chartConfig = {
-  visitors: {
-    label: "Visitors",
-  },
-  chrome: {
-    label: "Chrome",
-    color: "var(--chart-1)",
-  },
-  safari: {
-    label: "Safari",
-    color: "var(--chart-2)",
-  },
-  firefox: {
-    label: "Firefox",
-    color: "var(--chart-3)",
-  },
-  edge: {
-    label: "Edge",
-    color: "var(--chart-4)",
-  },
-  other: {
-    label: "Other",
-    color: "var(--chart-5)",
-  },
-} 
-
-export default function ChartPieLabel() {
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart - Label</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="[&_.recharts-pie-label-text]:fill-foreground mx-auto aspect-square max-h-[250px] pb-0"
-        >
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <Pie data={chartData} dataKey="visitors" label nameKey="browser" />
-          </PieChart>
-        </ChartContainer>
-      </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm">
-        <div className="flex items-center gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-        </div>
-        <div className="text-muted-foreground leading-none">
-          Showing total visitors for the last 6 months
-        </div>
-      </CardFooter>
-    </Card>
-  )
+    <div className="relative flex items-center justify-center p-10 mt-50">
+      <motion.button
+        onClick={toggleLike}
+        animate={isLiked ? "liked" : "unliked"}
+        variants={heartVariants}
+        whileTap={{ scale: 0.8 }} // Squishy feel on click
+        className="relative z-10 p-2 outline-none"
+      >
+        <Heart fill={isLiked ? "currentColor" : "none"} size={40} />
+      </motion.button>
+
+      {/* Sparkle Burst */}
+      <AnimatePresence>
+        {showSparks && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {[...Array(6)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 1, scale: 0, x: 0, y: 0 }}
+                animate={{ 
+                  opacity: 0, 
+                  scale: 1, 
+                  x: (i % 2 === 0 ? 1 : -1) * (Math.random() * 50 + 20),
+                  y: -(Math.random() * 50 + 20) 
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="absolute w-2 h-2 bg-red-400 rounded-full"
+              />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

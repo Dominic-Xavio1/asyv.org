@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cva } from "class-variance-authority";
-import { Slot } from "radix-ui"
+import { motion } from "framer-motion" // 1. Import motion
+import { Slot } from "radix-ui" // Assuming this is @radix-ui/react-slot
 
 import { cn } from "@/lib/utils"
 
@@ -10,25 +11,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        destructive: "bg-destructive text-white hover:bg-destructive/90 ...",
+        outline: "border bg-background shadow-xs ...",
+        secondary: "bg-secondary text-secondary-foreground ...",
+        ghost: "hover:bg-accent ...",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        default: "h-9 px-4 py-2",
+        xs: "h-6 px-2 text-xs",
+        sm: "h-8 px-3",
+        lg: "h-10 px-6",
         icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
       },
     },
     defaultVariants: {
@@ -45,16 +39,24 @@ function Button({
   asChild = false,
   ...props
 }) {
-  const Comp = asChild ? Slot.Root : "button"
+  // 2. If asChild is true, we use Slot. Otherwise, we use motion.button
+  const Comp = asChild ? Slot : motion.button
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      // 3. Add your global Framer Motion props here
+      // They will only apply if Comp is motion.button
+      whileHover={!asChild ? { scale: 1.02 } : {}}
+      whileTap={!asChild ? { scale: 0.95 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      
       className={cn(buttonVariants({ variant, size, className }))}
-      {...props} />
-  );
+      {...props} 
+    />
+  ); 
 }
 
 export { Button, buttonVariants }

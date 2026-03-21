@@ -80,6 +80,7 @@ const slideStyles = `
     inset: 0;
     will-change: transform, opacity;
     overflow: hidden;
+    max-height: calc(100vh - 144px);
   }
 
   /* Media picker dropdown */
@@ -1235,7 +1236,7 @@ const [controlOpen,setControlOpen]= useState(false)
                 ${mobileView === "chat" ? "slide-in-right" : "slide-out-right pointer-events-none"}
               `}
             >
-              <Card className={`min-h-[calc(100vh-84px)] ${cardBg} ${borderColor} border flex flex-col`}>
+              <Card className={`h-[calc(100vh-144px)] ${cardBg} ${borderColor} border flex flex-col overflow-hidden`}>
                 {!selectedChat ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
@@ -1540,7 +1541,7 @@ function MobileChatContent({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0 px-3" ref={messagesContainerRef}>
+      <ScrollArea className="flex-1 min-h-0 px-3 overflow-y-auto" ref={messagesContainerRef}>
         <div className="py-4 space-y-3 max-w-3xl mx-auto">
           {isLoadingMessages ? (
             <div className="flex justify-center py-12">
@@ -1662,7 +1663,7 @@ function MobileChatContent({
       </ScrollArea>
 
       {/* Message input */}
-      <div className={`p-3 border-t flex-shrink-0 relative ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+      <div className={`p-3 pb-6 border-t flex-shrink-0 relative ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
         {showEmoji && (
           <div className="absolute bottom-full right-3 mb-2 z-50">
             <Card className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border shadow-xl`}>
