@@ -87,14 +87,16 @@ export async function GET(request) {
         [numericGradeIds]
       );
       const feRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
-          (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
+          (SELECT c.college_name FROM api_college c 
+           INNER JOIN api_furthereducation fe ON c.id = fe.college_id 
+           WHERE fe.alumn_id = u.id LIMIT 1) as institution
          ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)`,
         [numericGradeIds]
       );
       const empRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
           (SELECT company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) as company
          ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_employment e WHERE e.alumn_id = u.id)`,
@@ -119,14 +121,16 @@ export async function GET(request) {
         [gradeId]
       );
       const feRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
-          (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
+          (SELECT c.college_name FROM api_college c 
+           INNER JOIN api_furthereducation fe ON c.id = fe.college_id 
+           WHERE fe.alumn_id = u.id LIMIT 1) as institution
          ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)`,
         [gradeId]
       );
       const empRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
           (SELECT company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) as company
          ${baseFrom}
          AND EXISTS (SELECT 1 FROM api_employment e WHERE e.alumn_id = u.id)`,
@@ -144,16 +148,20 @@ export async function GET(request) {
         "SELECT COUNT(*) AS count FROM api_user WHERE is_alumni = true"
       );
       const feRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
-         (SELECT scholarship_details FROM api_furthereducation fe WHERE fe.alumn_id = u.id LIMIT 1) as institution
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
+         (SELECT c.college_name FROM api_college c 
+          INNER JOIN api_furthereducation fe ON c.id = fe.college_id 
+          WHERE fe.alumn_id = u.id LIMIT 1) as institution
          FROM api_user u
+         LEFT JOIN api_kid k ON k.user_id = u.id
          WHERE u.is_alumni = true
          AND EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)`
       );
       const empRes = await pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, k.id as kid_id,
          (SELECT company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) as company
          FROM api_user u
+         LEFT JOIN api_kid k ON k.user_id = u.id
          WHERE u.is_alumni = true
          AND EXISTS (SELECT 1 FROM api_employment e WHERE e.alumn_id = u.id)`
       );

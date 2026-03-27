@@ -9,10 +9,11 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, User, Mail, GraduationCap, Users, CheckCircle,Eye, XCircle,View, Clock, Plus, Edit, Trash2, Shield, ShieldCheck } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, User, Mail, ArrowLeft, Users, CheckCircle,Eye, XCircle,View, Clock, Plus, Edit, Trash2, Shield, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
-
+import Link from "next/link"
+import {motion} from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -685,9 +686,19 @@ export function DataTableDemo({ className }) {
       rowSelection,
     },
   })
+  const MotionLink=motion(Link);
 
   return (
     <div className={`w-full ${className}`}>
+         <MotionLink
+              href="/dashboard"
+              whileHover={{scale:1.05}}
+              whileTap={{scale:0.95}}
+               className=" top-20 left-8 z-50 inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 dark:bg-gray-800 rounded-lg transition-colors"
+              >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Feed
+        </MotionLink>
       <div className="flex flex-col sm:flex-row items-center gap-3 py-4">
         <Input
           placeholder="Search by name, email, phone, is_crc, is_superuser, etc..."

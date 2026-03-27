@@ -212,12 +212,14 @@ export default function AlumniFormsPage() {
     <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-20 pb-12 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm" className="gap-2">
+          {/* <Link href="/dashboard"> */}
+            <Button variant="outline" size="sm" className="gap-2"
+            onClick={()=>router.back()}
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to Dashboard
             </Button>
-          </Link>
+          {/* </Link> */}
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Alumni Profile Forms
