@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -558,7 +559,7 @@ export default function AIChatWidget() {
                     )}
                     
                     {/* Typing indicator */}
-                    {isTyping && (
+                    {isLoading && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -569,22 +570,22 @@ export default function AIChatWidget() {
                             <Bot className="h-4 w-4" />
                           </AvatarFallback>
                         </Avatar>
-                        <div className="bg-orange-500 rounded-2xl px-4 py-3 rounded-bl-none">
+                        <div className="bg-gray-100 rounded-2xl px-4 py-3 rounded-bl-none">
                           <div className="flex items-center gap-1">
                             <motion.div
                               animate={{ y: [0, -5, 0] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: 0 }}
-                              className="h-2 w-2 bg-orange-500 rounded-full"
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0 }}
+                              className="h-2 w-2 bg-gray-700 rounded-full"
                             />
                             <motion.div
                               animate={{ y: [0, -5, 0] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
-                              className="h-2 w-2 bg-orange-500 rounded-full"
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.2 }}
+                              className="h-2 w-2 bg-gray-700 rounded-full"
                             />
                             <motion.div
                               animate={{ y: [0, -5, 0] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
-                              className="h-2 w-2 bg-orange-500 rounded-full"
+                              transition={{ repeat: Infinity, duration: 0.7, delay: 0.4 }}
+                              className="h-2 w-2 bg-gray-700 rounded-full"
                             />
                           </div>
                         </div>
@@ -599,14 +600,14 @@ export default function AIChatWidget() {
                 <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
-                      <Input
+                      <Textarea
                         ref={inputRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Type your message here..."
                         disabled={isLoading}
-                        className="pr-12 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all"
+                        className="pr-12 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all h-9 min-h-9 p-2"
                       />
                       {input && (
                         <motion.div

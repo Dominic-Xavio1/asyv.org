@@ -15,6 +15,10 @@ import {
   X,
   FileText,
   Upload,
+  Briefcase,
+  Building,
+  MapPin,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +53,7 @@ export default function KidDetailPage() {
   const kidId = params.kidId;
   const [requestingUserId, setRequestingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({ kid: null, family: null, grade: null, academics: [], reports: [] });
+  const [data, setData] = useState({ kid: null, family: null, grade: null, academics: [], furtherEducation: [], employment: [], reports: [] });
   const [grades, setGrades] = useState([]);
   const [combinations, setCombinations] = useState([]);
   const [families, setFamilies] = useState([]);
@@ -89,7 +93,7 @@ export default function KidDetailPage() {
         throw new Error(err.error || 'Failed to fetch kid details');
       }
       const json = await res.json();
-
+console.log("Returned information ",json);
       // Fetch reports separately
       const reportsRes = await fetch(
         `/api/manage/student-reports?studentId=${kidId}`,
@@ -102,6 +106,8 @@ export default function KidDetailPage() {
         family: json.family,
         grade: json.grade,
         academics: json.academics || [],
+        furtherEducation: json.furtherEducation || [],
+        employment: json.employment || [],
         reports: reportsData.reports || [],
       });
     } catch (e) {
@@ -502,21 +508,24 @@ export default function KidDetailPage() {
     );
   }
 
-  const { kid, family, grade, academics, reports } = data;
+  const { kid, family, grade, academics, furtherEducation, employment, reports } = data;
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-20 pb-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/management/advanced">
-            <Button variant="outline" size="sm" className="gap-2">
+      <div className="top-30 left-10 fixed ">
+          {/* <Link href="/management/advanced"> */}
+            <Button variant="outline" size="sm" className="gap-2"
+            onClick={()=>router.back()}
+            >
               <ArrowLeft className="h-4 w-4" />
-              Back to Kids List
+              Go back
             </Button>
-          </Link>
+          {/* </Link> */}
         </div>
+      <div className="max-w-4xl mx-auto mt-5">
+        
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-          {kid.user_first_name || kid.user_rwandan_name || 'Kid'} – Details
+          {kid.user_first_name || kid.user_rwandan_name || 'Kid'} – Details{console.log("The information of the person ",kid)}
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mb-8">
           User: {kid.user_email || kid.user_id || '-'} · Kid ID: {kid.id}
@@ -725,6 +734,204 @@ export default function KidDetailPage() {
                         <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteAcademic(ac.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Further Education */}
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <GraduationCap className="h-5 w-5" />
+                  Further Education
+                </CardTitle>
+                <CardDescription className="text-gray-500 dark:text-gray-400">
+                  College, degree, and field of study
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {furtherEducation.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400">No further education records found.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {furtherEducation.map((fe, index) => (
+                    <li
+                      key={fe.id || index}
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    >
+                      <div className="space-y-2">
+                        {fe.scholarship_details && (
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Institution:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.scholarship_details}</span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.degree && (
+                          <div className="flex items-start gap-2">
+                            <GraduationCap className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Degree:</span>
+                              {console.log("Big INformation ",fe)}
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.degree}</span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.field_of_study && (
+                          <div className="flex items-start gap-2">
+                            <BookOpen className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Field of Study:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.field_of_study}</span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.college && (
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">College:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.college}</span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.college_name && (
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">College Name:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.college_name}</span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.start_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Start Date:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                {new Date(fe.start_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {fe.end_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">End Date:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                {new Date(fe.end_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Employment */}
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                  <Briefcase className="h-5 w-5" />
+                  Employment
+                </CardTitle>
+                <CardDescription className="text-gray-500 dark:text-gray-400">
+                  Job title, company, and location
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {employment.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400">No employment records found.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {employment.map((emp, index) => (
+                    <li
+                      key={emp.id || index}
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    >
+                      <div className="space-y-2">
+                        {emp.job_title && (
+                          <div className="flex items-start gap-2">
+                            <Briefcase className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Job Title:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.job_title}</span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.company && (
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Company:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.company}</span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.location && (
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Location:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.location}</span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.industry && (
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Industry:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.industry}</span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.start_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">Start Date:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                {new Date(emp.start_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.end_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <span className="font-medium text-gray-800 dark:text-gray-200">End Date:</span>
+                              <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                {new Date(emp.end_date).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {emp.is_current_job && (
+                          <div className="flex items-start gap-2">
+                            <div className="w-4 h-4 mt-0.5" />
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              Current Position
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     </li>
                   ))}

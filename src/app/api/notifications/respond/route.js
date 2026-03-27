@@ -41,7 +41,7 @@ export async function POST(request) {
     }
 
     const notification = notificationResult.rows[0];
-
+console.log("The notification ",notification)
     if (notification.type !== 'group_invitation') {
       return NextResponse.json(
         { success: false, message: "This notification is not a group invitation" },
@@ -51,12 +51,13 @@ export async function POST(request) {
 
     let metadata = {};
     try {
-      metadata = JSON.parse(notification.metadata || '{}');
+      metadata = notification.metadata || '{}';
     } catch (e) {
       metadata = {};
     }
 
     const notificationGroupId = metadata.groupId;
+    console.log("Type of metadata:",metadata); 
     if (!notificationGroupId) {
       return NextResponse.json(
         { success: false, message: "Invalid group invitation notification" },

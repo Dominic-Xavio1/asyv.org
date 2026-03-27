@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef,useCallback } from 'react';
 import {motion as framerMotion, AnimatePresence } from "framer-motion"
+import { utils, writeFile } from 'xlsx';
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
   BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
   UserCircle, UserPlus,
-  Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3, Calendar, MapPin, Newspaper
+  Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3, Calendar, MapPin, Newspaper,
+  Download
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
@@ -26,9 +28,6 @@ import { userUnreadNotificationStore } from '../notification/page.js'
 
 import { io } from "socket.io-client"
 
-// ─────────────────────────────────────────────────────────────
-// StatCard & StatRow — reusable components for the overview
-// ─────────────────────────────────────────────────────────────
 const accentMap = {
   blue:   { header: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40", dot: "bg-blue-500" },
   purple: { header: "bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/40", dot: "bg-purple-500" },
@@ -1558,6 +1557,142 @@ export default function Dashboard() {
   const [overviewListTitle, setOverviewListTitle] = useState('');
   const [overviewListDescription, setOverviewListDescription] = useState('');
   const [overviewListItems, setOverviewListItems] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter items based on search query
+  const filteredOverviewItems = overviewListItems.filter(item => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      item.first_name?.toLowerCase().includes(query) ||
+      item.rwandan_name?.toLowerCase().includes(query) ||
+      item.email?.toLowerCase().includes(query) ||
+      item.institution?.toLowerCase().includes(query) ||
+      item.company?.toLowerCase().includes(query) ||
+      item.college_name?.toLowerCase().includes(query)
+    );
+  });
+
+  // Handle navigation to kid details
+  const handleAlumniClick = (alumni) => {
+    // Find the kid ID from alumni data - use kid_id field if available, fallback to id
+    const kidId = alumni.kid_id || alumni.id;
+    if (kidId) {
+      router.push(`/management/kids/${kidId}`);
+    } else {
+      console.error("No kid_id found for alumni:", alumni);
+      toast.error("Unable to navigate to student details - missing kid information");
+    }
+  };
+
+  // Download functions
+const downloadDOCX = () => {
+  if (!filteredOverviewItems || filteredOverviewItems.length === 0) {
+    toast.error("No data available to download");
+    return;
+  }
+
+  const dateStr = new Date().toLocaleDateString();
+  const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.rtf`;
+
+  // 1. Prepare Header and Metadata
+  // Note: We use \\ for every RTF command because \ is an escape char in JS strings
+  let rtfContent = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\n";
+  rtfContent += "{\\colortbl ;\\red0\\green0\\blue0;}\n";
+  rtfContent += "\\f0\\fs28 \\b " + overviewListTitle.replace(/[{}\\]/g, '') + "\\b0 \\par\\line\n";
+  rtfContent += "\\fs20 \\i Generated: " + dateStr + "\\i0 \\par\n";
+  rtfContent += "\\i Total Records: " + filteredOverviewItems.length + "\\i0 \\par\\line\n";
+
+  if (overviewListDescription) {
+    rtfContent += "\\fs20 Description: " + overviewListDescription.replace(/[{}\\]/g, '') + "\\par\\line\n";
+  }
+
+  // 2. Create Table Header
+  // \trowd = start row, \clbrdrt/l/b/r = cell borders, \cellx = cell width in twips (1440 = 1 inch)
+  const tableHeader = "\\trowd\\trgaph108\\trleft-108" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
+    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
+    "\\intbl \\b #\\cell First Name\\cell Rwandan Name\\cell Email\\cell Institution\\cell Company\\cell \\b0 \\row\n";
+  
+  rtfContent += tableHeader;
+
+  // 3. Add Data Rows
+  filteredOverviewItems.forEach((item, index) => {
+    const clean = (val) => (val || '').toString().replace(/[{}\\]/g, '');
+    
+    rtfContent += "\\trowd\\trgaph108\\trleft-108" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
+      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
+      `\\intbl ${index + 1}\\cell ${clean(item.first_name)}\\cell ${clean(item.rwandan_name)}\\cell ${clean(item.email)}\\cell ${clean(item.institution)}\\cell ${clean(item.company)}\\row\n`;
+  });
+
+  // 4. Close RTF
+  rtfContent += "\\par\\line \\i Export generated from ASYV Alumni Management System\\i0\n}";
+
+  // 5. Download Logic
+  const blob = new Blob([rtfContent], { type: 'application/rtf' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  toast.success(`Downloaded ${filteredOverviewItems.length} records successfully`);
+};
+
+const downloadXLSX = () => {
+    // 1. Prepare your data (Array of Objects)
+    // The object keys will automatically become the column headers
+    const data = filteredOverviewItems.map(item => ({
+      'First Name': item.first_name || '',
+      'Rwandan Name': item.rwandan_name || '',
+      'Email': item.email || '',
+      'Institution': item.institution || '',
+      'Company': item.company || '',
+      'Position': item.position || '',
+      'User ID': item.id || '',
+      'Kid ID': item.kid_id || ''
+    }));
+
+    if (data.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    // 2. Convert JSON data to a worksheet
+    const worksheet = utils.json_to_sheet(data);
+
+    // 3. Create a new workbook and add the worksheet
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Alumni List");
+
+    // 4. (Optional) Set column widths so the data isn't squashed
+    // wch is the character width
+    worksheet["!cols"] = [
+        { wch: 15 }, // First Name
+        { wch: 20 }, // Rwandan Name
+        { wch: 25 }, // Email
+        { wch: 20 }, // Institution
+        { wch: 20 }, // Company
+        { wch: 20 }  // Position
+    ];
+
+    // 5. Generate the file and trigger download
+    const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    writeFile(workbook, fileName);
+
+    toast.success(`Downloaded ${filteredOverviewItems.length} alumni as .xlsx`);
+};
+
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [sortedDegreeData, setSortedDegreeData] = useState([]);
   const [chooseGrade,setChooseGrade] = useState(false);
@@ -1573,7 +1708,6 @@ export default function Dashboard() {
   }, [overviewStats.degreeLevelDistribution]);
 
   const [badgeCount, setBadgeCount] = useState(0);
-  const router = useRouter();
   const socketRef = useRef(null);
   const setUnreadCount = userUnreadNotificationStore((state) => state.setUnreadCount);
 
@@ -1777,6 +1911,12 @@ export default function Dashboard() {
         throw new Error(err.error || 'Failed to load overview');
       }
       const data = await res.json();
+      console.log('API Response:', {
+        continuedEducation: data.continuedEducation,
+        employed: data.employed,
+        withEitherOutcome: data.withEitherOutcome,
+        continuedEducationPct: data.continuedEducationPct
+      });
       setOverviewStats({
         totalGraduates: data.totalGraduates ?? 0,
         continuedEducation: data.continuedEducation ?? 0,
@@ -1860,20 +2000,35 @@ export default function Dashboard() {
     let items = [];
     let title = '';
     let description = '';
-    console.log("education ",type)
 
     if (type === 'education') {
       items = overviewStats.continuedEducationStudents || [];
       title = 'Alumni in Further Education';
-      description = 'List of alumni who have at least one further education record within the selected grades.';
+      description = 'List of alumni who have at least one further education record within selected grades.';
     } else if (type === 'employment') {
       items = overviewStats.employedStudents || [];
       title = 'Employed Alumni';
-      description = 'List of alumni who have at least one employment record within the selected grades.';
+      description = 'List of alumni who have at least one employment record within selected grades.';
     } else if (type === 'either') {
       items = overviewStats.eitherOutcomeStudents || [];
       title = 'Alumni with Recorded Outcomes';
-      description = 'List of alumni who have at least one further education or employment record within the selected grades.';
+      description = 'List of alumni who have at least one further education or employment record within selected grades.';
+    } else if (type === 'all') {
+      // console.log('All Alumni - Combined items before dedup:', 
+      //   (overviewStats.continuedEducationStudents || []).length + (overviewStats.employedStudents || []).length);
+      console.log("This is what overviewstas holds ",overviewStats)
+      items = overviewStats.totalGraduates > 0 ? [
+        ...overviewStats.continuedEducationStudents || [],
+        ...overviewStats.employedStudents || []
+      ] : [];
+      // Remove duplicates using Set based on unique IDs
+      const uniqueItems = items.filter((item, index, self) => 
+        index === self.findIndex((i) => i.id === item.id)
+      );
+      items = uniqueItems;
+      console.log('All Alumni - Unique items after dedup:', uniqueItems.length);
+      title = 'All Alumni';
+      description = 'Complete list of all alumni with their information.';
     } else if (type === 'degreeLevel') {
       items = overviewStats.degreeLevelStudents[value] || [];
       title = `${value} Graduates`;
@@ -1960,7 +2115,7 @@ export default function Dashboard() {
       toast.error(error.message);
     }
   };
-
+const router = useRouter();
   const handleDeletePost = async (postId) => {
     if (!confirm('Are you sure you want to delete this post?')) {
       return;
@@ -2603,7 +2758,27 @@ export default function Dashboard() {
                       {/* KPI Cards */}
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         {/* Total Graduates */}
-                        <button
+                           <button
+                          type="button"
+                          className="text-left bg-gray-50 dark:bg-gray-950/40 rounded-xl border border-gray-100 dark:border-gray-900/50 p-4 shadow-sm hover:border-gray-500 hover:shadow-md transition"
+                        >
+                          <p className="text-xs font-medium text-gray-700 dark:text-gray-400 mb-2">All Alumni</p>
+                          <p className="text-3xl font-bold text-gray-800 dark:text-gray-300 tabular-nums">
+                            {(overviewStats.totalGraduates ?? 0).toLocaleString()}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="flex-1 h-1 rounded-full bg-gray-200 dark:bg-gray-900 overflow-hidden">
+                              <div className="h-full bg-gray-500 transition-all duration-500" style={{ width: '100%' }} />
+                            </div>
+                            <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-400 tabular-nums">
+                              100%
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download complete alumni list</p>
+                          </div>
+                        </button>
+                        {/* <button
                           type="button"
                           // onClick={() => openOverviewList('total')}
                           className="text-left bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-4 shadow-sm hover:border-green-500 hover:shadow-md transition"
@@ -2615,7 +2790,7 @@ export default function Dashboard() {
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
                             {overviewStats.filteredByGrade ? "Selected grades" : "All cohorts"}
                           </p>
-                        </button>
+                        </button> */}
 
                         {/* Continued Education */}
                         <button
@@ -2625,16 +2800,18 @@ export default function Dashboard() {
                         >
                           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Further Education</p>
                           <p className="text-3xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">
-                            {/* {overviewStats.continuedEducation.toLocaleString()} */}
-                            {Math.max(overviewStats.withEitherOutcome - overviewStats.employed, 0).toLocaleString()}
+                            {(overviewStats.continuedEducation ?? 0).toLocaleString()}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <div className="flex-1 h-1 rounded-full bg-emerald-200 dark:bg-emerald-900 overflow-hidden">
                               <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${overviewStats.continuedEducationPct}%` }} />
                             </div>
                             <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                            {Math.max((overviewStats.withEitherOutcome - overviewStats.employed) / overviewStats.totalGraduates * 100, 0).toLocaleString()}%
+                              {overviewStats.continuedEducationPct}%
                             </span>
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download complete alumni list</p>
                           </div>
                         </button>
 
@@ -2656,12 +2833,15 @@ export default function Dashboard() {
                               {overviewStats.employedPct}%
                             </span>
                           </div>
+                          <div className="mt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download Employed list</p>
+                          </div>
                         </button>
 
                         {/* With Any Outcome */}
                         <button
                           type="button"
-                          // onClick={() => openOverviewList('either')}
+                          onClick={() => openOverviewList('all')}
                           className="text-left bg-violet-50 dark:bg-violet-950/40 rounded-xl border border-violet-100 dark:border-violet-900/50 p-4 shadow-sm hover:border-violet-500 hover:shadow-md transition"
                         >
                           <p className="text-xs font-medium text-violet-700 dark:text-violet-400 mb-2">Graduates with Emploment or Further Education</p>
@@ -2676,19 +2856,26 @@ export default function Dashboard() {
                               {overviewStats.withEitherOutcomePct ?? 0}%
                             </span>
                           </div>
+                           <div className="mt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download</p>
+                          </div>
                         </button>
+                       
                       </div>
                       {/* Employment Breakdown Bar */}
                       {/* {console.log("overviewStats", overviewStats)} */}
                       {overviewStats.totalGraduates > 0 && (() => {
                         const total = overviewStats.totalGraduates || 1;
                         const employed = overviewStats.employed || 0;
+                        const continuedEd = overviewStats.continuedEducation || 0;
                         const withEither = overviewStats.withEitherOutcome || 0;
                         const noOutcome = Math.max(total - withEither, 0);
-                        const feOnly = Math.max(withEither - employed, 0);
+                        const both = Math.max(continuedEd + employed - withEither, 0);
+                        const employedOnly = Math.max(employed - both, 0);
+                        const continuedEdOnly = Math.max(continuedEd - both, 0);
                         const employedPct = Math.round((employed / total) * 100);
                         const noOutcomePct = Math.round((noOutcome / total) * 100);
-                        const feOnlyPct = Math.max(0, 100 - employedPct - noOutcomePct);
+                        const continuedEdPct = Math.round((continuedEd / total) * 100);
                         return (
                           <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
@@ -2697,13 +2884,13 @@ export default function Dashboard() {
                             </div>
                             <div className="h-5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex gap-0.5">
                               <div className="h-full bg-emerald-500 rounded-l-full transition-all duration-700" style={{ width: `${employedPct}%` }} />
-                              <div className="h-full bg-sky-400 transition-all duration-700" style={{ width: `${feOnlyPct}%` }} />
+                              <div className="h-full bg-sky-400 transition-all duration-700" style={{ width: `${continuedEdPct}%` }} />
                               <div className="h-full bg-rose-400 rounded-r-full transition-all duration-700" style={{ width: `${noOutcomePct}%` }} />
                             </div>
                             <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
                               {[
                                 { color: "bg-emerald-500", label: "Employed", count: employed, pct: employedPct },
-                                { color: "bg-sky-400", label: "Further ed. only", count: feOnly, pct: feOnlyPct },
+                                { color: "bg-sky-400", label: "Further ed", count: continuedEd, pct: continuedEdPct },
                                 { color: "bg-rose-400", label: "No outcome", count: noOutcome, pct: noOutcomePct },
                               ].map(({ color, label, count, pct }) => (
                                 <div key={label} className="flex items-center gap-2">
@@ -3396,7 +3583,10 @@ export default function Dashboard() {
 
       <AnimatedModal
         isOpen={overviewListOpen}
-        onClose={() => setOverviewListOpen(false)}
+        onClose={() => {
+          setOverviewListOpen(false);
+          setSearchQuery(''); // Clear search when closing
+        }}
         title={overviewListTitle || "Alumni"}
       >
         <div className="space-y-3">
@@ -3405,20 +3595,71 @@ export default function Dashboard() {
               {overviewListDescription}
             </p>
           )}
+          {/* Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by name, email, institution, or company..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          
+          {/* Download Button */}
+          {filteredOverviewItems && filteredOverviewItems.length > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {filteredOverviewItems.length} alumni found
+              </span>
+              <div className="relative group">
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Download className="w-3 h-3" />
+                  Download
+                </button>
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <button
+                    onClick={downloadDOCX}
+                    className="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-t-lg"
+                  >
+                    📝 Download as DOC (Word)
+                  </button>
+                  <button
+                    onClick={downloadXLSX}
+                    className="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-b-lg"
+                  >
+                    📈 Download as XLS (Excel)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="max-h-[60vh] overflow-y-auto space-y-2">
-            {(!overviewListItems || overviewListItems.length === 0) ? (
+            {(!filteredOverviewItems || filteredOverviewItems.length === 0) ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                No alumni found for this statistic.
+                {searchQuery ? 'No alumni found matching your search.' : 'No alumni found for this statistic.'}
               </p>
             ) : (
-              overviewListItems.map((alumn) => (
+              filteredOverviewItems.map((alumn) => (
                 <div
                   key={alumn.id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => handleAlumniClick(alumn)}
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {alumn.first_name} {alumn.rwandan_name}{console.log("overviewListitems ",overviewListItems)}
+                  <div className="flex-1 ">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition-colors">
+                      {alumn.first_name} {alumn.rwandan_name}
                     </p>
                     {alumn.email && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">

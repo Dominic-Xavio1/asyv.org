@@ -72,7 +72,7 @@ export function DialogDemo({ open, setOpen }) {
       linkedin: "",
       github: "",
       instagram: ""
-    }
+    }   
   })
   
   const [selectedInterests, setSelectedInterests] = useState([])

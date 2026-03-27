@@ -48,11 +48,23 @@ export async function GET(request) {
         ORDER BY pm.created_at DESC 
         LIMIT 1
       ) AS last_message_time,
-      -- Unread count: fallback to count of messages not from current user (if there's no is_read column)
+      -- Unread count: messages from other user sent after user's last_read_at
       (
         SELECT COUNT(*)
         FROM private_message pm
-        WHERE pm.conversation_id = pc.id AND pm.sender_id != $1
+        WHERE pm.conversation_id = pc.id
+          AND pm.sender_id != $1
+          AND pm.created_at > COALESCE(
+            (
+              SELECT crs.last_read_at
+              FROM chat_read_status crs
+              WHERE crs.user_id = $1::text
+                AND crs.conversation_id = pc.id::text
+                AND crs.conversation_type = 'private'
+              LIMIT 1
+            ),
+            '1970-01-01'::timestamptz
+          )
       ) AS unread
   FROM private_conversation pc
   JOIN api_user u 

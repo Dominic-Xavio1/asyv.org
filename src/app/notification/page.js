@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Bell, Check, Trash2, X, AlertCircle, MessageSquare, Users, Info, ExternalLink, UserPlus, UserMinus } from "lucide-react"
+import { Bell, Check, Trash2, ArrowLeft, AlertCircle, MessageSquare, Users, Info, ExternalLink, UserPlus, UserMinus } from "lucide-react"
 import toast from "react-hot-toast"
+import { motion } from 'framer-motion'
 import { io } from "socket.io-client"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import {create} from 'zustand';
 import {
   Dialog,
@@ -63,6 +65,7 @@ export const userUnreadNotificationStore = create((set)=>({
   unreadCount:0,
   setUnreadCount:(count)=>set({unreadCount:count})
 }))
+
 export default function NotificationPage() {
   const [notifications, setNotifications] = useState([])
   const [filteredNotifications, setFilteredNotifications] = useState([])
@@ -78,8 +81,11 @@ export default function NotificationPage() {
   const [currentUser, setCurrentUser] = useState(null)
   const [socket, setSocket] = useState(null)
   const router = useRouter()
-  const [respondingToInvitation, setRespondingToInvitation] = useState(null)
-
+  const [respondingToInvitation, setRespondingToInvitation] = useState({
+    id: null,
+    action: null
+  })
+  const MotionLink=motion(Link);
   const [sendFormData, setSendFormData] = useState({
     recipient_ids: "all", // "all" or array of user IDs
     selectedUsers: [],
@@ -414,11 +420,15 @@ const deleteAllNotifications = async () => {
       router.push(notification.link)
     }
   }
+  
 
   const handleGroupInvitationResponse = async (notificationId, action) => {
     if (!currentUser?.id) return
     
-    setRespondingToInvitation(notificationId)
+    setRespondingToInvitation({
+      id:notificationId,
+      action
+    })
     
     try {
       // Parse metadata to get group details
@@ -466,12 +476,22 @@ const deleteAllNotifications = async () => {
       console.error('Error responding to invitation:', error)
       toast.error('Failed to respond to invitation')
     } finally {
-      setRespondingToInvitation(null)
+      setRespondingToInvitation({id:null,action:null})
     }
   }
 
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl mt-30 ">
+    <div className="container mx-auto px-4 pt-8 max-w-6xl mt-30 ">
+        <MotionLink
+        href="/dashboard"
+        whileHover={{scale:1.05}}
+        whileTap={{scale:0.95}}
+         className="fixed top-26 left-8 z-50 inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 bg-white dark:bg-gray-800 rounded-lg shadow transition-colors"
+        >
+    <ArrowLeft className="w-4 h-4" />
+    Back to Feed
+  </MotionLink>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -640,7 +660,7 @@ const deleteAllNotifications = async () => {
                       </p>
                       
                       {/* Group Invitation Action Buttons */}
-                      {viewMode === "received" && notification.type === "group_invitation" && !notification.is_read && (() => {
+                      {/* {viewMode === "received" && notification.type === "group_invitation" && !notification.is_read && (() => {
                         let metadata = {}
                         try {
                           metadata = JSON.parse(notification.metadata || '{}')
@@ -656,10 +676,13 @@ const deleteAllNotifications = async () => {
                               e.stopPropagation()
                               handleGroupInvitationResponse(notification.id, 'accept')
                             }}
-                            disabled={respondingToInvitation === notification.id}
+                            disabled={respondingToInvitation.id === notification.id &&
+                              respondingToInvitation.action === 'accept'}
+
                             className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1"
                           >
-                            {respondingToInvitation === notification.id ? (
+                            {respondingToInvitation.id === notification.id &&
+ respondingToInvitation.action === 'accept' ? (
                               <div className="flex items-center gap-1">
                                 <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
                                 Accepting...
@@ -675,10 +698,12 @@ const deleteAllNotifications = async () => {
                               e.stopPropagation()
                               handleGroupInvitationResponse(notification.id, 'reject')
                             }}
-                            disabled={respondingToInvitation === notification.id}
+                            disabled={respondingToInvitation.id === notification.id &&
+                              respondingToInvitation.action === 'reject'}
                             className="text-xs px-3 py-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
-                            {respondingToInvitation === notification.id ? (
+                            {respondingToInvitation.id === notification.id &&
+  respondingToInvitation.action === 'reject'? (
                               <div className="flex items-center gap-1">
                                 <div className="w-3 h-3 border border-gray-500 border-t-transparent rounded-full animate-spin"></div>
                                 Rejecting...
@@ -688,7 +713,7 @@ const deleteAllNotifications = async () => {
                             )}
                           </Button>
                         </div>
-                      )}
+                      )} */}
                       
                       {/* Show response status for processed invitations */}
                       {viewMode === "received" && notification.type === "group_invitation" && (() => {

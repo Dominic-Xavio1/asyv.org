@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from "framer-motion";
-import { signIn } from "next-auth/react";
 import { ChevronDown, Menu, X } from "lucide-react";
-import Link from "next/link"
+import Link from "next/link";
 import {
   HoverCard,
   HoverCardContent,
@@ -22,10 +21,11 @@ const anne = "/anne.jpg";
 const jesi = "/asyvceo.webp";
 const learning = "/learning.jpg";
 const connect = "/connect_.webp";
-const inganji = '/images/inganji.webp'
-const cousin = '/images/cousin.webp'
+const inganji = '/images/inganji.webp';
+const cousin = '/images/cousin.webp';
 const win = "/win.jpg";
 const visitation = "/visitation.jpg";
+
 const navItems = [
   {
     title: "Home",
@@ -110,11 +110,6 @@ export default function LandingPage({ onAuthSuccess }) {
     { src: happy, label: "Joyful Moments" }
   ];
 
-  const handleShowAuth = (mode = "login") => {
-    if (mode === "signup") router.push('/login?mode=signup')
-    else router.push('/login')
-  }
-
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 100);
@@ -133,20 +128,20 @@ export default function LandingPage({ onAuthSuccess }) {
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 box-border caret-transparent overflow-x-hidden flex flex-col bg-gray-900">
+    <div className="text-neutral-700 dark:text-gray-300 box-border caret-transparent overflow-x-hidden flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300">
       <header aria-label="Site" className="box-border caret-transparent">
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className={`fixed box-border caret-transparent w-full z-[100] top-0 inset-x-0 transition-all duration-300 bg-white`}
+          className={`fixed box-border caret-transparent w-full z-[100] top-0 inset-x-0 transition-all duration-300 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800`}
         >
           <div className="box-border caret-transparent px-4 md:px-[4.16667%]">
             <div className="box-border caret-transparent flex h-16 md:h-20 justify-between max-w-[1800px] mx-auto">
               <div className="items-center box-border caret-transparent flex justify-between min-h-0 min-w-0 w-full">
                 {/* Mobile Menu Button */}
                 <button
-                  className="md:hidden text-neutral-700"
+                  className="md:hidden text-neutral-700 dark:text-gray-300"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                   aria-label="Toggle menu"
                 >
@@ -169,20 +164,20 @@ export default function LandingPage({ onAuthSuccess }) {
                             <HoverCardTrigger asChild>
                               <motion.a
                                 whileHover={{ scale: 1.05 }}
-                                className="text-neutral-700 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 transition-colors cursor-pointer flex items-center space-x-2 group"
+                                className="text-neutral-700 dark:text-gray-300 font-normal box-border caret-transparent block tracking-[0.3px] leading-[26px] min-h-0 min-w-0 text-left w-full pl-[30px] pr-20 py-5 md:leading-7 md:min-h-[auto] md:min-w-[auto] md:p-0 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer flex items-center space-x-2 group"
                               >
                                 <span>{item.title}</span>
-                                <ChevronDown className="h-3 w-3 text-neutral-400 transition-transform duration-300 group-hover:-rotate-180" />
+                                <ChevronDown className="h-3 w-3 text-neutral-400 dark:text-gray-500 transition-transform duration-300 group-hover:-rotate-180" />
                               </motion.a>
                             </HoverCardTrigger>
-                            <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-100 rounded-sm ml-[20px] overflow-hidden z-[9999]">
+                            <HoverCardContent className="w-80 md:w-96 h-54 p-0 border-0 shadow-2xl bg-green-50 dark:bg-gray-800 rounded-sm ml-[20px] overflow-hidden z-[9999]">
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.2 }}
                                 className="flex h-full"
                               >
-                                <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
+                                <div className="w-32 md:w-40 flex-shrink-0 bg-gradient-to-br from-green-400 to-green-600 dark:from-green-600 dark:to-green-800 flex items-center justify-center overflow-hidden">
                                   <Image
                                     src={item.image}
                                     alt={item.title}
@@ -193,15 +188,15 @@ export default function LandingPage({ onAuthSuccess }) {
                                 </div>
                                 <div className="flex-1 p-4 flex flex-col justify-between">
                                   <div>
-                                    <h3 className="text-green-900 text-lg font-bold mb-2">{item.title}</h3>
-                                    <p className="text-neutral-700 text-sm leading-relaxed">
+                                    <h3 className="text-green-800 dark:text-green-400 text-lg font-bold mb-2">{item.title}</h3>
+                                    <p className="text-neutral-600 dark:text-gray-300 text-sm leading-relaxed">
                                       {item.message}
                                     </p>
                                   </div>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    className="bg-green-600 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 transition-colors w-fit transform-gpu"
+                                    className="bg-green-600 dark:bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-green-700 dark:hover:bg-green-600 transition-colors w-fit transform-gpu"
                                   >
                                     Explore Now
                                   </motion.button>
@@ -220,7 +215,7 @@ export default function LandingPage({ onAuthSuccess }) {
                       whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => router.push('/login?mode=login')}
-                      className="bg-green-700 text-white text-xs md:text-sm font-medium box-border caret-transparent px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-green-800 transition-all duration-300 transform-gpu"
+                      className="bg-green-700 dark:bg-green-600 text-white text-xs md:text-sm font-medium box-border caret-transparent px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-green-800 dark:hover:bg-green-700 transition-all duration-300 transform-gpu"
                     >
                       Join Community
                     </motion.button>
@@ -230,7 +225,7 @@ export default function LandingPage({ onAuthSuccess }) {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => router.push('/login')}
-                      className="border border-gray-300 px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-gray-50 transition-all duration-300 transform-gpu text-xs md:text-sm"
+                      className="border border-gray-300 dark:border-gray-600 px-4 md:px-6 py-2 md:py-2.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 transform-gpu text-xs md:text-sm text-neutral-700 dark:text-gray-300"
                     >
                       Sign In
                     </motion.button>
@@ -246,7 +241,7 @@ export default function LandingPage({ onAuthSuccess }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-t overflow-hidden"
+              className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
                 {["Home", "Connect", "Stories", "Mentors", "Events"].map((item, index) => (
@@ -256,7 +251,7 @@ export default function LandingPage({ onAuthSuccess }) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     href="#"
-                    className="block py-2 px-3 text-neutral-700 hover:bg-gray-100 rounded transition-colors"
+                    className="block py-2 px-3 text-neutral-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
                   >
                     {item}
                   </motion.a>
@@ -266,7 +261,8 @@ export default function LandingPage({ onAuthSuccess }) {
           )}
         </motion.div>
       </header>
-      <main className="box-border caret-transparent pt-16 md:pt-0 flex-1 bg-white">
+      
+      <main className="box-border caret-transparent pt-16 md:pt-0 flex-1 bg-white dark:bg-gray-900 transition-colors duration-300">
         {/* Hero Section */}
         <section className="box-border caret-transparent">
           <div className="relative bg-transparent box-border caret-transparent list-none z-[1] mx-auto">
@@ -274,7 +270,7 @@ export default function LandingPage({ onAuthSuccess }) {
               <div className="relative box-border caret-transparent shrink-0 h-full w-full">
                 <div className="relative bg-cover box-border caret-transparent h-[560px] sm:h-[500px] md:h-80 lg:h-[900px] bg-center overflow-hidden">
                   <div className="box-border caret-transparent w-full">
-                    <div className="absolute inset-0 bg-neutral-900">
+                    <div className="absolute inset-0 bg-neutral-900 dark:bg-black">
                       {carouselImages.map((imageObj, index) => (
                         <motion.div
                           key={index}
@@ -294,7 +290,7 @@ export default function LandingPage({ onAuthSuccess }) {
                       ))}
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/50 flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70 dark:from-black/60 dark:to-black/80 flex items-center justify-center px-4">
                       <div className="text-center w-full max-w-6xl">
                         <motion.div
                           initial={{ opacity: 0, y: 50 }}
@@ -349,7 +345,7 @@ export default function LandingPage({ onAuthSuccess }) {
                               <motion.button
                                 whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(21, 128, 61, 0.4)" }}
                                 whileTap={{ scale: 0.95 }}
-                                className="relative bg-green-700 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu overflow-hidden group"
+                                className="relative bg-green-700 dark:bg-green-600 text-white text-sm md:text-base font-medium px-6 md:px-8 py-2.5 md:py-3 rounded-md hover:bg-green-600 dark:hover:bg-green-700 transition-all duration-300 transform-gpu overflow-hidden group"
                               >
                                 <Link href="/login" className="relative z-10">Get Started</Link>
                                 <motion.div
@@ -382,21 +378,13 @@ export default function LandingPage({ onAuthSuccess }) {
                             onClick={() => setCurrentImageIndex(index)}
                             whileHover={{ scale: 1.2 }}
                             whileTap={{ scale: 0.9 }}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer transform-gpu ${index === currentImageIndex
-                              ? 'bg-white'
-                              : 'bg-white/50 hover:bg-white/75'
-                              }`}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer transform-gpu ${
+                              index === currentImageIndex
+                                ? 'bg-white'
+                                : 'bg-white/50 hover:bg-white/75'
+                            }`}
                             aria-label={`Go to image ${index + 1}`}
-                          >
-                            {index === currentImageIndex && (
-                              <motion.div
-                                layoutId="activeDot"
-                                className="absolute inset-0 bg-white rounded-full"
-                                initial={false}
-                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                              />
-                            )}
-                          </motion.button>
+                          />
                         ))}
                       </div>
                     </div>
@@ -408,7 +396,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </section>
 
         {/* Features Section */}
-        <section className="box-border sm:mt-2 caret-transparent mt-10 md:py-20 bg-neutral-50">
+        <section className="box-border sm:mt-2 caret-transparent mt-10 md:py-20 bg-neutral-50 dark:bg-gray-800/50 transition-colors duration-300">
           <div className="max-w-[1800px] mx-auto px-4 md:px-[6.25%]">
             <motion.div
               initial="hidden"
@@ -417,7 +405,7 @@ export default function LandingPage({ onAuthSuccess }) {
               variants={fadeInUp}
               className="text-center mb-8 md:mb-16"
             >
-              <h2 className="text-orange-500 text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6 tracking-wide">
+              <h2 className="text-orange-500 dark:text-orange-400 text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6 tracking-wide">
                 Our Community Platform
               </h2>
               <div className="flex flex-col lg:flex-row justify-center items-center lg:items-start lg:justify-between gap-8 md:gap-12">
@@ -425,10 +413,10 @@ export default function LandingPage({ onAuthSuccess }) {
                   variants={slideInLeft}
                   className="lg:w-1/2"
                 >
-                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-green-600 mb-4">
+                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-green-600 dark:text-green-500 mb-4">
                     Connect, Share, and Grow with the ASYV Family
                   </h3>
-                  <p className="text-base md:text-lg text-neutral-600 max-w-3xl mx-auto lg:mx-0 leading-relaxed mt-4 mb-6">
+                  <p className="text-base md:text-lg text-neutral-600 dark:text-gray-400 max-w-3xl mx-auto lg:mx-0 leading-relaxed mt-4 mb-6">
                     A dedicated space for ASYV family members to connect, share, and grow together no matter where you are in the world.
                   </p>
                   <motion.div
@@ -442,9 +430,9 @@ export default function LandingPage({ onAuthSuccess }) {
                         boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.1)"
                       }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="bg-white p-6 md:p-8 rounded-lg shadow-md hover:cursor-pointer border border-neutral-100 text-center flex items-center justify-center transition-all duration-300 ease-in-out min-h-auto md:min-h-[400px] transform-gpu"
+                      className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-lg shadow-md hover:cursor-pointer border border-neutral-100 dark:border-gray-700 text-center flex items-center justify-center transition-all duration-300 ease-in-out min-h-auto md:min-h-[400px] transform-gpu"
                     >
-                      <p className="text-neutral-600 text-sm md:text-base lg:text-xl leading-relaxed">
+                      <p className="text-neutral-600 dark:text-gray-300 text-sm md:text-base lg:text-xl leading-relaxed">
                         Our platform offers comprehensive tools for connection, growth, and inspiration. Real-time Chat provides instant text, voice, and video communication to stay connected. The Mentorship program facilitates meaningful, cross-generational relationships by pairing those seeking guidance with those who can provide it. Finally, the Share Stories feature allows members to celebrate successes and inspire others with their unique journeys, fostering a strong sense of community.
                       </p>
                     </motion.div>
@@ -474,7 +462,8 @@ export default function LandingPage({ onAuthSuccess }) {
           </div>
         </section>
 
-        <section className="box-border caret-transparent py-10 md:py-20">
+        {/* Face-to-Face Section */}
+        <section className="box-border caret-transparent py-10 md:py-20 bg-white dark:bg-gray-900">
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -509,12 +498,12 @@ export default function LandingPage({ onAuthSuccess }) {
               className="box-border caret-transparent block basis-auto flex-row justify-normal min-h-0 min-w-0 pt-5 pb-5 md:pb-[35px] px-4 md:px-[6.25%] lg:flex lg:basis-[33.3333%] lg:flex-col lg:justify-center lg:min-h-[auto] lg:min-w-[auto] lg:pt-[35px] lg:px-[4.16667%]"
             >
               <div className="box-border caret-transparent min-h-0 min-w-0 mb-2.5 lg:min-h-[auto] lg:min-w-[auto]">
-                <h3 className="text-green-900 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium">
+                <h3 className="text-green-700 dark:text-green-400 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium">
                   Face-to-Face Connections
                 </h3>
               </div>
               <div className="box-border caret-transparent min-h-0 min-w-0 mb-4 md:mb-[15px] lg:min-h-[auto] lg:min-w-[auto]">
-                <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 md:text-lg">
+                <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 dark:text-gray-400 md:text-lg">
                   Experience the warmth of family through high-quality video calls. Share laughter, stories, and create new memories together in real-time.
                 </p>
               </div>
@@ -523,7 +512,7 @@ export default function LandingPage({ onAuthSuccess }) {
                   whileHover={{ scale: 1.05, x: 5 }}
                   whileTap={{ scale: 0.95 }}
                   href="#"
-                  className="relative text-orange-600 text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:text-neutral-600 hover:underline inline-flex items-center gap-2 transform-gpu"
+                  className="relative text-orange-600 dark:text-orange-400 text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] hover:text-neutral-600 dark:hover:text-gray-300 hover:underline inline-flex items-center gap-2 transform-gpu"
                 >
                   Start Video Call
                   <motion.span
@@ -545,7 +534,7 @@ export default function LandingPage({ onAuthSuccess }) {
           whileInView="visible"
           viewport={{ once: false, margin: "-50px" }}
           variants={scaleIn}
-          className="bg-green-900 box-border caret-transparent max-w-[1800px] mx-auto my-10 md:my-20 rounded-lg overflow-hidden transform-gpu"
+          className="bg-gradient-to-r from-green-800 to-green-900 dark:from-green-900 dark:to-green-950 box-border caret-transparent max-w-[1800px] mx-auto my-10 md:my-20 rounded-lg overflow-hidden transform-gpu"
         >
           <div className="box-border caret-transparent text-center px-4 md:px-[6.25%] py-8 md:py-10 lg:py-[75px]">
             <motion.div
@@ -574,7 +563,7 @@ export default function LandingPage({ onAuthSuccess }) {
                 whileHover={{ scale: 1.05, boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.3)" }}
                 whileTap={{ scale: 0.95 }}
                 href="#"
-                className="relative text-white text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] inline-flex items-center gap-2 bg-green-700 px-6 py-3 rounded-md hover:bg-green-600 transition-all duration-300 transform-gpu"
+                className="relative text-white text-base font-medium box-border caret-transparent tracking-[0.3px] leading-[22.0014px] inline-flex items-center gap-2 bg-green-700 dark:bg-green-600 px-6 py-3 rounded-md hover:bg-green-600 dark:hover:bg-green-700 transition-all duration-300 transform-gpu"
               >
                 Share Your Story
                 <motion.span
@@ -590,7 +579,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </motion.section>
 
         {/* Mentorship Section */}
-        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20">
+        <section className="box-border caret-transparent max-w-[1800px] mx-auto py-10 md:py-20 bg-white dark:bg-gray-900">
           <div className="box-border caret-transparent px-4 md:px-[8.33333%]">
             <motion.div
               initial="hidden"
@@ -600,7 +589,7 @@ export default function LandingPage({ onAuthSuccess }) {
               className="box-border caret-transparent block mb-6 md:mb-[25px] lg:flex lg:mb-[15px]"
             >
               <div className="box-border caret-transparent basis-auto shrink min-h-0 min-w-0 w-auto -mb-2.5 lg:basis-3/5 lg:shrink-0 lg:min-h-[auto] lg:min-w-[auto] lg:w-3/5">
-                <h2 className="text-neutral-900 text-2xl md:text-3xl lg:text-4xl box-border caret-transparent leading-[36px] md:leading-[46.0008px] font-light">
+                <h2 className="text-neutral-800 dark:text-gray-200 text-2xl md:text-3xl lg:text-4xl box-border caret-transparent leading-[36px] md:leading-[46.0008px] font-light">
                   Find Your Mentor
                 </h2>
               </div>
@@ -639,16 +628,16 @@ export default function LandingPage({ onAuthSuccess }) {
                 transition={{ delay: 0.2 }}
                 className="box-border caret-transparent lg:basis-2/5 flex flex-col justify-center"
               >
-                <h3 className="text-orange-500 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium mb-4">
+                <h3 className="text-orange-500 dark:text-orange-400 text-xl md:text-2xl lg:text-3xl box-border caret-transparent leading-[30px] md:leading-[36.0022px] font-medium mb-4">
                   Guidance That Transforms
                 </h3>
-                <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 md:text-lg mb-6">
+                <p className="text-base box-border caret-transparent leading-relaxed text-neutral-600 dark:text-gray-400 md:text-lg mb-6">
                   Connect with experienced mentors who can guide you through career choices, personal growth, and life challenges.
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(21, 128, 61, 0.3)" }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-green-900 text-white text-base font-medium px-6 py-3 rounded-md hover:bg-neutral-800 transition-all duration-300 transform-gpu"
+                  className="bg-green-800 dark:bg-green-700 text-white text-base font-medium px-6 py-3 rounded-md hover:bg-green-700 dark:hover:bg-green-600 transition-all duration-300 transform-gpu"
                 >
                   Become a Mentor
                 </motion.button>
@@ -658,7 +647,7 @@ export default function LandingPage({ onAuthSuccess }) {
         </section>
       </main>
 
-      <footer className="bg-gray-900 box-border caret-transparent w-full">
+      <footer className="bg-gray-900 dark:bg-black box-border caret-transparent w-full transition-colors duration-300">
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -684,7 +673,7 @@ export default function LandingPage({ onAuthSuccess }) {
                           <motion.a
                             whileHover={{ x: 5 }}
                             href="#"
-                            className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
+                            className="text-neutral-400 dark:text-gray-500 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white dark:hover:text-gray-300 transition-all duration-300 inline-block"
                           >
                             {item}
                           </motion.a>
@@ -704,7 +693,7 @@ export default function LandingPage({ onAuthSuccess }) {
                           <motion.a
                             whileHover={{ x: 5 }}
                             href="#"
-                            className="text-neutral-400 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white transition-all duration-300 inline-block"
+                            className="text-neutral-400 dark:text-gray-500 text-sm box-border caret-transparent leading-[28.0008px] hover:text-white dark:hover:text-gray-300 transition-all duration-300 inline-block"
                           >
                             {item}
                           </motion.a>
@@ -721,7 +710,7 @@ export default function LandingPage({ onAuthSuccess }) {
                 transition={{ delay: 0.3 }}
                 className="box-border caret-transparent basis-auto grow-0 shrink ml-0 lg:basis-[30.9524%] lg:grow lg:shrink-0 lg:ml-auto"
               >
-                <div className="text-neutral-400 box-border caret-transparent">
+                <div className="text-neutral-400 dark:text-gray-500 box-border caret-transparent">
                   <p className="text-sm box-border caret-transparent leading-relaxed">
                     ASYV Community Platform<br />
                     Connecting Families Worldwide<br />
@@ -737,7 +726,7 @@ export default function LandingPage({ onAuthSuccess }) {
                 viewport={{ once: false }}
                 className="items-center box-border caret-transparent flex max-w-[250px] mb-6 md:mb-10 mx-auto lg:mb-0 lg:mx-0"
               >
-                <div className="text-white text-center">
+                <div className="text-white dark:text-gray-300 text-center">
                   <div className="text-xl font-light">ASYV</div>
                   <div className="text-xs tracking-widest">COMMUNITY</div>
                 </div>
@@ -749,7 +738,7 @@ export default function LandingPage({ onAuthSuccess }) {
                 transition={{ delay: 0.2 }}
                 className="box-border caret-transparent"
               >
-                <div className="text-neutral-500 box-border caret-transparent leading-[26px] text-center text-sm lg:text-right">
+                <div className="text-neutral-500 dark:text-gray-600 box-border caret-transparent leading-[26px] text-center text-sm lg:text-right">
                   © 2025 ASYV Community Platform. All rights reserved.
                 </div>
               </motion.div>

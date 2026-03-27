@@ -271,6 +271,8 @@ export default function GroupMessageInput({
   textMuted,
   showEmoji,
   setShowEmoji,
+  replyToMessage,
+  onClearReply,
   onEmojiSelect,
   socket,
   currentUserId,
@@ -359,11 +361,13 @@ export default function GroupMessageInput({
       text: messageInput,
       file: selectedFile,
       fileType: selectedFileType,
+      replyTo: replyToMessage || null,
     })
 
     setMessageInput("")
     setSelectedFile(null)
     setSelectedFileType(null)
+    if (onClearReply) onClearReply()
 
     // Stop typing indicator
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
@@ -409,6 +413,30 @@ export default function GroupMessageInput({
 
   return (
     <div>
+      {replyToMessage && (
+        <div className={`
+          flex items-start gap-2 px-3 py-2 mb-2 rounded-xl border
+          ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-100 border-gray-200"}
+        `}>
+          <div className={`w-1 self-stretch rounded-full ${isDark ? "bg-orange-400" : "bg-orange-500"}`} />
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-semibold ${isDark ? "text-orange-300" : "text-orange-600"}`}>
+              Replying to {replyToMessage.senderName || "message"}
+            </p>
+            <p className={`text-xs truncate ${isDark ? "text-gray-300" : "text-gray-600"}`}>
+              {replyToMessage.text}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClearReply}
+            className="flex-shrink-0 p-1 rounded-md opacity-70 hover:opacity-100"
+            aria-label="Cancel reply"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <VoiceRecordingBar
         status={voiceStatus}
         error={voiceError}
