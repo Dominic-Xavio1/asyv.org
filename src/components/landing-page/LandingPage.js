@@ -128,7 +128,7 @@ export default function LandingPage({ onAuthSuccess }) {
   }, [carouselImages.length]);
 
   return (
-    <div className="text-neutral-700 dark:text-gray-300 box-border caret-transparent overflow-x-hidden flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300">
+    <div className="text-neutral-700 dark:text-gray-300 box-border caret-transparent overflow-x-hidden flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 no-scrollbar">
       <header aria-label="Site" className="box-border caret-transparent">
         <motion.div
           initial={{ y: -100, opacity: 0 }}

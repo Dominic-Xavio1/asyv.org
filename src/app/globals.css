@@ -199,7 +199,7 @@ body[data-hide-nav="true"] .login-fullscreen {
   margin: 0 !important;
   padding: 0 !important;
 }
-body::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 

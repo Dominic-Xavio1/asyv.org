@@ -11,6 +11,16 @@ const MemberSelector = ({ selectedMembers, onSelectionChange }) => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search query to prevent excessive filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -31,12 +41,12 @@ const MemberSelector = ({ selectedMembers, onSelectionChange }) => {
   }, []);
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!debouncedSearchQuery.trim()) {
       setFilteredUsers(users);
       return;
     }
 
-    const query = searchQuery.toLowerCase();
+    const query = debouncedSearchQuery.toLowerCase();
     const filtered = users.filter(user => {
       const firstName = (user.first_name || '').toLowerCase();
       const lastName = (user.rwandan_name || '').toLowerCase();
@@ -44,7 +54,7 @@ const MemberSelector = ({ selectedMembers, onSelectionChange }) => {
       return firstName.includes(query) || lastName.includes(query) || email.includes(query);
     });
     setFilteredUsers(filtered);
-  }, [searchQuery, users]);
+  }, [debouncedSearchQuery, users]);
 
   const toggleMember = (userId) => {
     const userIdStr = String(userId);

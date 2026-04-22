@@ -33,6 +33,7 @@ const GroupImageDropzone = forwardRef((props, ref) => {
       onDrop={handleDrop}
       onError={console.error}
       src={files}
+      required
     >
       <DropzoneEmptyState />
       <DropzoneContent>

@@ -9,6 +9,10 @@ import pool from '../../connection/databaseConnection';
  * online users with their profile information.
  */
 
+// How long a user stays "online" without heartbeats/disconnect.
+// Client sends `user_activity` every ~30s (see `src/app/chat/page.js`).
+const ONLINE_TTL_SECONDS = 90;
+
 // Redis key prefixes for better organization
 const REDIS_KEYS = {
   USER_SOCKET: 'online:user:socket:',      // user:socket:userId -> socketId
@@ -30,14 +34,14 @@ export async function setUserOnline(userId, socketId, userData = null) {
     // Store mapping: userId -> socketId
     await client.setEx(
       `${REDIS_KEYS.USER_SOCKET}${userId}`,
-      3600, // 1 hour TTL (refresh on activity)
+      ONLINE_TTL_SECONDS,
       socketId
     );
 
     // Store mapping: socketId -> userId (for quick lookup on disconnect)
     await client.setEx(
       `${REDIS_KEYS.SOCKET_USER}${socketId}`,
-      3600,
+      ONLINE_TTL_SECONDS,
       userId
     );
 
@@ -48,7 +52,7 @@ export async function setUserOnline(userId, socketId, userData = null) {
     if (userData) {
       await client.setEx(
         `${REDIS_KEYS.USER_PRESENCE}${userId}`,
-        3600,
+        ONLINE_TTL_SECONDS,
         JSON.stringify(userData)
       );
     }
@@ -112,13 +116,13 @@ export async function refreshUserOnline(userId, socketId) {
     const client = await redisClient.getClient();
     
     // Refresh TTL for both mappings
-    await client.expire(`${REDIS_KEYS.USER_SOCKET}${userId}`, 3600);
-    await client.expire(`${REDIS_KEYS.SOCKET_USER}${socketId}`, 3600);
+    await client.expire(`${REDIS_KEYS.USER_SOCKET}${userId}`, ONLINE_TTL_SECONDS);
+    await client.expire(`${REDIS_KEYS.SOCKET_USER}${socketId}`, ONLINE_TTL_SECONDS);
     
     // Refresh presence data if it exists
     const presenceExists = await client.exists(`${REDIS_KEYS.USER_PRESENCE}${userId}`);
     if (presenceExists) {
-      await client.expire(`${REDIS_KEYS.USER_PRESENCE}${userId}`, 3600);
+      await client.expire(`${REDIS_KEYS.USER_PRESENCE}${userId}`, ONLINE_TTL_SECONDS);
     }
 
     return { success: true };
@@ -166,6 +170,9 @@ export async function getAllOnlineUserIds() {
  */
 export async function getOnlineUsersWithProfile(excludeUserId = null) {
   try {
+    // Important: the online set doesn't expire, so purge stale IDs first.
+    await cleanupExpiredUsers();
+
     // Get all online user IDs from Redis
     const onlineUserIds = await getAllOnlineUserIds();
     
