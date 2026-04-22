@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Share2, Heart, Search, Filter,Calendar, ChevronRight, Compass, Flame, Loader, AlertCircle, ExternalLink, X, Trash2 } from 'lucide-react';
+import { MessageCircle, Share2, Heart, Search, Filter,Calendar, ChevronRight, Compass, Flame, Loader, AlertCircle, ExternalLink, X, Trash2, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Image from 'next/image';
@@ -726,7 +726,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       className={`
         inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
-        rounded-full text-[11px] font-semibold
+        rounded-full text-[14px] font-semibold
         ${isLiked
           ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300'
           : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
@@ -745,7 +745,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
               transition-all duration-150 active:scale-95
               ${showComments
                 ? 'text-blue-700 border-blue-300 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30'
-                : 'text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/20 dark:hover:bg-blue-900/30'
+                : 'text-gray-600 border-gray-200 bg-gray-50 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-800 dark:bg-gray-950/20 dark:hover:bg-gray-900/30'
               }
             `}
           >
@@ -767,7 +767,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 className={`
                   inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
-                  rounded-full text-[11px] font-semibold
+                  rounded-full text-[14px] font-semibold
                   ${showComments
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300'
                     : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
@@ -1524,7 +1524,7 @@ export default function SocialFeed() {
 
                     <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">Village Events</h3>
 
-                    <Calendar className="w-4 h-4 text-green-500" />
+                    <Calendar className="w-4 h-4 text-orange-500" />
 
                   </div>
 
@@ -1636,55 +1636,63 @@ export default function SocialFeed() {
                       return (
 
                         <div
-                          key={`${event.title}-${index}`}
-                          className="p-3 border border-neutral-100 dark:border-gray-800 rounded-lg hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
-                          onClick={() => handleEventClick(event.id)}
-                        >
+  key={`${event.title}-${index}`}
+  className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-transparent dark:hover:from-orange-900/10 dark:hover:to-transparent transition-all duration-200 cursor-pointer group bg-white dark:bg-gray-800/50"
+  onClick={() => handleEventClick(event.id)}
+>
 
-                          <div className="flex items-start gap-2">
+                          <div className="flex gap-3">
+                            {/* Event Image */}
+                            <div className="flex-shrink-0">
+                              {event.image_url ? (
+                                <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                  <img
+                                    src={event.image_url}
+                                    alt={event.title}
+                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                  {/* Fallback placeholder */}
+                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600" style={{display: 'none'}}>
+                                    <Calendar className="w-6 h-6 text-white" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                                  <Calendar className="w-6 h-6 text-white" />
+                                </div>
+                              )}
+                            </div>
 
-                            <Calendar className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-
+                            {/* Event Content */}
                             <div className="flex-1 min-w-0">
-
-                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-green-700 dark:group-hover:text-green-500 transition-colors line-clamp-2">
-
+                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-2 leading-tight">
                                 {event.title}
-
                               </p>
 
                               {event.description && (
-
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2">
-
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">
                                   {event.description}
-
                                 </p>
-
                               )}
 
-                              <div className="flex items-center gap-2 mt-2 flex-wrap">
-
-                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs font-medium">
-
+                              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-200 dark:border-green-800">
+                                  <Calendar className="w-3 h-3 mr-1" />
                                   {eventDate}
-
                                 </span>
 
                                 {event.location && (
-
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-
-                                    📍 {event.location}
-
+                                  <span className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    {event.location}
                                   </span>
-
                                 )}
-
                               </div>
-
                             </div>
-
                           </div>
 
                         </div>

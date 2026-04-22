@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef,useCallback } from 'react';
-import {motion as framerMotion, AnimatePresence } from "framer-motion"
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion as framerMotion, AnimatePresence } from "framer-motion"
 import { utils, writeFile } from 'xlsx';
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
@@ -29,10 +29,10 @@ import { userUnreadNotificationStore } from '../notification/page.js'
 import { io } from "socket.io-client"
 
 const accentMap = {
-  blue:   { header: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40", dot: "bg-blue-500" },
+  blue: { header: "bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40", dot: "bg-blue-500" },
   purple: { header: "bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/40", dot: "bg-purple-500" },
   indigo: { header: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/40", dot: "bg-indigo-500" },
-  amber:  { header: "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40", dot: "bg-amber-500" },
+  amber: { header: "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40", dot: "bg-amber-500" },
 };
 
 const StatCard = ({ title, subtitle, children, accentColor = "blue", scrollable = false }) => {
@@ -71,9 +71,6 @@ const StatRow = ({ label, count, pct, barColor = "bg-blue-500", onClick }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────
-// AnimatedModal
-// ─────────────────────────────────────────────────────────────
 const AnimatedModal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
@@ -656,16 +653,17 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
 
 // ChatGroupForm Component
 const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
-  const [groupName, setGroupName] = useState(existingGroup?.name || '');
-  const [description, setDescription] = useState(existingGroup?.description || '');
-  const [selectedMembers, setSelectedMembers] = useState(existingGroup?.members ? existingGroup.members.map(String) : []);
+  const [groupName, setGroupName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [limitNotified, setLimitNotified] = useState(false);
-  const [existingImage, setExistingImage] = useState(existingGroup?.image || null);
+  const [existingImage, setExistingImage] = useState(null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const imageDropzoneRef = useRef(null);
   const wordLimit = 70;
 
+  // Initialize form with existing group data only once when component mounts or existingGroup changes
   useEffect(() => {
     if (existingGroup) {
       setGroupName(existingGroup.name || '');
@@ -674,10 +672,22 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
       setExistingImage(existingGroup.image || null);
       setRemoveExistingImage(false);
       imageDropzoneRef.current?.reset?.();
+    } else {
+      // Reset form when creating new group
+      setGroupName('');
+      setDescription('');
+      setSelectedMembers([]);
+      setExistingImage(null);
+      setRemoveExistingImage(false);
     }
-  }, [existingGroup]);
+  }, [existingGroup?.id]); // Only re-run when the group ID changes, not the entire object
 
-  const handleTextLimit = (e) => {
+  // Optimized input handlers to prevent re-renders
+  const handleGroupNameChange = useCallback((e) => {
+    setGroupName(e.target.value);
+  }, []);
+
+  const handleTextLimit = useCallback((e) => {
     const value = e.target.value || '';
     const words = value.trim().length === 0 ? [] : value.trim().split(/\s+/);
 
@@ -692,7 +702,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         setLimitNotified(true);
       }
     }
-  }
+  }, [wordLimit, limitNotified]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -722,6 +732,10 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
       const imageFile = imageDropzoneRef.current?.getFile();
       if (imageFile) {
         formData.append('image', imageFile);
+      }
+      if(!imageFile){
+         toast.error('Please image is required.');
+        return 
       }
 
       if (existingGroup && removeExistingImage && !imageFile) {
@@ -781,7 +795,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         <Input
           type="text"
           value={groupName}
-          onChange={(e) => setGroupName(e.target.value)}
+          onChange={handleGroupNameChange}
           placeholder="Enter a unique group name..."
           className="w-full"
           required
@@ -791,12 +805,12 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Group Image (Optional)
+          Group Image
         </label>
         {existingImage && !removeExistingImage && (
           <div className="flex items-center gap-3">
             <div className="w-24 h-24 rounded overflow-hidden border border-neutral-200 dark:border-gray-700">
-              <img src={existingImage} alt="group" className="w-full h-full object-cover" />
+              <Image src={existingImage} alt="group" className="w-full h-full object-cover" />
             </div>
             <div>
               <Button variant="outline" onClick={() => setRemoveExistingImage(true)} className="mr-2">Remove Image</Button>
@@ -810,7 +824,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Description
         </label>
@@ -832,7 +846,7 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
             {description.trim().length === 0 ? `0 / ${wordLimit} words` : `${description.trim().split(/\s+/).length} / ${wordLimit} words`}
           </p>
         </div>
-      </div>
+      </div> */}
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-neutral-700 dark:text-gray-300">
@@ -900,10 +914,10 @@ const VillageEventForm = ({ onClose, onSubmit, userId, existingEvent = null }) =
       formData.append('title', title);
       formData.append('content', content);
       formData.append('event_type', eventType);
-      
+
       if (location) formData.append('location', location);
       if (eventDate) formData.append('event_date', eventDate);
-      
+
       if (image) {
         formData.append('image_url', image);
       } else if (existingEvent?.image_url && !image) {
@@ -925,13 +939,13 @@ const VillageEventForm = ({ onClose, onSubmit, userId, existingEvent = null }) =
       }
 
       const result = await response.json();
-      
+
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to save village event');
       }
 
       toast.success(existingEvent ? 'Event updated successfully!' : 'Event created successfully!');
-      
+
       if (onSubmit) {
         onSubmit(result.event || existingEvent);
       }
@@ -1586,70 +1600,70 @@ export default function Dashboard() {
   };
 
   // Download functions
-const downloadDOCX = () => {
-  if (!filteredOverviewItems || filteredOverviewItems.length === 0) {
-    toast.error("No data available to download");
-    return;
-  }
+  const downloadDOCX = () => {
+    if (!filteredOverviewItems || filteredOverviewItems.length === 0) {
+      toast.error("No data available to download");
+      return;
+    }
 
-  const dateStr = new Date().toLocaleDateString();
-  const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.rtf`;
+    const dateStr = new Date().toLocaleDateString();
+    const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.rtf`;
 
-  // 1. Prepare Header and Metadata
-  // Note: We use \\ for every RTF command because \ is an escape char in JS strings
-  let rtfContent = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\n";
-  rtfContent += "{\\colortbl ;\\red0\\green0\\blue0;}\n";
-  rtfContent += "\\f0\\fs28 \\b " + overviewListTitle.replace(/[{}\\]/g, '') + "\\b0 \\par\\line\n";
-  rtfContent += "\\fs20 \\i Generated: " + dateStr + "\\i0 \\par\n";
-  rtfContent += "\\i Total Records: " + filteredOverviewItems.length + "\\i0 \\par\\line\n";
+    // 1. Prepare Header and Metadata
+    // Note: We use \\ for every RTF command because \ is an escape char in JS strings
+    let rtfContent = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\n";
+    rtfContent += "{\\colortbl ;\\red0\\green0\\blue0;}\n";
+    rtfContent += "\\f0\\fs28 \\b " + overviewListTitle.replace(/[{}\\]/g, '') + "\\b0 \\par\\line\n";
+    rtfContent += "\\fs20 \\i Generated: " + dateStr + "\\i0 \\par\n";
+    rtfContent += "\\i Total Records: " + filteredOverviewItems.length + "\\i0 \\par\\line\n";
 
-  if (overviewListDescription) {
-    rtfContent += "\\fs20 Description: " + overviewListDescription.replace(/[{}\\]/g, '') + "\\par\\line\n";
-  }
+    if (overviewListDescription) {
+      rtfContent += "\\fs20 Description: " + overviewListDescription.replace(/[{}\\]/g, '') + "\\par\\line\n";
+    }
 
-  // 2. Create Table Header
-  // \trowd = start row, \clbrdrt/l/b/r = cell borders, \cellx = cell width in twips (1440 = 1 inch)
-  const tableHeader = "\\trowd\\trgaph108\\trleft-108" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
-    "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
-    "\\intbl \\b #\\cell First Name\\cell Rwandan Name\\cell Email\\cell Institution\\cell Company\\cell \\b0 \\row\n";
-  
-  rtfContent += tableHeader;
-
-  // 3. Add Data Rows
-  filteredOverviewItems.forEach((item, index) => {
-    const clean = (val) => (val || '').toString().replace(/[{}\\]/g, '');
-    
-    rtfContent += "\\trowd\\trgaph108\\trleft-108" +
+    // 2. Create Table Header
+    // \trowd = start row, \clbrdrt/l/b/r = cell borders, \cellx = cell width in twips (1440 = 1 inch)
+    const tableHeader = "\\trowd\\trgaph108\\trleft-108" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
       "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
-      `\\intbl ${index + 1}\\cell ${clean(item.first_name)}\\cell ${clean(item.rwandan_name)}\\cell ${clean(item.email)}\\cell ${clean(item.institution)}\\cell ${clean(item.company)}\\row\n`;
-  });
+      "\\intbl \\b #\\cell First Name\\cell Rwandan Name\\cell Email\\cell Institution\\cell Company\\cell \\b0 \\row\n";
 
-  // 4. Close RTF
-  rtfContent += "\\par\\line \\i Export generated from ASYV Alumni Management System\\i0\n}";
+    rtfContent += tableHeader;
 
-  // 5. Download Logic
-  const blob = new Blob([rtfContent], { type: 'application/rtf' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  toast.success(`Downloaded ${filteredOverviewItems.length} records successfully`);
-};
+    // 3. Add Data Rows
+    filteredOverviewItems.forEach((item, index) => {
+      const clean = (val) => (val || '').toString().replace(/[{}\\]/g, '');
 
-const downloadXLSX = () => {
+      rtfContent += "\\trowd\\trgaph108\\trleft-108" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
+        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
+        `\\intbl ${index + 1}\\cell ${clean(item.first_name)}\\cell ${clean(item.rwandan_name)}\\cell ${clean(item.email)}\\cell ${clean(item.institution)}\\cell ${clean(item.company)}\\row\n`;
+    });
+
+    // 4. Close RTF
+    rtfContent += "\\par\\line \\i Export generated from ASYV Alumni Management System\\i0\n}";
+
+    // 5. Download Logic
+    const blob = new Blob([rtfContent], { type: 'application/rtf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Downloaded ${filteredOverviewItems.length} records successfully`);
+  };
+
+  const downloadXLSX = () => {
     // 1. Prepare your data (Array of Objects)
     // The object keys will automatically become the column headers
     const data = filteredOverviewItems.map(item => ({
@@ -1678,12 +1692,12 @@ const downloadXLSX = () => {
     // 4. (Optional) Set column widths so the data isn't squashed
     // wch is the character width
     worksheet["!cols"] = [
-        { wch: 15 }, // First Name
-        { wch: 20 }, // Rwandan Name
-        { wch: 25 }, // Email
-        { wch: 20 }, // Institution
-        { wch: 20 }, // Company
-        { wch: 20 }  // Position
+      { wch: 15 }, // First Name
+      { wch: 20 }, // Rwandan Name
+      { wch: 25 }, // Email
+      { wch: 20 }, // Institution
+      { wch: 20 }, // Company
+      { wch: 20 }  // Position
     ];
 
     // 5. Generate the file and trigger download
@@ -1691,11 +1705,11 @@ const downloadXLSX = () => {
     writeFile(workbook, fileName);
 
     toast.success(`Downloaded ${filteredOverviewItems.length} alumni as .xlsx`);
-};
+  };
 
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [sortedDegreeData, setSortedDegreeData] = useState([]);
-  const [chooseGrade,setChooseGrade] = useState(false);
+  const [chooseGrade, setChooseGrade] = useState(false);
   useEffect(() => {
     if (overviewStats.degreeLevelDistribution && overviewStats.degreeLevelDistribution.length > 0) {
       const sorted = [...overviewStats.degreeLevelDistribution].sort((a, b) => {
@@ -1956,14 +1970,14 @@ const downloadXLSX = () => {
   const processedDegrees = (() => {
     const total = overviewStats?.totalGraduates || 0;
     const stats = overviewStats?.degreeStats || [];
-  
+
     let major = [];
     let otherCount = 0;
-  
+
     stats.forEach((row) => {
       const count = parseInt(row.count ?? 0, 10) || 0;
       const pct = total ? (count / total) * 100 : 0;
-  
+
       if (pct < 1) {
         otherCount += count;
       } else {
@@ -1973,14 +1987,14 @@ const downloadXLSX = () => {
         });
       }
     });
-  
+
     if (otherCount > 0) {
       major.push({
         degree: "Other degrees",
         count: otherCount
       });
     }
-  
+
     return major;
   })();
   useEffect(() => {
@@ -2016,13 +2030,13 @@ const downloadXLSX = () => {
     } else if (type === 'all') {
       // console.log('All Alumni - Combined items before dedup:', 
       //   (overviewStats.continuedEducationStudents || []).length + (overviewStats.employedStudents || []).length);
-      console.log("This is what overviewstas holds ",overviewStats)
+      console.log("This is what overviewstas holds ", overviewStats)
       items = overviewStats.totalGraduates > 0 ? [
         ...overviewStats.continuedEducationStudents || [],
         ...overviewStats.employedStudents || []
       ] : [];
       // Remove duplicates using Set based on unique IDs
-      const uniqueItems = items.filter((item, index, self) => 
+      const uniqueItems = items.filter((item, index, self) =>
         index === self.findIndex((i) => i.id === item.id)
       );
       items = uniqueItems;
@@ -2084,7 +2098,7 @@ const downloadXLSX = () => {
           await fetchOpportunities();
           await fetchVillageEvents();
         }
-        
+
       } finally {
         setLoading(false);
       }
@@ -2115,7 +2129,7 @@ const downloadXLSX = () => {
       toast.error(error.message);
     }
   };
-const router = useRouter();
+  const router = useRouter();
   const handleDeletePost = async (postId) => {
     if (!confirm('Are you sure you want to delete this post?')) {
       return;
@@ -2438,9 +2452,9 @@ const router = useRouter();
         </div>
 
         <nav
-        className="flex-1 p-4 space-y-1 overflow-y-auto">
+          className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
-            if ((item.id === "management" || item.id === "advanced_management"||item.id==="alumni_overview") && !onlySuperuser) {
+            if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview") && !onlySuperuser) {
               return null;
             }
             return (
@@ -2448,8 +2462,8 @@ const router = useRouter();
                 key={item.id}
                 href={handleNavigate(item.id)}>
                 <framerMotion.button
-                  whileHover={{scale:1.02}}
-                  whileTap={{scale:0.95}}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={(e) => {
                     if (item.id === "create_profile") {
                       e.preventDefault();
@@ -2577,7 +2591,7 @@ const router = useRouter();
 
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
-                if ((item.id === "management" || item.id === "advanced_management"||item.id==="alumni_overview") && !onlySuperuser) {
+                if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview") && !onlySuperuser) {
                   return null;
                 }
                 return (
@@ -2664,82 +2678,81 @@ const router = useRouter();
 
                 {/* ── Grade Filter Panel ── */}
                 <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg">
-            <Filter className="h-4 w-4" />
-            Filter by Grade
-          </div>
-        </div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg">
+                    <Filter className="h-4 w-4" />
+                    Filter by Grade
+                  </div>
+                </div>
                 <div className="mt-4 flex flex-wrap items-center gap-4 pt-4 border-t border-neutral-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-              checked={selectedOverviewGradeIds.length === 0}
-              onChange={() => setSelectedOverviewGradeIds([])}
-            />
-            <span className="text-gray-700 dark:text-gray-300 font-medium">
-              All Grades
-            </span>
-            <button className="p-2 bg-gray-200 rounded-sm text-black font-bold" onClick={() => 
-             setTimeout(() => {
-              setChooseGrade(prev => !prev)
-              }, 100)}  
-              >Choose a grade</button>
-          </label>
-        </div>
-        <AnimatePresence>
-          {chooseGrade && (
-            
-            <framerMotion.div
-            key="open-overiewGrade"
-            initial={{opacity:0,x:-100}}
-            animate={{opacity:1,x:0}}
-            exit={{opacity:0,x:-100}}
-            transition={{duration:0.4,ease:"backOut"}}
-            className="flex flex-wrap gap-2"
-            >
-    {overviewGrades.map((g) => {
-      const id = String(g.id);
-      const checked = selectedOverviewGradeIds.includes(id);
-      return (
-        <label
-          key={id}
-          className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${
-            checked 
-              ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700' 
-              : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-        >
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-            checked={checked}
-            onChange={(e) => {
-              setSelectedOverviewGradeIds((prev) => {
-                if (e.target.checked) {
-                  return [...prev, id];
-                }
-                return prev.filter((x) => x !== id);
-              });
-            }}
-          />
-          <span className="text-gray-700 dark:text-gray-300">
-            {g.grade_name || `Grade ${g.id}`}
-            {g.graduation_year_to_asyv && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                ({g.graduation_year_to_asyv})
-              </span>
-            )}
-          </span>
-        </label>
-      );
-    })}
-  </framerMotion.div>
-          )}
-        </AnimatePresence>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        checked={selectedOverviewGradeIds.length === 0}
+                        onChange={() => setSelectedOverviewGradeIds([])}
+                      />
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        All Grades
+                      </span>
+                      <button className="p-2 bg-gray-200 rounded-sm text-black font-bold" onClick={() =>
+                        setTimeout(() => {
+                          setChooseGrade(prev => !prev)
+                        }, 100)}
+                      >Choose a grade</button>
+                    </label>
+                  </div>
+                  <AnimatePresence>
+                    {chooseGrade && (
 
-      </div>
+                      <framerMotion.div
+                        key="open-overiewGrade"
+                        initial={{ opacity: 0, x: -100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -100 }}
+                        transition={{ duration: 0.4, ease: "backOut" }}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {overviewGrades.map((g) => {
+                          const id = String(g.id);
+                          const checked = selectedOverviewGradeIds.includes(id);
+                          return (
+                            <label
+                              key={id}
+                              className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${checked
+                                  ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700'
+                                  : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setSelectedOverviewGradeIds((prev) => {
+                                    if (e.target.checked) {
+                                      return [...prev, id];
+                                    }
+                                    return prev.filter((x) => x !== id);
+                                  });
+                                }}
+                              />
+                              <span className="text-gray-700 dark:text-gray-300">
+                                {g.grade_name || `Grade ${g.id}`}
+                                {g.graduation_year_to_asyv && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                                    ({g.graduation_year_to_asyv})
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </framerMotion.div>
+                    )}
+                  </AnimatePresence>
+
+                </div>
 
                 {/* ── Stats Area ── */}
                 <div className="space-y-4 min-w-0">
@@ -2758,7 +2771,7 @@ const router = useRouter();
                       {/* KPI Cards */}
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         {/* Total Graduates */}
-                           <button
+                        <button
                           type="button"
                           className="text-left bg-gray-50 dark:bg-gray-950/40 rounded-xl border border-gray-100 dark:border-gray-900/50 p-4 shadow-sm hover:border-gray-500 hover:shadow-md transition"
                         >
@@ -2856,11 +2869,11 @@ const router = useRouter();
                               {overviewStats.withEitherOutcomePct ?? 0}%
                             </span>
                           </div>
-                           <div className="mt-3">
+                          <div className="mt-3">
                             <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download</p>
                           </div>
                         </button>
-                       
+
                       </div>
                       {/* Employment Breakdown Bar */}
                       {/* {console.log("overviewStats", overviewStats)} */}
@@ -2917,11 +2930,11 @@ const router = useRouter();
                               const count = parseInt(item.count ?? 0, 10) || 0;
                               const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
                               return (
-                                <StatRow 
-                                  key={item.level_label || "Unknown"} 
-                                  label={item.level_label || "Unknown Level"} 
-                                  count={count} 
-                                  pct={pct} 
+                                <StatRow
+                                  key={item.level_label || "Unknown"}
+                                  label={item.level_label || "Unknown Level"}
+                                  count={count}
+                                  pct={pct}
                                   barColor="bg-blue-500"
                                   onClick={() => openOverviewList('degreeLevel', item.level_label || "Unknown Level")}
                                 />
@@ -2937,11 +2950,11 @@ const router = useRouter();
                               const count = parseInt(item.count ?? 0, 10) || 0;
                               const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
                               return (
-                                <StatRow 
-                                  key={item.degree || "Unknown"} 
-                                  label={item.degree || "Unknown Field"} 
-                                  count={count} 
-                                  pct={pct} 
+                                <StatRow
+                                  key={item.degree || "Unknown"}
+                                  label={item.degree || "Unknown Field"}
+                                  count={count}
+                                  pct={pct}
                                   barColor="bg-purple-500"
                                   onClick={() => openOverviewList('areaOfStudy', item.degree || "Unknown Field")}
                                 />
@@ -2957,11 +2970,11 @@ const router = useRouter();
                               const count = parseInt(item.count ?? 0, 10) || 0;
                               const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
                               return (
-                                <StatRow 
-                                  key={item.country || "Unknown"} 
-                                  label={item.country || "Unknown Country"} 
-                                  count={count} 
-                                  pct={pct} 
+                                <StatRow
+                                  key={item.country || "Unknown"}
+                                  label={item.country || "Unknown Country"}
+                                  count={count}
+                                  pct={pct}
                                   barColor="bg-indigo-500"
                                   onClick={() => openOverviewList('country', item.country || "Unknown Country")}
                                 />
@@ -2977,11 +2990,11 @@ const router = useRouter();
                               const count = parseInt(item.count ?? 0, 10) || 0;
                               const pct = overviewStats.totalGraduates ? Math.round((count / overviewStats.totalGraduates) * 100) : 0;
                               return (
-                                <StatRow 
-                                  key={item.industry || "Not specified"} 
-                                  label={item.industry || "Not specified"} 
-                                  count={count} 
-                                  pct={pct} 
+                                <StatRow
+                                  key={item.industry || "Not specified"}
+                                  label={item.industry || "Not specified"}
+                                  count={count}
+                                  pct={pct}
                                   barColor="bg-amber-500"
                                   onClick={() => openOverviewList('industry', item.industry || "Not specified")}
                                 />
@@ -3010,11 +3023,10 @@ const router = useRouter();
                                 <button
                                   key={company}
                                   onClick={() => openOverviewList('employer', company)}
-                                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer ${
-                                    index < 3
+                                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer ${index < 3
                                       ? "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20"
                                       : "border-neutral-100 dark:border-gray-800 bg-neutral-50/50 dark:bg-gray-800/30"
-                                  }`}
+                                    }`}
                                 >
                                   <span className="text-base w-6 text-center flex-shrink-0">
                                     {index < 3 ? medals[index] : <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{index + 1}</span>}
@@ -3051,47 +3063,47 @@ const router = useRouter();
                           />
                         </button>
                         <AnimatePresence>
-                        {openingFurtherEducation && (
-                          <framerMotion.div
-                          key="further-ed-content"
-                          initial={{opacity:0,x:-100}}
-                          animate={{opacity:1,x:0}}
-                          exit={{opacity:0,x:-100}}
-                          transition={{duration:0.5,ease:"backOut"}}
-                          className="border-t border-neutral-100 dark:border-gray-800 p-5"
-                          >
-  {/* <div > */}
-    {!overviewStats.degreeStats?.length ? (
-      <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
-        No further education records for the selected scope yet.
-      </p>
-    ) : (
-      <div className="space-y-2.5">
-        {processedDegrees.map((row) => {
-          const count = row.count;
-          const pct = overviewStats.totalGraduates
-            ? Math.round((count / overviewStats.totalGraduates) * 100)
-            : 0;
+                          {openingFurtherEducation && (
+                            <framerMotion.div
+                              key="further-ed-content"
+                              initial={{ opacity: 0, x: -100 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -100 }}
+                              transition={{ duration: 0.5, ease: "backOut" }}
+                              className="border-t border-neutral-100 dark:border-gray-800 p-5"
+                            >
+                              {/* <div > */}
+                              {!overviewStats.degreeStats?.length ? (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
+                                  No further education records for the selected scope yet.
+                                </p>
+                              ) : (
+                                <div className="space-y-2.5">
+                                  {processedDegrees.map((row) => {
+                                    const count = row.count;
+                                    const pct = overviewStats.totalGraduates
+                                      ? Math.round((count / overviewStats.totalGraduates) * 100)
+                                      : 0;
 
-          return (
-            <StatRow
-              key={row.degree || "Unspecified"}
-              label={row.degree || "Unspecified degree"}
-              count={count}
-              pct={pct}
-              barColor="bg-emerald-500"
-            />
-          );
-        })}
-      </div>
-    )}
-  {/* </div> */}
-  </framerMotion.div>
-)} </AnimatePresence>
+                                    return (
+                                      <StatRow
+                                        key={row.degree || "Unspecified"}
+                                        label={row.degree || "Unspecified degree"}
+                                        count={count}
+                                        pct={pct}
+                                        barColor="bg-emerald-500"
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {/* </div> */}
+                            </framerMotion.div>
+                          )} </AnimatePresence>
                       </div>
 
                       {/* Outcomes by Year */}
-                     
+
                       {overviewStats.outcomesByYear.length > 0 && (
                         <div className="bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-5 shadow-sm">
                           <div className="flex items-center justify-between mb-4">
@@ -3100,83 +3112,83 @@ const router = useRouter();
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cohort-by-cohort employment & education outcomes</p>
                             </div>
 
-<framerMotion.button
-  whileHover={{ scale: 1.02 }} // Slightly grows when hovered
-  whileTap={{ scale: 0.95 }}   // Slightly shrinks when clicked (feels like a real button)
-  onClick={() => setOpenStatistics(prev => !prev)}
-  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg 
+                            <framerMotion.button
+                              whileHover={{ scale: 1.02 }} // Slightly grows when hovered
+                              whileTap={{ scale: 0.95 }}   // Slightly shrinks when clicked (feels like a real button)
+                              onClick={() => setOpenStatistics(prev => !prev)}
+                              className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg 
              transition-colors shadow-sm active:shadow-inner w-full sm:w-auto"
->
-  {openStatistics ? "Close Statistics" : "Open Statistics"}
-</framerMotion.button>
+                            >
+                              {openStatistics ? "Close Statistics" : "Open Statistics"}
+                            </framerMotion.button>
 
                           </div>
                           <AnimatePresence>
-                          {openStatistics&&(
-                          
-                            <framerMotion.div 
-                            key="statistics-content"
-                            initial={{opacity:0,x:-100}}
-                            animate={{opacity:1,x:0}}
-                            exit={{opacity:0,x:-100}}
-                            transition={{duration:0.5,ease:"backOut"}}
-                            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                            {overviewStats.outcomesByYear.map((yearData) => {
-                              const total = parseInt(yearData.total ?? 0, 10) || 1;
-                              const employed = parseInt(yearData.employment_only ?? 0, 10) || 0;
-                              const feOnly = parseInt(yearData.fe_only ?? 0, 10) || 0;
-                              const both = parseInt(yearData.both ?? 0, 10) || 0;
-                              const neither = parseInt(yearData.neither ?? 0, 10) || 0;
-                              const gradYear = yearData.grad_year || "Unknown";
-                              const employedTotal = employed + both;
-                              const feTotal = feOnly + both;
-                              const employedPct = Math.round((employedTotal / total) * 100);
-                              const fePct = Math.round((feTotal / total) * 100);
-                              const bothPct = Math.round((both / total) * 100);
-                              const neitherPct = Math.round((neither / total) * 100);
+                            {openStatistics && (
 
-                              return (
-                                <button
-                                  key={gradYear}
-                                  onClick={() => openOverviewList('outcomeYear', gradYear)}
-                                  className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-800/30 p-4 space-y-3 text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Class of {gradYear}</span>
-                                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-neutral-200 dark:border-gray-700 tabular-nums">
-                                      {total.toLocaleString()}
-                                    </span>
-                                  </div>
+                              <framerMotion.div
+                                key="statistics-content"
+                                initial={{ opacity: 0, x: -100 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -100 }}
+                                transition={{ duration: 0.5, ease: "backOut" }}
+                                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                                {overviewStats.outcomesByYear.map((yearData) => {
+                                  const total = parseInt(yearData.total ?? 0, 10) || 1;
+                                  const employed = parseInt(yearData.employment_only ?? 0, 10) || 0;
+                                  const feOnly = parseInt(yearData.fe_only ?? 0, 10) || 0;
+                                  const both = parseInt(yearData.both ?? 0, 10) || 0;
+                                  const neither = parseInt(yearData.neither ?? 0, 10) || 0;
+                                  const gradYear = yearData.grad_year || "Unknown";
+                                  const employedTotal = employed + both;
+                                  const feTotal = feOnly + both;
+                                  const employedPct = Math.round((employedTotal / total) * 100);
+                                  const fePct = Math.round((feTotal / total) * 100);
+                                  const bothPct = Math.round((both / total) * 100);
+                                  const neitherPct = Math.round((neither / total) * 100);
 
-                                  {/* Stacked bar */}
-                                  <div className="h-3 w-full rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden flex gap-0.5">
-                                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${employedPct}%` }} />
-                                    <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${Math.max(0, fePct - employedPct)}%` }} />
-                                    <div className="h-full bg-rose-400 transition-all duration-500" style={{ width: `${neitherPct}%` }} />
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                    {[
-                                      { dot: "bg-emerald-500", label: "Employed", val: `${employedTotal} (${employedPct}%)` },
-                                      { dot: "bg-blue-400", label: "Education", val: `${feTotal} (${fePct}%)` },
-                                      { dot: "bg-emerald-200", label: "Both", val: `${both} (${bothPct}%)` },
-                                      { dot: "bg-rose-400", label: "Neither", val: `${neither} (${neitherPct}%)` },
-                                    ].map(({ dot, label, val }) => (
-                                      <div key={label} className="flex items-center gap-1.5">
-                                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dot}`} />
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400">{label}:</span>
-                                        <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 tabular-nums">{val}</span>
+                                  return (
+                                    <button
+                                      key={gradYear}
+                                      onClick={() => openOverviewList('outcomeYear', gradYear)}
+                                      className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-800/30 p-4 space-y-3 text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">Class of {gradYear}</span>
+                                        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-neutral-200 dark:border-gray-700 tabular-nums">
+                                          {total.toLocaleString()}
+                                        </span>
                                       </div>
-                                    ))}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          
-                          </framerMotion.div>
-                          )}
+
+                                      {/* Stacked bar */}
+                                      <div className="h-3 w-full rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden flex gap-0.5">
+                                        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${employedPct}%` }} />
+                                        <div className="h-full bg-blue-400 transition-all duration-500" style={{ width: `${Math.max(0, fePct - employedPct)}%` }} />
+                                        <div className="h-full bg-rose-400 transition-all duration-500" style={{ width: `${neitherPct}%` }} />
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                        {[
+                                          { dot: "bg-emerald-500", label: "Employed", val: `${employedTotal} (${employedPct}%)` },
+                                          { dot: "bg-blue-400", label: "Education", val: `${feTotal} (${fePct}%)` },
+                                          { dot: "bg-emerald-200", label: "Both", val: `${both} (${bothPct}%)` },
+                                          { dot: "bg-rose-400", label: "Neither", val: `${neither} (${neitherPct}%)` },
+                                        ].map(({ dot, label, val }) => (
+                                          <div key={label} className="flex items-center gap-1.5">
+                                            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${dot}`} />
+                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{label}:</span>
+                                            <span className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 tabular-nums">{val}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+
+                              </framerMotion.div>
+                            )}
                           </AnimatePresence>
-                          
+
                         </div>
                       )}
 
@@ -3189,8 +3201,8 @@ const router = useRouter();
           {!isCrcOrSuperuser && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
               <framerMotion.button
-              whileHover={{scale:1.05}}
-              whileTap={{scale:0.95}}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveModal('post')}
                 className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
               >
@@ -3202,7 +3214,7 @@ const router = useRouter();
                   <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Share thoughts</p>
                 </div>
               </framerMotion.button>
-{/* <framerMotion.div
+              {/* <framerMotion.div
   initial={{ opacity: 0, y: 50 }}
   whileInView={{ opacity: 1, y: 0 }}
   viewport={{ once: false, amount: 0.5 }} 
@@ -3224,8 +3236,8 @@ const router = useRouter();
                   </div>
                 </button>
               )}
-              
-            
+
+
               <button
                 onClick={() => setActiveModal('group')}
                 className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-dashed border-neutral-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-300 group"
@@ -3436,10 +3448,41 @@ const router = useRouter();
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 p-3 sm:p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div className="flex-1">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-700 dark:text-green-500" />
-                    Created Groups ({userContent.groups.length})
-                  </h3>
+                  <div className="flex items-center  mb-3">
+                    {userContent.groups.length > 0 ? (
+                      <div className="flex -space-x-2">
+<h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 mr-4">
+                      Created Groups ({userContent.groups.length})
+                    </h3>
+                        {userContent.groups.slice(0, 3).map((group, index) => (
+                          <div key={group.id} className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-gray-900 overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            {group.image ? (
+                              <Image
+                                src={group.image}
+                                alt={group.name || 'Group'}
+                                width={32}
+                                height={32}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {userContent.groups.length > 3 && (
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">+{userContent.groups.length - 3}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                        <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                    )}
+                  </div>
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     const term = groupSearchTerm.trim();
@@ -3555,17 +3598,17 @@ const router = useRouter();
             />
           </AnimatedModal>
         </>
-      ) 
-      : 
-      (
-        <AnimatedModal
-          isOpen={activeModal === 'article'}
-          onClose={() => setActiveModal(null)}
-          title="Write New Article"
-        >
-          <ArticleForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
-        </AnimatedModal>
       )
+        :
+        (
+          <AnimatedModal
+            isOpen={activeModal === 'article'}
+            onClose={() => setActiveModal(null)}
+            title="Write New Article"
+          >
+            <ArticleForm onClose={() => setActiveModal(null)} onSubmit={handleCreateContent} />
+          </AnimatedModal>
+        )
       }
 
       <AnimatedModal
@@ -3613,7 +3656,7 @@ const router = useRouter();
               </button>
             )}
           </div>
-          
+
           {/* Download Button */}
           {filteredOverviewItems && filteredOverviewItems.length > 0 && (
             <div className="flex items-center justify-between">
@@ -3644,7 +3687,7 @@ const router = useRouter();
               </div>
             </div>
           )}
-          
+
           <div className="max-h-[60vh] overflow-y-auto space-y-2">
             {(!filteredOverviewItems || filteredOverviewItems.length === 0) ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 import { Button } from "@/components/ui/button"
 
-import  UserSearchDialog from "./userSearchBox"
+import UserSearchDialog from "./userSearchBox"
 
 import { Input } from "@/components/ui/input"
 
@@ -24,6 +24,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { Badge } from "@/components/ui/badge"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 
 import toast from "react-hot-toast"
@@ -65,7 +71,7 @@ import {
   Download,
 
   Trash2,
-
+  UserRound,
   Play,
 
   Pause,
@@ -78,6 +84,8 @@ import {
   Camera,
 
   Music,
+  User,
+  Crown,
 
 } from "lucide-react"
 
@@ -261,13 +269,13 @@ function MediaPickerButton({ onSelect, isDark, borderColor }) {
 
   const options = [
 
-    { icon: ImageIcon, label: "Image / Video", accept: "image/*,video/*",  type: "image" },
+    { icon: ImageIcon, label: "Image / Video", accept: "image/*,video/*", type: "image" },
 
-    { icon: Music,     label: "Audio",         accept: "audio/*",           type: "audio" },
+    { icon: Music, label: "Audio", accept: "audio/*", type: "audio" },
 
-    { icon: Mic,       label: "Voice note",    accept: "audio/*",           type: "audio" },
+    { icon: Mic, label: "Voice note", accept: "audio/*", type: "audio" },
 
-    { icon: FileText,  label: "Document",      accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt", type: "document" },
+    { icon: FileText, label: "Document", accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt", type: "document" },
 
   ];
 
@@ -434,6 +442,8 @@ export default function ChatPage() {
 
   const { resolvedTheme } = useTheme();
 
+
+
   const {
 
     unreadCounts,
@@ -460,7 +470,7 @@ export default function ChatPage() {
 
   const messagesContainerRef = useRef(null)
 
-const [controlOpen,setControlOpen]= useState(false)
+  const [controlOpen, setControlOpen] = useState(false)
 
   const today = new Date();
 
@@ -685,6 +695,8 @@ const [controlOpen,setControlOpen]= useState(false)
           memberCount: memberObjs.length,
 
           members: memberObjs,
+
+          adminId: String(group.created_by ?? ""),
 
         },
 
@@ -925,7 +937,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
     } finally {
 
-      try { setControlOpen(false) } catch {}
+      try { setControlOpen(false) } catch { }
 
     }
 
@@ -2103,7 +2115,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
       <div className={`min-h-screen ${bgColor} ${textColor} transition-colors duration-300 pt-16`}>
 
-      
+
 
         <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 p-4">
 
@@ -2357,7 +2369,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
                     </div>
 
-                    <Button variant="outline" className={`h-9 border ${borderColor} ${hoverBg} flex-shrink-0`} onClick={() => setControlOpen(!controlOpen)}>
+                    <Button variant="outline" className={`h-9 border ${borderColor} ${hoverBg} ${bgColor} flex-shrink-0`} onClick={() => setControlOpen(!controlOpen)}>
 
                       <Plus className="h-4 w-4 mr-2" />
 
@@ -2403,7 +2415,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
                   ) : (
 
-                    <div className="p-2 space-y-1">
+                    <div className={`p-2 space-y-1`}>
 
                       {filteredChats.map((chat) => (
 
@@ -2415,7 +2427,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
                             w-full text-left p-3 rounded-xl flex items-center gap-3
 
-                            transition-all duration-150
+                            transition-all duration-150 
 
                             ${selectedChat?.id === chat.id
 
@@ -2455,7 +2467,23 @@ const [controlOpen,setControlOpen]= useState(false)
 
                             <div className="flex items-center justify-between mb-0.5">
 
-                              <p className={`text-sm font-semibold ${textColor} truncate`}>{chat.user.name}</p>
+                              <div className="flex items-center gap-2 min-w-0">
+
+                                <p className={`text-sm font-semibold ${textColor} truncate`}>{chat.user.name}</p>
+
+                                {chat.type === 'group' && (
+
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex-shrink-0">
+
+                                    <Users className="w-3 h-3 mr-1" />
+
+                                    Group
+
+                                  </span>
+
+                                )}
+
+                              </div>
 
                               <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
 
@@ -2668,7 +2696,7 @@ const [controlOpen,setControlOpen]= useState(false)
 
                     </div>
 
-                    <Button variant="outline" className={`border ${borderColor} ${hoverBg} hover:cursor-pointer`} onClick={() => setControlOpen(!controlOpen)}>
+                    <Button variant="outline" className={`border ${borderColor} ${hoverBg} ${bgColor} hover:cursor-pointer`} onClick={() => setControlOpen(!controlOpen)}>
 
                       <Plus className="h-4 w-4 mr-2" />
 
@@ -2766,7 +2794,23 @@ const [controlOpen,setControlOpen]= useState(false)
 
                               <div className="flex items-start justify-between mb-1">
 
-                                <p className={`text-sm font-semibold truncate`}>{chat.user.name}</p>
+                                <div className="flex items-center gap-2 min-w-0">
+
+                                  <p className={`text-sm font-semibold truncate`}>{chat.user.name}</p>
+
+                                  {chat.type === 'group' && (
+
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex-shrink-0">
+
+                                      <Users className="w-3 h-3 mr-1" />
+
+                                      Group
+
+                                    </span>
+
+                                  )}
+
+                                </div>
 
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
 
@@ -2825,144 +2869,78 @@ const [controlOpen,setControlOpen]= useState(false)
                 {!selectedChat ? (
 
                   <div className="flex-1 flex flex-col items-center justify-center p-8">
-
                     <div className={`p-4 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-100'} inline-block mb-4`}>
-
                       <MessageSquare className="h-12 w-12 text-orange-500" />
-
                     </div>
-
                     <h3 className={`text-xl font-semibold ${textColor} mb-2`}>No conversation selected</h3>
-
                     <p className={`text-sm ${textMuted} mb-6`}>Select a conversation or start a new one to begin messaging.</p>
-
                     <Button className="bg-orange-400 hover:bg-orange-500 text-white"
-
-                    onClick={()=>{
-
-                      setControlOpen(!controlOpen)
-
-                    }}  
-
+                      onClick={() => {
+                        setControlOpen(!controlOpen)
+                      }}
                     >
-
                       <Plus className="h-4 w-4 mr-2" />
-
                       Start Conversation
-
                     </Button>
-
-                    <UserSearchDialog
-
-                    open={controlOpen}
-
-                    onOpenChange={setControlOpen}
-
-                    onSelect={startConversationWithUser}
-
-                    />
-
                   </div>
-
                 ) : (
-
                   <MobileChatContent
-
                     selectedChat={selectedChat}
-
                     messages={messages}
-
                     filteredMessages={filteredMessages}
-
                     isLoadingMessages={isLoadingMessages}
-
                     typingUsers={typingUsers}
-
                     searchQuery={searchQuery}
-
                     setSearchQuery={setSearchQuery}
-
                     clearSearch={clearSearch}
-
                     showConversation={showConversation}
-
                     handleBackToChats={handleBackToChats}
-
                     handleDeleteMessage={handleDeleteMessage}
                     onReplyToMessage={(message) => setReplyToMessage(buildReplyPreview(message))}
-
                     handleSendMessage={handleSendMessage}
-
                     messageInput={messageInput}
-
                     setMessageInput={setMessageInput}
-
                     showEmoji={showEmoji}
-
                     setShowEmoji={setShowEmoji}
                     replyToMessage={replyToMessage}
                     clearReplyToMessage={() => setReplyToMessage(null)}
-
                     handleEmojiSelect={handleEmojiSelect}
-
                     socket={socket}
-
                     currentUser={currentUser}
-
                     isDark={isDark}
-
                     cardBg={cardBg}
-
                     borderColor={borderColor}
-
                     textColor={textColor}
-
                     textMuted={textMuted}
-
                     hoverBg={hoverBg}
-
                     onlineStatus={onlineStatus}
-
                     messageBgOwn={messageBgOwn}
-
                     messageBgOther={messageBgOther}
-
                     inputBg={inputBg}
-
                     messagesEndRef={messagesEndRef}
-
                     messagesContainerRef={messagesContainerRef}
-
                     MediaMessage={MediaMessage}
-
                     onlineUsers={onlineUsers}
-
                     EmojiPicker={EmojiPicker}
-
                     isDesktop
-
                   />
-
                 )}
-
               </Card>
-
             </main>
 
-
-
           </div>
-
         </div>
-
       </div>
+      <UserSearchDialog
+        open={controlOpen}
+        onOpenChange={setControlOpen}
+        onSelect={startConversationWithUser}
+      />
 
     </>
 
   )
-
 }
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2992,7 +2970,7 @@ function MobileChatContent({
 }) {
 
   const isGroup = selectedChat?.isGroup || selectedChat?.type === 'group'
-
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false)
 
 
   return (
@@ -3045,15 +3023,32 @@ function MobileChatContent({
 
               <h2 className={`font-semibold text-sm  truncate`}>{selectedChat?.user?.name}</h2>
 
-              <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'} truncate`}>
 
-                {isGroup
+                  {isGroup
 
-                  ? `${selectedChat.user.memberCount} members`
+                    ? `${selectedChat.user.memberCount} members`
 
-                  : (onlineUsers.some(user => String(user.id) === String(selectedChat?.user?.id)) ? "Active now" : "Offline")}
+                    : (onlineUsers.some(user => String(user.id) === String(selectedChat?.user?.id)) ? "Active now" : "Offline")}
 
-              </p>
+                </p>
+
+                {isGroup && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMembersDialogOpen(true)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors whitespace-nowrap ${isDark
+                        ? "bg-gray-700/60 text-gray-200 hover:bg-gray-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    aria-label="View group members"
+                  >
+                    <UserRound className="h-3.5 w-3.5" />
+                    Members
+                  </button>
+                )}
+              </div>
 
             </div>
 
@@ -3061,19 +3056,23 @@ function MobileChatContent({
 
           <div className="flex items-center gap-0.5 flex-shrink-0">
 
-            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              onClick={() => window.confirm("This features is coming soon!")}
+            >
 
               <Phone className="h-4 w-4" />
 
             </Button>
 
-            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-
+            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              onClick={() => window.confirm("This features is coming soon!")}
+            >
               <Video className="h-4 w-4" />
-
             </Button>
 
-            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+            <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              onClick={() => window.confirm("This features is coming soon!")}
+            >
 
               <MoreVertical className="h-4 w-4" />
 
@@ -3085,11 +3084,81 @@ function MobileChatContent({
 
       </div>
 
+      {isGroup && (
+        <Dialog open={isMembersDialogOpen} onOpenChange={setIsMembersDialogOpen}>
+          <DialogContent className={`max-w-md ${isDark ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Group members
+                <span className={`${isDark ? "text-gray-400" : "text-gray-500"} text-sm font-normal`}>
+                  ({selectedChat?.user?.memberCount || 0})
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <ScrollArea className="max-h-[55vh] pr-3">
+              <div className="space-y-2">
+                {(selectedChat?.user?.members || [])
+                  .slice()
+                  .sort((a, b) => {
+                    const adminId = String(selectedChat?.user?.adminId || "")
+                    const aIsAdmin = String(a?.id) === adminId
+                    const bIsAdmin = String(b?.id) === adminId
+                    if (aIsAdmin === bIsAdmin) return 0
+                    return aIsAdmin ? -1 : 1
+                  })
+                  .map((m) => {
+                    const adminId = String(selectedChat?.user?.adminId || "")
+                    const isAdmin = String(m?.id) === adminId
+                    console.log("This is the list of members: ", m)
+                    return (
+                      <div
+                        key={String(m?.id)}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 ${isDark ? "border-gray-800" : "border-gray-200"
+                          } ${isAdmin ? (isDark ? "bg-yellow-500/10" : "bg-yellow-50") : ""}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={m?.avatar || "/default.png"} alt={m?.name || "Member"} />
+                            <AvatarFallback className={`text-[10px] ${isDark ? "bg-gray-800" : "bg-gray-200"}`}>
+                              {(m?.name || "U").split(" ").map((n) => n?.[0]).join("").slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-sm font-medium truncate">{m?.name || `User ${m?.id}`}</p>
+                              {isAdmin && (
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${isDark ? "bg-yellow-500/20 text-yellow-200" : "bg-yellow-100 text-yellow-800"
+                                  }`}>
+                                  <Crown className="h-3.5 w-3.5" />
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-xs truncate ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                              ID: {String(m?.id)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                          {onlineUsers.some((u) => String(u.id) === String(m?.id)) ? "Online" : "Offline"}
+                        </span>
+                      </div>
+                    )
+                  })}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      )}
+
 
 
       {/* In-conversation search */}
 
-      <div className="px-3 py-2 border-b flex-shrink-0">
+      <div className="px-3 py-2 border-b flex-shrink-0 ">
 
         <div className="relative">
 
@@ -3173,7 +3242,7 @@ function MobileChatContent({
 
                 <div className={`text-xs ${textMuted} text-center`}>
 
-                  <p className="mb-2 flex items-center gap-1"><Lightbulb className="w-4 h-4 text-yellow-500"/> <span>Tips for starting a great conversation:</span></p>
+                  <p className="mb-2 flex items-center gap-1"><Lightbulb className="w-4 h-4 text-yellow-500" /> <span>Tips for starting a great conversation:</span></p>
 
                   <ul className="text-left space-y-1">
 
@@ -3183,7 +3252,7 @@ function MobileChatContent({
 
                     <li>• Send a friendly greeting</li>
 
-                    <li className="flex gap-1">• <span>Use emojis to express yourself </span><PartyPopper className="w-4 h-4 text-purple-500"/></li>
+                    <li className="flex gap-1">• <span>Use emojis to express yourself </span><PartyPopper className="w-4 h-4 text-purple-500" /></li>
 
                   </ul>
 
@@ -3305,7 +3374,7 @@ function MobileChatContent({
 
                         onClick={() => {
 
-                          if(!window.confirm("Are you sure you want to delete this message?")) return
+                          if (!window.confirm("Are you sure you want to delete this message?")) return
 
                           handleDeleteMessage(message.id, isGroup)
 
