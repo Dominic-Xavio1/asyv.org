@@ -1,6 +1,6 @@
 import pool from "../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
-import { getIOInstance } from "../../../../services/notifications/notificationSocket";
+import { getIOInstance } from "../../../../../services/notifications/notificationSocket";
 
 /**
  * POST /api/group-conversation/[groupId]/members
