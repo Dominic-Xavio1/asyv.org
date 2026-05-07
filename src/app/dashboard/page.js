@@ -2028,8 +2028,6 @@ export default function Dashboard() {
       title = 'Alumni with Recorded Outcomes';
       description = 'List of alumni who have at least one further education or employment record within selected grades.';
     } else if (type === 'all') {
-      // console.log('All Alumni - Combined items before dedup:', 
-      //   (overviewStats.continuedEducationStudents || []).length + (overviewStats.employedStudents || []).length);
       console.log("This is what overviewstas holds ", overviewStats)
       items = overviewStats.totalGraduates > 0 ? [
         ...overviewStats.continuedEducationStudents || [],
@@ -2791,19 +2789,6 @@ export default function Dashboard() {
                             <p className="text-xs text-gray-500 dark:text-gray-400">Click to view and download complete alumni list</p>
                           </div>
                         </button>
-                        {/* <button
-                          type="button"
-                          // onClick={() => openOverviewList('total')}
-                          className="text-left bg-white dark:bg-gray-900 rounded-xl border border-neutral-200 dark:border-gray-700 p-4 shadow-sm hover:border-green-500 hover:shadow-md transition"
-                        >
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Total Graduates</p>
-                          <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 tabular-nums">
-                            {overviewStats.totalGraduates.toLocaleString()}
-                          </p>
-                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
-                            {overviewStats.filteredByGrade ? "Selected grades" : "All cohorts"}
-                          </p>
-                        </button> */}
 
                         {/* Continued Education */}
                         <button
