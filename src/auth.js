@@ -16,7 +16,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.log("User email not found in DB:", user.email);
             return "/login?error=EmailNotRegistered";
           }
-          // Allow sign in to complete; redirection is handled by callbackUrl
           return true;
         } catch (error) {
           console.error("Database error in signIn:", error);
@@ -31,7 +30,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.account = account;
         token.profile = profile;
 
-        // Fetch user from DB to populate token
         try {
           const email = profile?.email || token.email;
           const dbRes = await pool.query("SELECT * FROM api_user WHERE email = $1", [email]);

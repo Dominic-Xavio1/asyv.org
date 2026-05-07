@@ -1895,6 +1895,37 @@ export default function ChatPage() {
 
   const clearSearch = () => { setSearchQuery("") }
 
+  const handleStartCall = useCallback(async (mode = "video") => {
+    if (!selectedChat?.id) {
+      toast.error("Select a conversation first")
+      return
+    }
+
+    const isGroupChat = selectedChat.isGroup || selectedChat.type === "group"
+    if (isGroupChat) {
+      toast.error("Calls are currently available for 1-to-1 chats only")
+      return
+    }
+
+    const targetName = selectedChat?.user?.name || "Friend"
+    const params = new URLSearchParams({
+      conversationId: String(selectedChat.id),
+      targetName,
+      mode,
+    })
+    const callUrl = `/videocall?${params.toString()}`
+
+    try {
+      await handleSendMessage({
+        text: `📞 ${mode === "audio" ? "Voice" : "Video"} call invite sent. Open Video Call page and use this chat to share/copy your call ID.`,
+      })
+    } catch (error) {
+      console.error("Failed to send call invite message:", error)
+    }
+
+    window.open(callUrl, "_blank", "noopener,noreferrer")
+  }, [handleSendMessage, selectedChat])
+
 
 
   const handleDeleteMessage = async (messageId, isGroupChat = false) => {
@@ -2597,6 +2628,7 @@ export default function ChatPage() {
                     onReplyToMessage={(message) => setReplyToMessage(buildReplyPreview(message))}
 
                     handleSendMessage={handleSendMessage}
+                    onStartCall={handleStartCall}
 
                     messageInput={messageInput}
 
@@ -2898,6 +2930,7 @@ export default function ChatPage() {
                     handleDeleteMessage={handleDeleteMessage}
                     onReplyToMessage={(message) => setReplyToMessage(buildReplyPreview(message))}
                     handleSendMessage={handleSendMessage}
+                    onStartCall={handleStartCall}
                     messageInput={messageInput}
                     setMessageInput={setMessageInput}
                     showEmoji={showEmoji}
@@ -2956,6 +2989,7 @@ function MobileChatContent({
   searchQuery, setSearchQuery, clearSearch, showConversation,
 
   handleBackToChats, handleDeleteMessage, onReplyToMessage, handleSendMessage,
+  onStartCall,
 
   messageInput, setMessageInput, showEmoji, setShowEmoji, replyToMessage, clearReplyToMessage, handleEmojiSelect,
 
@@ -3039,8 +3073,8 @@ function MobileChatContent({
                     type="button"
                     onClick={() => setIsMembersDialogOpen(true)}
                     className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors whitespace-nowrap ${isDark
-                        ? "bg-gray-700/60 text-gray-200 hover:bg-gray-700"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-gray-700/60 text-gray-200 hover:bg-gray-700"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     aria-label="View group members"
                   >
@@ -3057,7 +3091,7 @@ function MobileChatContent({
           <div className="flex items-center gap-0.5 flex-shrink-0">
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              onClick={() => window.confirm("This features is coming soon!")}
+              onClick={() => onStartCall?.("audio")}
             >
 
               <Phone className="h-4 w-4" />
@@ -3065,7 +3099,7 @@ function MobileChatContent({
             </Button>
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              onClick={() => window.confirm("This features is coming soon!")}
+              onClick={() => onStartCall?.("video")}
             >
               <Video className="h-4 w-4" />
             </Button>
@@ -3098,7 +3132,7 @@ function MobileChatContent({
             </DialogHeader>
 
             <ScrollArea className="max-h-[55vh] pr-3">
-              <div className="space-y-2">
+              <div className="space-y-2">{console.log("Members list: ", selectedChat?.user?.members) || null}
                 {(selectedChat?.user?.members || [])
                   .slice()
                   .sort((a, b) => {
@@ -3136,9 +3170,7 @@ function MobileChatContent({
                                 </span>
                               )}
                             </div>
-                            <p className={`text-xs truncate ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                              ID: {String(m?.id)}
-                            </p>
+
                           </div>
                         </div>
 
@@ -3220,7 +3252,7 @@ function MobileChatContent({
 
               <Search className={`h-10 w-10 ${textMuted} mx-auto mb-3`} />
 
-              <p className={textMuted}>No messages found for "{searchQuery}"</p>
+              <p className={textMuted}>No messages found for &quot;{searchQuery}&quot;</p>
 
             </div>
 
