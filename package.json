@@ -46,6 +46,7 @@
     "cmdk": "^1.1.1",
     "cross-env": "^10.1.0",
     "data-fns": "^1.1.0",
+    "docx": "^9.6.1",
     "emoji-mart": "^5.6.0",
     "framer-motion": "^12.26.2",
     "groq-sdk": "^0.37.0",

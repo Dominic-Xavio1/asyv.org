@@ -7,7 +7,8 @@ export async function PUT(request, { params }) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  const id = params.id;
+  const resolvedParams = await params;
+  const id = resolvedParams?.id;
   if (!id) return NextResponse.json({ error: "Grade ID required" }, { status: 400 });
   try {
     const body = await request.json();
@@ -42,7 +43,8 @@ export async function DELETE(request, { params }) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  const id = params.id;
+  const resolvedParams = await params;
+  const id = resolvedParams?.id;
   if (!id) return NextResponse.json({ error: "Grade ID required" }, { status: 400 });
   try {
     const existing = await pool.query("SELECT id FROM api_grade WHERE id = $1", [id]);

@@ -70,11 +70,11 @@ export async function GET(request) {
   const gradeIdsParam = searchParams.get("gradeIds");
   const gradeIds = gradeIdsParam
     ? gradeIdsParam
-        .split(",")
-        .map((g) => g.trim())
-        .filter(Boolean)
-        .map(Number)
-        .filter((n) => !Number.isNaN(n))
+      .split(",")
+      .map((g) => g.trim())
+      .filter(Boolean)
+      .map(Number)
+      .filter((n) => !Number.isNaN(n))
     : [];
 
   try {
@@ -106,6 +106,7 @@ export async function GET(request) {
       empRes,
       eitherCountRes,
       eitherListRes,
+      allAlumniRes,
       degreeStatsRes,
       degreeLevelRes,
       areasOfStudyRes,
@@ -124,8 +125,19 @@ export async function GET(request) {
 
       // 2. Continued education students
       pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, u.phone,
                 k.id AS kid_id,
+                (SELECT f2.family_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS family,
+                (SELECT g2.grade_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 LEFT JOIN api_grade g2 ON g2.id = f2.grade_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS grade,
                 (SELECT c.college_name
                  FROM api_college c
                  INNER JOIN api_furthereducation fe2 ON c.id = fe2.college_id
@@ -139,8 +151,20 @@ export async function GET(request) {
 
       // 3. Employed students
       pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email,
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, u.phone,
                 k.id AS kid_id,
+                (SELECT f2.family_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS family,
+                (SELECT g2.grade_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 LEFT JOIN api_grade g2 ON g2.id = f2.grade_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS grade,
+                (SELECT e.title FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) AS title,
                 (SELECT e.company FROM api_employment e WHERE e.alumn_id = u.id LIMIT 1) AS company
          FROM api_user u
          ${gf.joins || "LEFT JOIN api_kid k ON k.user_id = u.id"}
@@ -161,7 +185,18 @@ export async function GET(request) {
 
       // 5. Either-outcome LIST
       pool.query(
-        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, u.phone,
+                (SELECT f2.family_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS family,
+                (SELECT g2.grade_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 LEFT JOIN api_grade g2 ON g2.id = f2.grade_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS grade
          FROM api_user u ${gf.joins}
          ${gf.where}
            AND (EXISTS (SELECT 1 FROM api_furthereducation fe WHERE fe.alumn_id = u.id)
@@ -169,7 +204,34 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 6. Degree stats (for further education)
+      // 6. All alumni LIST (including those without outcomes)
+      pool.query(
+        `SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, u.phone,
+                k.id AS kid_id,
+                (SELECT f2.family_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS family,
+                (SELECT g2.grade_name
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 LEFT JOIN api_grade g2 ON g2.id = f2.grade_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS grade,
+                (SELECT g2.graduation_year_to_asyv
+                 FROM api_kid k2
+                 INNER JOIN api_family f2 ON f2.id = k2.family_id
+                 LEFT JOIN api_grade g2 ON g2.id = f2.grade_id
+                 WHERE k2.user_id = u.id
+                 LIMIT 1) AS graduation_year
+         FROM api_user u
+         ${gf.joins || "LEFT JOIN api_kid k ON k.user_id = u.id"}
+         ${gf.where}`,
+        gf.params
+      ),
+
+      // 7. Degree stats (for further education)
       pool.query(
         `SELECT fe.degree, COUNT(DISTINCT fe.alumn_id) AS count
          FROM api_furthereducation fe
@@ -181,7 +243,7 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 7. Degree level distribution — with student lists via json_agg (NO loop needed)
+      // 8. Degree level distribution — with student lists via json_agg (NO loop needed)
       pool.query(
         `SELECT
            CASE
@@ -208,7 +270,7 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 8. Areas of study — top 100 with student lists via json_agg (NO loop needed)
+      // 9. Areas of study — top 100 with student lists via json_agg (NO loop needed)
       pool.query(
         `SELECT fe.degree,
                 COUNT(DISTINCT fe.alumn_id) AS count,
@@ -229,7 +291,7 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 9. Colleges by country — with student lists via json_agg (NO loop needed)
+      // 10. Colleges by country — with student lists via json_agg (NO loop needed)
       pool.query(
         `SELECT COALESCE(c.country, 'Unknown') AS country,
                 COUNT(DISTINCT fe.alumn_id) AS count,
@@ -252,7 +314,7 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 10. Industry distribution — with student lists via json_agg (NO loop needed)
+      // 11. Industry distribution — with student lists via json_agg (NO loop needed)
       pool.query(
         `SELECT COALESCE(e.industry, 'Not specified') AS industry,
                 COUNT(DISTINCT e.alumn_id) AS count,
@@ -273,7 +335,7 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 11. Top employers — with student lists via json_agg (NO loop needed)
+      // 12. Top employers — with student lists via json_agg (NO loop needed)
       pool.query(
         `SELECT COALESCE(e.company, 'Not specified') AS company,
                 COUNT(DISTINCT e.alumn_id) AS count,
@@ -295,10 +357,10 @@ export async function GET(request) {
         gf.params
       ),
 
-      // 12. Outcomes by year — with all 4 student-list buckets via conditional json_agg (FIXED)
+      // 13. Outcomes by year — with all 4 student-list buckets via conditional json_agg (FIXED)
       isSuperuserOrCrc
         ? pool.query(
-            `WITH base AS (
+          `WITH base AS (
                SELECT DISTINCT
                  u.id, u.first_name, u.rwandan_name, u.email,
                  g.graduation_year_to_asyv AS grad_year,
@@ -338,8 +400,8 @@ export async function GET(request) {
              FROM base
              GROUP BY grad_year
              ORDER BY grad_year`,
-            gf.params
-          )
+          gf.params
+        )
         : Promise.resolve({ rows: [] }),
     ]);
 
@@ -351,12 +413,13 @@ export async function GET(request) {
     const continuedEducationStudents = feRes.rows;
     const employedStudents = empRes.rows;
     const eitherOutcomeStudents = eitherListRes.rows;
+    const allAlumniStudents = allAlumniRes.rows;
 
     const continuedEducation = continuedEducationStudents.length;
     const employed = employedStudents.length;
 
     // Degree level — split distribution array from embedded student lists
-    const degreeLevelDistribution = degreeLevelRes.rows.map(function(row) {
+    const degreeLevelDistribution = degreeLevelRes.rows.map(function (row) {
       var students = row.students;
       var rest = {};
       for (var key in row) {
@@ -366,7 +429,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var degreeLevelStudents = {};
     for (var i = 0; i < degreeLevelRes.rows.length; i++) {
       var row = degreeLevelRes.rows[i];
@@ -374,7 +437,7 @@ export async function GET(request) {
     }
 
     // Areas of study — top 100 distribution + top-10 student lists
-    const areasOfStudy = areasOfStudyRes.rows.map(function(row) {
+    const areasOfStudy = areasOfStudyRes.rows.map(function (row) {
       var students = row.students;
       var rest = {};
       for (var key in row) {
@@ -384,7 +447,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var areasOfStudyStudents = {};
     for (var i = 0; i < Math.min(10, areasOfStudyRes.rows.length); i++) {
       var row = areasOfStudyRes.rows[i];
@@ -392,7 +455,7 @@ export async function GET(request) {
     }
 
     // Colleges by country
-    const collegesByCountry = collegesByCountryRes.rows.map(function(row) {
+    const collegesByCountry = collegesByCountryRes.rows.map(function (row) {
       var students = row.students;
       var rest = {};
       for (var key in row) {
@@ -402,7 +465,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var collegesByCountryStudents = {};
     for (var i = 0; i < collegesByCountryRes.rows.length; i++) {
       var row = collegesByCountryRes.rows[i];
@@ -410,7 +473,7 @@ export async function GET(request) {
     }
 
     // Industry distribution
-    const industryDistribution = industryRes.rows.map(function(row) {
+    const industryDistribution = industryRes.rows.map(function (row) {
       var students = row.students;
       var rest = {};
       for (var key in row) {
@@ -420,7 +483,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var industryDistributionStudents = {};
     for (var i = 0; i < Math.min(10, industryRes.rows.length); i++) {
       var row = industryRes.rows[i];
@@ -428,7 +491,7 @@ export async function GET(request) {
     }
 
     // Top employers
-    const topEmployers = employerRes.rows.map(function(row) {
+    const topEmployers = employerRes.rows.map(function (row) {
       var students = row.students;
       var rest = {};
       for (var key in row) {
@@ -438,7 +501,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var topEmployersStudents = {};
     for (var i = 0; i < employerRes.rows.length; i++) {
       var row = employerRes.rows[i];
@@ -446,7 +509,7 @@ export async function GET(request) {
     }
 
     // Outcomes by year
-    const outcomesByYear = outcomesByYearRes.rows.map(function(row) {
+    const outcomesByYear = outcomesByYearRes.rows.map(function (row) {
       var rest = {};
       for (var key in row) {
         if (key !== 'employment_only_students' && key !== 'fe_only_students' && key !== 'both_students' && key !== 'neither_students') {
@@ -455,7 +518,7 @@ export async function GET(request) {
       }
       return rest;
     });
-    
+
     var outcomesByYearStudents = {};
     for (var i = 0; i < outcomesByYearRes.rows.length; i++) {
       var row = outcomesByYearRes.rows[i];
@@ -471,7 +534,6 @@ export async function GET(request) {
     function pct(n) {
       return totalGraduates > 0 ? Math.round((n / totalGraduates) * 100) : 0;
     }
-
     return NextResponse.json({
       totalGraduates: totalGraduates,
       continuedEducation: continuedEducation,
@@ -483,6 +545,7 @@ export async function GET(request) {
       continuedEducationStudents: continuedEducationStudents,
       employedStudents: employedStudents,
       eitherOutcomeStudents: eitherOutcomeStudents,
+      allAlumniStudents: allAlumniStudents,
       degreeStats: degreeStatsRes.rows,
       outcomesByYear: outcomesByYear,
       degreeLevelDistribution: degreeLevelDistribution,

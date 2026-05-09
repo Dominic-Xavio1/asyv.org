@@ -4,6 +4,7 @@ import NavBar from "@/components/layout/navagation";
 import NotificationManager from '@/components/NotificationManager'
 import ChatNotificationManager from '@/components/ChatNotificationManager'
 import MobileBottomNav from "@/components/MobileBottomNav";
+import QuickLinksMenu from "@/components/QuickLinksMenu";
 import { FireworksBackground } from "@/components/animate-ui/components/backgrounds/fireworks"
 import { Providers } from "./provider"
 import { GoogleProvider } from '@/components/providers'
@@ -56,6 +57,7 @@ export default function RootLayout({ children }) {
                 <ChatNotificationManager />
                 {children}
                 <MobileBottomNav />
+                <QuickLinksMenu />
                 <AIChatWidget />
                 {/* <FireworksBackground /> */}
               </AuthProvider>

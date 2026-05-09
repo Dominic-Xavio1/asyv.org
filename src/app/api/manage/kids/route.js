@@ -51,6 +51,7 @@ export async function POST(request) {
       family_id,
       graduation_status,
     } = body;
+    console.log("has_children", has_children);
     const result = await pool.query(
       `INSERT INTO api_kid (
         origin_district, origin_sector, current_district_or_city, current_country,
