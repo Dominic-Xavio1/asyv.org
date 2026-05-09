@@ -58,7 +58,7 @@ export async function GET(request) {
     const search = searchParams.get('search');
     
     let query = `
-      SELECT id, first_name, rwandan_name, email, is_superuser, is_crc
+      SELECT id, first_name, rwandan_name, email, is_superuser, is_crc, is_mama
       FROM api_user 
     `;
     const params = [];
@@ -82,7 +82,7 @@ export async function GET(request) {
     if (search) {
       const kidQuery = `
         SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, 
-               u.is_superuser, u.is_crc
+               u.is_superuser, u.is_crc, u.is_mama
         FROM api_kid k
         JOIN api_user u ON k.user_id = u.id
         WHERE (u.first_name ILIKE $1 OR u.rwandan_name ILIKE $1 OR u.email ILIKE $1)

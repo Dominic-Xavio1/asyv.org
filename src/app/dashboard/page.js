@@ -733,9 +733,9 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
       if (imageFile) {
         formData.append('image', imageFile);
       }
-      if(!imageFile){
-         toast.error('Please image is required.');
-        return 
+      if (!imageFile) {
+        toast.error('Please image is required.');
+        return
       }
 
       if (existingGroup && removeExistingImage && !imageFile) {
@@ -1566,6 +1566,7 @@ export default function Dashboard() {
     topEmployers: [],
     topEmployersStudents: {},
     outcomesByYearStudents: {},
+    allAlumniStudents: [],
   });
   const [overviewListOpen, setOverviewListOpen] = useState(false);
   const [overviewListTitle, setOverviewListTitle] = useState('');
@@ -1581,7 +1582,12 @@ export default function Dashboard() {
       item.first_name?.toLowerCase().includes(query) ||
       item.rwandan_name?.toLowerCase().includes(query) ||
       item.email?.toLowerCase().includes(query) ||
+      item.phone?.toLowerCase().includes(query) ||
+      String(item.graduation_year || '').toLowerCase().includes(query) ||
       item.institution?.toLowerCase().includes(query) ||
+      item.grade?.toLowerCase().includes(query) ||
+      item.family?.toLowerCase().includes(query) ||
+      item.title?.toLowerCase().includes(query) ||
       item.company?.toLowerCase().includes(query) ||
       item.college_name?.toLowerCase().includes(query)
     );
@@ -1600,67 +1606,109 @@ export default function Dashboard() {
   };
 
   // Download functions
-  const downloadDOCX = () => {
+  const downloadDOCX = async () => {
     if (!filteredOverviewItems || filteredOverviewItems.length === 0) {
       toast.error("No data available to download");
       return;
     }
+    try {
+      const {
+        Document,
+        Packer,
+        Paragraph,
+        Table,
+        TableCell,
+        TableRow,
+        TextRun,
+        WidthType
+      } = await import('docx');
 
-    const dateStr = new Date().toLocaleDateString();
-    const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.rtf`;
+      const fileName = `${overviewListTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
 
-    // 1. Prepare Header and Metadata
-    // Note: We use \\ for every RTF command because \ is an escape char in JS strings
-    let rtfContent = "{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}\n";
-    rtfContent += "{\\colortbl ;\\red0\\green0\\blue0;}\n";
-    rtfContent += "\\f0\\fs28 \\b " + overviewListTitle.replace(/[{}\\]/g, '') + "\\b0 \\par\\line\n";
-    rtfContent += "\\fs20 \\i Generated: " + dateStr + "\\i0 \\par\n";
-    rtfContent += "\\i Total Records: " + filteredOverviewItems.length + "\\i0 \\par\\line\n";
+      const headers = [
+        '#',
+        'First Name',
+        'Rwandan Name',
+        'Email',
+        'Phone',
+        'Grade',
+        'Family',
+        'Graduation Year',
+        'Institution',
+        'Job Title',
+        'Company',
+      ];
 
-    if (overviewListDescription) {
-      rtfContent += "\\fs20 Description: " + overviewListDescription.replace(/[{}\\]/g, '') + "\\par\\line\n";
+      const headerRow = new TableRow({
+        children: headers.map((header) =>
+          new TableCell({
+            width: { size: 10, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: header, bold: true })],
+              }),
+            ],
+          })
+        ),
+      });
+
+      const dataRows = filteredOverviewItems.map((item, index) =>
+        new TableRow({
+          children: [
+            String(index + 1),
+            item.first_name || '',
+            item.rwandan_name || '',
+            item.email || '',
+            item.phone || '',
+            item.grade || '',
+            item.family || '',
+            item.graduation_year || '',
+            item.institution || '',
+            item.title || item.position || '',
+            item.company || '',
+          ].map((value) =>
+            new TableCell({
+              width: { size: 10, type: WidthType.PERCENTAGE },
+              children: [new Paragraph(String(value))],
+            })
+          ),
+        })
+      );
+
+      const doc = new Document({
+        sections: [
+          {
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: overviewListTitle || 'Alumni List', bold: true, size: 32 })],
+              }),
+              new Paragraph(`Generated: ${new Date().toLocaleDateString()}`),
+              new Paragraph(`Total Records: ${filteredOverviewItems.length}`),
+              ...(overviewListDescription ? [new Paragraph(`Description: ${overviewListDescription}`)] : []),
+              new Paragraph(''),
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [headerRow, ...dataRows],
+              }),
+            ],
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success(`Downloaded ${filteredOverviewItems.length} records successfully`);
+    } catch (error) {
+      console.error('DOCX export failed:', error);
+      toast.error('Failed to generate DOCX file');
     }
-
-    // 2. Create Table Header
-    // \trowd = start row, \clbrdrt/l/b/r = cell borders, \cellx = cell width in twips (1440 = 1 inch)
-    const tableHeader = "\\trowd\\trgaph108\\trleft-108" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
-      "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
-      "\\intbl \\b #\\cell First Name\\cell Rwandan Name\\cell Email\\cell Institution\\cell Company\\cell \\b0 \\row\n";
-
-    rtfContent += tableHeader;
-
-    // 3. Add Data Rows
-    filteredOverviewItems.forEach((item, index) => {
-      const clean = (val) => (val || '').toString().replace(/[{}\\]/g, '');
-
-      rtfContent += "\\trowd\\trgaph108\\trleft-108" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx600" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx2000" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5500" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7500" +
-        "\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500" +
-        `\\intbl ${index + 1}\\cell ${clean(item.first_name)}\\cell ${clean(item.rwandan_name)}\\cell ${clean(item.email)}\\cell ${clean(item.institution)}\\cell ${clean(item.company)}\\row\n`;
-    });
-
-    // 4. Close RTF
-    rtfContent += "\\par\\line \\i Export generated from ASYV Alumni Management System\\i0\n}";
-
-    // 5. Download Logic
-    const blob = new Blob([rtfContent], { type: 'application/rtf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast.success(`Downloaded ${filteredOverviewItems.length} records successfully`);
   };
 
   const downloadXLSX = () => {
@@ -1670,11 +1718,13 @@ export default function Dashboard() {
       'First Name': item.first_name || '',
       'Rwandan Name': item.rwandan_name || '',
       'Email': item.email || '',
+      'Phone': item.phone || '',
+      'Grade': item.grade || '',
+      'Family': item.family || '',
+      'Graduation Year': item.graduation_year || '',
       'Institution': item.institution || '',
+      'Job Title': item.title || item.position || '',
       'Company': item.company || '',
-      'Position': item.position || '',
-      'User ID': item.id || '',
-      'Kid ID': item.kid_id || ''
     }));
 
     if (data.length === 0) {
@@ -1695,9 +1745,13 @@ export default function Dashboard() {
       { wch: 15 }, // First Name
       { wch: 20 }, // Rwandan Name
       { wch: 25 }, // Email
+      { wch: 18 }, // Phone
+      { wch: 18 }, // Grade
+      { wch: 24 }, // Family
+      { wch: 18 }, // Graduation Year
       { wch: 20 }, // Institution
-      { wch: 20 }, // Company
-      { wch: 20 }  // Position
+      { wch: 20 }, // Job Title
+      { wch: 20 }  // Company
     ];
 
     // 5. Generate the file and trigger download
@@ -1954,6 +2008,7 @@ export default function Dashboard() {
         topEmployers: Array.isArray(data.topEmployers) ? data.topEmployers : [],
         topEmployersStudents: data.topEmployersStudents || {},
         outcomesByYearStudents: data.outcomesByYearStudents || {},
+        allAlumniStudents: data.allAlumniStudents || [],
         continuedEducationStudents: data.continuedEducationStudents || [],
         employedStudents: data.employedStudents || [],
         eitherOutcomeStudents: data.eitherOutcomeStudents || [],
@@ -2028,17 +2083,8 @@ export default function Dashboard() {
       title = 'Alumni with Recorded Outcomes';
       description = 'List of alumni who have at least one further education or employment record within selected grades.';
     } else if (type === 'all') {
-      console.log("This is what overviewstas holds ", overviewStats)
-      items = overviewStats.totalGraduates > 0 ? [
-        ...overviewStats.continuedEducationStudents || [],
-        ...overviewStats.employedStudents || []
-      ] : [];
-      // Remove duplicates using Set based on unique IDs
-      const uniqueItems = items.filter((item, index, self) =>
-        index === self.findIndex((i) => i.id === item.id)
-      );
-      items = uniqueItems;
-      console.log('All Alumni - Unique items after dedup:', uniqueItems.length);
+      // Use the allAlumniStudents from the API response
+      items = overviewStats.allAlumniStudents || [];
       title = 'All Alumni';
       description = 'Complete list of all alumni with their information.';
     } else if (type === 'degreeLevel') {
@@ -2718,8 +2764,8 @@ export default function Dashboard() {
                             <label
                               key={id}
                               className={`flex items-center gap-2 text-sm cursor-pointer select-none px-3 py-1.5 rounded-lg transition-colors ${checked
-                                  ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700'
-                                  : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                ? 'bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700'
+                                : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}
                             >
                               <input
@@ -2771,6 +2817,7 @@ export default function Dashboard() {
                         {/* Total Graduates */}
                         <button
                           type="button"
+                          onClick={() => openOverviewList('all')}
                           className="text-left bg-gray-50 dark:bg-gray-950/40 rounded-xl border border-gray-100 dark:border-gray-900/50 p-4 shadow-sm hover:border-gray-500 hover:shadow-md transition"
                         >
                           <p className="text-xs font-medium text-gray-700 dark:text-gray-400 mb-2">All Alumni</p>
@@ -2839,7 +2886,7 @@ export default function Dashboard() {
                         {/* With Any Outcome */}
                         <button
                           type="button"
-                          onClick={() => openOverviewList('all')}
+                          onClick={() => openOverviewList('either')}
                           className="text-left bg-violet-50 dark:bg-violet-950/40 rounded-xl border border-violet-100 dark:border-violet-900/50 p-4 shadow-sm hover:border-violet-500 hover:shadow-md transition"
                         >
                           <p className="text-xs font-medium text-violet-700 dark:text-violet-400 mb-2">Graduates with Emploment or Further Education</p>
@@ -3009,8 +3056,8 @@ export default function Dashboard() {
                                   key={company}
                                   onClick={() => openOverviewList('employer', company)}
                                   className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer ${index < 3
-                                      ? "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20"
-                                      : "border-neutral-100 dark:border-gray-800 bg-neutral-50/50 dark:bg-gray-800/30"
+                                    ? "border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20"
+                                    : "border-neutral-100 dark:border-gray-800 bg-neutral-50/50 dark:bg-gray-800/30"
                                     }`}
                                 >
                                   <span className="text-base w-6 text-center flex-shrink-0">
@@ -3436,9 +3483,9 @@ export default function Dashboard() {
                   <div className="flex items-center  mb-3">
                     {userContent.groups.length > 0 ? (
                       <div className="flex -space-x-2">
-<h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 mr-4">
-                      Created Groups ({userContent.groups.length})
-                    </h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-200 mr-4">
+                          Created Groups ({userContent.groups.length})
+                        </h3>
                         {userContent.groups.slice(0, 3).map((group, index) => (
                           <div key={group.id} className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-gray-900 overflow-hidden bg-gray-100 dark:bg-gray-800">
                             {group.image ? (
@@ -3627,7 +3674,7 @@ export default function Dashboard() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by name, email, institution, or company..."
+              placeholder="Search by name, email, phone, grade, family, institution, title, or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-1 focus:ring-orange-500"
@@ -3682,36 +3729,61 @@ export default function Dashboard() {
               filteredOverviewItems.map((alumn) => (
                 <div
                   key={alumn.id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                  onClick={() => handleAlumniClick(alumn)}
+                  className="flex items-start justify-between rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <div className="flex-1 ">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                      {alumn.first_name} {alumn.rwandan_name}
-                    </p>
-                    {alumn.email && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {alumn.email}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {alumn.first_name} {alumn.rwandan_name || ''}
                       </p>
-                    )}
-                    <div className="flex flex-wrap gap-2 mt-1">
+                      {alumn.graduation_year && (
+                        <span className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
+                          Class of {alumn.graduation_year}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 mb-2">
+                      {alumn.email && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          📧 {alumn.email}
+                        </p>
+                      )}
+                      {alumn.phone && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          📱 {alumn.phone}
+                        </p>
+                      )}
+                      {alumn.grade && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          📚 Grade: {alumn.grade}
+                        </p>
+                      )}
+                      {alumn.family && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          👨‍👩‍👧 Family: {alumn.family}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
                       {alumn.institution && (
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
                           🎓 {alumn.institution}
                         </span>
                       )}
                       {alumn.company && (
-                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
                           💼 {alumn.company}
                         </span>
                       )}
-                      {alumn.position && (
-                        <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">
-                          {alumn.position}
+                      {(alumn.title || alumn.position) && (
+                        <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
+                          {alumn.title || alumn.position}
                         </span>
                       )}
                       {alumn.college_name && (
-                        <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full">
                           🏛️ {alumn.college_name}
                         </span>
                       )}
@@ -3774,3 +3846,8 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+
+
+
