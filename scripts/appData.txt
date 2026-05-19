@@ -1,0 +1,7 @@
+# Technical Support and Contact Information
+
+For any technical issues, system bugs, or more information regarding the ASYV Alumni Management System, please contact the technical team:
+
+- **Dominic Savio**: Technical Lead (Email: dominicxavio09@gmail.com)
+- **Joseph**: Technical Support (Email: joseph@asyv.org)
+If you encounter an error during navigation, data export issues, or need help with your account, please reach out to Savio or Joseph for immediate assistance.

@@ -162,8 +162,8 @@ export function LoginForm({
         localStorage.setItem("fullInfo", JSON.stringify(data.fullInfo));
 
         localStorage.setItem("second_name", JSON.stringify(data.user.second_name));
-
-        toast.success(`Welcome back, ${data.user.username}!`, { duration: 3000 });
+        console.log("Login successful, user data:", data);       
+        toast.success(`Welcome back, ${data.fullInfo.first_name} ${data.fullInfo.rwandan_name}!`, { duration: 3000 });
 
 
 

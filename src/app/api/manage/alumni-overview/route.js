@@ -98,6 +98,12 @@ export async function GET(request) {
 
     // ── Build shared SQL fragments ────────────────────────────────────────────
     const gf = buildGradeFilter(gradeFilter);
+    // Outcomes-by-year: gf.joins already includes k (+ f) when grade filter is active
+    const outcomesYearJoins = gradeFilter
+      ? `INNER JOIN api_grade g ON g.id = f.grade_id`
+      : `INNER JOIN api_kid k ON k.user_id = u.id
+         INNER JOIN api_family f2 ON f2.id = k.family_id
+         INNER JOIN api_grade g ON g.id = f2.grade_id`;
 
     // ── PHASE 1 — fire all top-level aggregate queries in parallel ────────────
     const [
@@ -372,9 +378,7 @@ export async function GET(request) {
                   FROM api_furthereducation fe2 WHERE fe2.alumn_id = u.id LIMIT 1) AS institution
                FROM api_user u
                ${gf.joins}
-               INNER JOIN api_kid k ON k.user_id = u.id
-               INNER JOIN api_family f2 ON f2.id = k.family_id
-               INNER JOIN api_grade  g  ON g.id  = f2.grade_id
+               ${outcomesYearJoins}
                ${gf.where}
              )
              SELECT

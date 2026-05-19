@@ -72,7 +72,7 @@ const MobileBottomNav = () => {
     { id: 'management', icon: UserCog, label: 'Manage Users', href: '/management/user' },
     { id: 'advanced_management', icon: Users, label: 'Advanced User Management', href: '/management/advanced' },
     { id: 'create_profile', icon: UserPlus, label: 'Create your profile', href: '/profile/create' },
-    { id: 'change_password', icon: ShieldCheck, label: 'Change Password', href: '/profile/change-password' },
+    // { id: 'change_password', icon: ShieldCheck, label: 'Change Password', href: '/profile/change-password' },
     // { id: 'logout', icon: LogOut, label: 'Logout', isLogout: true },
   ];
 

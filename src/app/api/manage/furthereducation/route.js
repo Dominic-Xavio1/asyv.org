@@ -7,6 +7,8 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const alumnId = searchParams.get('alumnId');
 
+       
+
         if (alumnId) {
             const q = `SELECT fe.id, fe.degree, fe.level, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id, c.college_name, c.country, c.city
                        FROM api_furthereducation AS fe
@@ -17,8 +19,15 @@ export async function GET(request) {
             return NextResponse.json({ success: true, furtherEducation: result.rows }, { status: 200 });
         }
 
-        // fallback: return all with joined user name
-        const response = await pool.query('SELECT fe.id, fe.degree, fe.level, fe.scholarship, fe.enrolled, u.rwandan_name, u.first_name FROM api_furthereducation AS fe JOIN api_user AS u ON fe.alumn_id = u.id');
+        // fallback: return all with joined user name and college details
+        const response = await pool.query(
+            `SELECT fe.id, fe.alumn_id, fe.degree, fe.level, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id,
+                    c.college_name, c.country, c.city,
+                    u.rwandan_name, u.first_name
+             FROM api_furthereducation AS fe
+             JOIN api_user AS u ON fe.alumn_id = u.id
+             LEFT JOIN api_college AS c ON fe.college_id = c.id`
+        );
         const data = response.rows;
         return NextResponse.json({ success: true, furtherEducation: data }, { status: 200 });
     } catch (error) {
@@ -71,7 +80,7 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { id, degree, level, scholarship, scholarship_details, enrolled, college_id, college } = body;
+        const { id, degree, level, scholarship, scholarship_details, alumn_id, enrolled, college_id, college } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'FurtherEducation ID is required' }, { status: 400 });
@@ -104,6 +113,7 @@ export async function PUT(request) {
         const updateFields = [];
         const updateValues = [];
         let param = 1;
+        if (alumn_id !== undefined) { updateFields.push(`alumn_id = $${param++}`); updateValues.push(alumn_id); }
         if (degree !== undefined) { updateFields.push(`degree = $${param++}`); updateValues.push(degree); }
         if (level !== undefined) { updateFields.push(`level = $${param++}`); updateValues.push(level); }
         if (scholarship !== undefined) { updateFields.push(`scholarship = $${param++}`); updateValues.push(scholarship); }

@@ -1,6 +1,7 @@
-import { HfInference } from "@huggingface/inference"
+import 'dotenv/config'
+import { InferenceClient } from "@huggingface/inference"
 
-const hf = new HfInference(process.env.HF_API_KEY)
+const hf = new InferenceClient(process.env.HF_API_KEY)
 
 export async function createEmbedding(text) {
 

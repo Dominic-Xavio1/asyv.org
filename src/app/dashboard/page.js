@@ -6,9 +6,9 @@ import { utils, writeFile } from 'xlsx';
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
   BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
-  UserCircle, UserPlus,
+  UserCircle, UserPlus, Sparkles,
   Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3, Calendar, MapPin, Newspaper,
-  Download
+  Download, GraduationCap
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
@@ -453,6 +453,11 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
       }
 
       const formData = new FormData();
+      const textCount = description.split(' ').length;
+      if (textCount > 120) {
+        toast.error('Description cannot exceed 120 words');
+        return;
+      }
       formData.append('user_id', userId);
       formData.append('title', title);
       formData.append('op_type', opType);
@@ -531,22 +536,15 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
         <label htmlFor="opportunity-type" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
           Opportunity Type
         </label>
-        <select
-          id="opportunity-type"
+        <Input
+          id="type-of-opportunity"
+          type="text"
           value={opType}
           onChange={(e) => setOpType(e.target.value)}
-          className="w-full px-3 py-2 border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 dark:focus:ring-orange-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 mt-2"
-          required
+          placeholder="e.g., Job, Internship, Scholarship..."
+          className="w-full"
           disabled={loading}
-        >
-          <option value="">Select type...</option>
-          <option value="job">Job</option>
-          <option value="internship">Internship</option>
-          <option value="scholarship">Scholarship</option>
-          <option value="volunteer">Volunteer</option>
-          <option value="event">Event</option>
-          <option value="other">Other</option>
-        </select>
+        />
       </div>
       <div className="space-y-2">
         <label htmlFor="opportunity-description" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
@@ -566,7 +564,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label htmlFor="opportunity-deadline" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-            Deadline (Optional)
+            Deadline
           </label>
           <Input
             id="opportunity-deadline"
@@ -575,12 +573,13 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
             onChange={(e) => setDeadline(e.target.value)}
             className="w-full"
             disabled={loading}
+            required
           />
         </div>
 
         <div className="space-y-2">
           <label htmlFor="opportunity-location" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-            Location (Optional)
+            Location
           </label>
           <Input
             id="opportunity-location"
@@ -589,6 +588,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
             onChange={(e) => setLocation(e.target.value)}
             placeholder="e.g., Kigali, Rwanda"
             className="w-full"
+            required
             disabled={loading}
           />
         </div>
@@ -611,7 +611,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
 
       <div className="space-y-2">
         <label htmlFor="opportunity-link" className="text-sm font-medium text-neutral-700 dark:text-gray-300">
-          Application Link (Optional)
+          Application Link
         </label>
         <Input
           id="opportunity-link"
@@ -621,6 +621,7 @@ const OpportunityForm = ({ onClose, onSubmit, userId, existingOpportunity = null
           placeholder="https://example.com/apply"
           className="w-full"
           disabled={loading}
+          required
         />
         <p className="text-xs text-neutral-500 dark:text-gray-500">
           Link where users can apply or find more information
@@ -1573,6 +1574,11 @@ export default function Dashboard() {
   const [overviewListDescription, setOverviewListDescription] = useState('');
   const [overviewListItems, setOverviewListItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const hasCreatedProfile = Boolean(
+    currentUser?.profile_image_url ||
+    currentUser?.image_url ||
+    (typeof currentUser?.bio === 'string' && currentUser.bio.trim().length > 0)
+  );
 
   // Filter items based on search query
   const filteredOverviewItems = overviewListItems.filter(item => {
@@ -1874,12 +1880,13 @@ export default function Dashboard() {
   });
   const menuItems = (() => {
     const items = [
-      { id: 'home', icon: Home, label: 'Dashboard' },
+      // { id: 'home', icon: Home, label: 'Dashboard' },
       { id: 'notifications', icon: Bell, label: 'Notifications', badge: unreadCount },
       { id: 'feed', icon: LayoutList, label: 'Feed' },
       // { id: "alumni_overview", icon: BarChart3, label: "Alumni Overview" },
       { id: "management", icon: UserCog, label: "Manage Users" },
       { id: "advanced_management", icon: Users, label: "Our Students" },
+      { id: "alumni_by_grade", icon: GraduationCap, label: "Alumni by grade" },
     ];
 
     if (isCrcOrSuperuser) {
@@ -2064,6 +2071,18 @@ export default function Dashboard() {
     }
   }, [isCrcOrSuperuser, currentUser, fetchOverviewStats]);
 
+  // Helper function to deduplicate alumni by ID
+  const deduplicateAlumni = (alumniArray) => {
+    const seen = new Set();
+    return (alumniArray || []).filter(alumnus => {
+      if (seen.has(alumnus.id)) {
+        return false;
+      }
+      seen.add(alumnus.id);
+      return true;
+    });
+  };
+
   const openOverviewList = (type, value = null) => {
     if (!overviewStats) return;
     let items = [];
@@ -2088,34 +2107,34 @@ export default function Dashboard() {
       title = 'All Alumni';
       description = 'Complete list of all alumni with their information.';
     } else if (type === 'degreeLevel') {
-      items = overviewStats.degreeLevelStudents[value] || [];
+      items = deduplicateAlumni(overviewStats.degreeLevelStudents[value]);
       title = `${value} Graduates`;
       description = `List of alumni who have a ${value} degree within the selected grades.`;
     } else if (type === 'areaOfStudy') {
-      items = overviewStats.areasOfStudyStudents[value] || [];
+      items = deduplicateAlumni(overviewStats.areasOfStudyStudents[value]);
       title = `${value} Graduates`;
       description = `List of alumni who studied ${value} within the selected grades.`;
     } else if (type === 'country') {
-      items = overviewStats.collegesByCountryStudents[value] || [];
+      items = deduplicateAlumni(overviewStats.collegesByCountryStudents[value]);
       title = `Graduates in ${value}`;
       description = `List of alumni who attended colleges in ${value} within the selected grades.`;
     } else if (type === 'industry') {
-      items = overviewStats.industryDistributionStudents[value] || [];
+      items = deduplicateAlumni(overviewStats.industryDistributionStudents[value]);
       title = `${value} Industry Graduates`;
       description = `List of alumni working in the ${value} industry within the selected grades.`;
     } else if (type === 'employer') {
-      items = overviewStats.topEmployersStudents[value] || [];
+      items = deduplicateAlumni(overviewStats.topEmployersStudents[value]);
       title = `Graduates at ${value}`;
       description = `List of alumni employed at ${value} within the selected grades.`;
     } else if (type === 'outcomeYear') {
       const yearData = overviewStats.outcomesByYearStudents[value];
       if (yearData) {
-        items = [
+        items = deduplicateAlumni([
           ...yearData.employment_only || [],
           ...yearData.fe_only || [],
           ...yearData.both || [],
           ...yearData.neither || []
-        ];
+        ]);
       }
       title = `Class of ${value} Outcomes`;
       description = `List of all graduates from the class of ${value} with their employment and education outcomes.`;
@@ -2362,6 +2381,8 @@ export default function Dashboard() {
         return "/management";
       case "advanced_management":
         return "/management/advanced";
+      case "alumni_by_grade":
+        return "/management/alumni-by-grade";
       case "notifications":
         return "/notification";
       case "change_password":
@@ -2498,7 +2519,7 @@ export default function Dashboard() {
         <nav
           className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
-            if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview") && !onlySuperuser) {
+            if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview" || item.id === "alumni_by_grade") && !onlySuperuser) {
               return null;
             }
             return (
@@ -2576,18 +2597,27 @@ export default function Dashboard() {
                     </span>
                   )}
 
-                  {(item.id === 'change_password' && !hideChangePassword && countClick < 2) && (
-                    <motion.div
-                      animate={{ x: [0, 10, 0] }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    >
-                      <div className=" h-6 w-6 flex">
-                        <ArrowLeft className=" h-5 w-5" />
-                      </div>
+                  {(item.id === 'create_profile' && !hasCreatedProfile) && (
+                    <motion.div className="relative flex items-center">
+                      <motion.div
+                        className="absolute -left-1 h-8 w-8 rounded-full bg-orange-400/30 blur-md"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      {/* <motion.div
+                        className="flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-2 py-1 text-[10px] font-semibold text-white shadow-md"
+                        animate={{ y: [0, -2, 0], scale: [1, 1.03, 1] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        <span>Create yours</span>
+                      </motion.div> */}
+                      <motion.div
+                        animate={{ x: [0, 6, 0] }}
+                        transition={{ duration: 0.7, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <ArrowLeft className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+                      </motion.div>
                     </motion.div>
                   )}
 
@@ -2635,7 +2665,7 @@ export default function Dashboard() {
 
             <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
-                if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview") && !onlySuperuser) {
+                if ((item.id === "management" || item.id === "advanced_management" || item.id === "alumni_overview" || item.id === "alumni_by_grade") && !onlySuperuser) {
                   return null;
                 }
                 return (
@@ -2646,7 +2676,7 @@ export default function Dashboard() {
                       setSidebarOpen(false);
                       if (item.label === "Feed") {
                         router.push('/feed');
-                      } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management") {
+                      } else if (item.id === "alumni_overview" || item.id === "management" || item.id === "advanced_management" || item.id === "alumni_by_grade") {
                         router.push(handleNavigate(item.id));
                       } else if (item.id === "create_post") {
                         setEditingPost(null);
@@ -3326,7 +3356,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {posts.map((post) => (
                     <ContentCard
-                      key={post.created_at}
+                      key={post.id}
                       item={{ ...post, type: 'post' }}
                       onDelete={handleDeletePost}
                       onEdit={(post) => {
