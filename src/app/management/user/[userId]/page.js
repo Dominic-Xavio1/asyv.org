@@ -19,7 +19,7 @@ export default function UserDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [userData, setUserData] = useState(null);
     const [isSuperuser, setIsSuperuser] = useState(false);
-    
+
     // Dialog states
     const [isEmploymentDialogOpen, setIsEmploymentDialogOpen] = useState(false);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -29,7 +29,7 @@ export default function UserDetailsPage() {
     const [editingReport, setEditingReport] = useState(null);
     const [editingComment, setEditingComment] = useState(null);
     const [editingFE, setEditingFE] = useState(null);
-    
+
     // Form states
     const [employmentForm, setEmploymentForm] = useState({
         title: '',
@@ -49,7 +49,7 @@ export default function UserDetailsPage() {
         city: ''
     });
     const [reportForm, setReportForm] = useState({
-        year: '',   
+        year: '',
         combination: '',
         report_card: '',
         grade: ''
@@ -224,13 +224,11 @@ export default function UserDetailsPage() {
         try {
             const url = '/api/manage/employment';
             const method = editingEmployment ? 'PUT' : 'POST';
-            // ensure backend receives `on_going` field
             const payload = editingEmployment
                 ? { id: editingEmployment.id, ...employmentForm }
                 : { alumn_id: userId, ...employmentForm };
-            const body = { ...payload, on_going: payload.ongoing };
-            delete body.ongoing;
-
+            const body = { ...payload };
+            console.log("Employment Body: ", body);
             const response = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
@@ -534,8 +532,8 @@ export default function UserDetailsPage() {
                                             </div>
                                             <div>
                                                 <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                                                <div className="mt-1">
-                                                    {emp.ongoing ? (
+                                                <div className="mt-1">{console.log("Employment Status: ", emp)}
+                                                    {emp.on_going ? (
                                                         <Badge className="bg-green-600">Ongoing</Badge>
                                                     ) : (
                                                         <Badge variant="outline">Past</Badge>
@@ -688,9 +686,9 @@ export default function UserDetailsPage() {
                                                 <div>
                                                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Report Card</label>
                                                     {report.report_card ? (
-                                                        <a 
-                                                            href={report.report_card} 
-                                                            target="_blank" 
+                                                        <a
+                                                            href={report.report_card}
+                                                            target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-blue-600 dark:text-blue-400 hover:underline"
                                                         >

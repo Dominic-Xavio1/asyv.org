@@ -1,9 +1,5 @@
 import pool from "../../../connection/databaseConnection"
 
-/**
- * Get requesting user ID from request (header x-user-id or query/body requestingUserId).
- * Returns { ok: true, userId } or { ok: false, status, error }.
- */
 export async function requireSuperuser(request, { fromBody = false } = {}) {
   let userId = request.headers.get("x-user-id");
   if (!userId && !fromBody) {

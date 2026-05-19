@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Home, LayoutList, Menu, MessageCircle, Search, ShieldCheck, UserCog, UserPlus, Users, X } from 'lucide-react';
+import { Bell, GraduationCap, Home, LayoutList, Menu, MessageCircle, Search, ShieldCheck, UserCog, UserPlus, Users, X } from 'lucide-react';
 
 export default function QuickLinksMenu() {
   const pathname = usePathname();
@@ -33,16 +33,17 @@ export default function QuickLinksMenu() {
       { id: 'search', href: '/search', label: 'Search', icon: Search },
       { id: 'chat', href: '/chat', label: 'Chat', icon: MessageCircle },
       { id: 'notifications', href: '/notification', label: 'Notifications', icon: Bell },
-      { id: 'create_profile', href: '/profile/create', label: 'Create Profile', icon: UserPlus },
-      { id: 'change_password', href: '/profile/change-password', label: 'Change Password', icon: ShieldCheck },
+      // { id: 'create_profile', href: '/profile/create', label: 'Create Profile', icon: UserPlus },
+      // { id: 'change_password', href: '/profile/change-password', label: 'Change Password', icon: ShieldCheck },
     ];
 
     if (isCrcOrSuperuser) {
       baseLinks.splice(
         5,
         0,
-        { id: 'manage_users', href: '/management/user', label: 'Manage Users', icon: UserCog },
-        { id: 'our_students', href: '/management/advanced', label: 'Our Students', icon: Users }
+        { id: 'manage_users', href: '/management', label: 'Manage Users', icon: UserCog },
+        { id: 'our_students', href: '/management/advanced', label: 'Our Students', icon: Users },
+        { id: 'alumni_by_grade', href: '/management/alumni-by-grade', label: 'Alumni by grade', icon: GraduationCap }
       );
     }
 

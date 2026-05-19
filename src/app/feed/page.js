@@ -49,6 +49,29 @@ const NEWS_CATEGORIES = [
 
 ];
 
+const OpportunityDescription = ({ description }) => {
+  const [expanded, setExpanded] = useState(false);
+  const words = description?.split(' ') || [];
+  const isLong = words.length > 25;
+  const preview = words.slice(0, 25).join(' ') + (isLong ? '...' : '');
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+        {expanded || !isLong ? description : preview}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline mt-1"
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const CommentSection = ({ postId, isOpen, comments: initialComments, currentUserId, onCommentAdded, setCommentCount }) => {
 
@@ -568,6 +591,11 @@ const [burstOrigin, setBurstOrigin] = useState(null);
     }
   };
 
+const [expand, setExpand] = useState(false);
+const words = post.content.split(' ');
+const isLongContent = words.length > 40;
+const shortText = words.slice(0,50).join(' ') + '...';
+
 
 
   return (
@@ -598,12 +626,10 @@ const [burstOrigin, setBurstOrigin] = useState(null);
             />
 
           </div>
-
           <div>
 
             <h4 className="font-medium text-gray-800 dark:text-gray-200">{post.authorName}</h4>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400">@{post.authorUsername}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Created on {new Date(post.timestamp).toLocaleDateString()}</p>
 
           </div>
 
@@ -617,9 +643,17 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
         )}
 
-        <p className="text-gray-700 dark:text-gray-300 mb-3">{post.content}</p>
-
-        
+        <p className="text-gray-700 dark:text-gray-300 mb-2">
+          {expand ? post.content : shortText}
+        </p>
+        {isLongContent && (
+          <button 
+            onClick={() => setExpand(!expand)}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-3"
+          >
+            {expand ? 'Show less' : 'Show more'}
+          </button>
+        )}
 
         {post.image && (
 
@@ -1070,14 +1104,15 @@ export default function SocialFeed() {
   const handleEventClick = (eventId) => {
     router.push(`/feed/news/article/${eventId}`);
   };
-
   const filteredPosts = posts
 
     .filter(post => 
 
       post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
 
-      post.authorUsername.toLowerCase().includes(searchTerm.toLowerCase())
+      post.authorUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.authorName.toLowerCase().includes(searchTerm.toLowerCase())||
+      post.title.toLowerCase().includes(searchTerm.toLowerCase())
 
     )
 
@@ -1189,11 +1224,7 @@ export default function SocialFeed() {
 
                             )}
 
-                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">
-
-                              {opportunity.description}
-
-                            </p>
+                            <OpportunityDescription description={opportunity.description} />
 
                             {opportunity.organization && (
 

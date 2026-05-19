@@ -1,7 +1,7 @@
 import { createEmbedding } from "../src/lib/embeddings.js";
 import { chunkText } from "../src/lib/chunkText.js";
 import { supabase } from "../src/lib/supabase.js";
-
+import {readFile} from "fs/promises";
 async function ingestDocument(text) {
   try {
     const chunks = chunkText(text);
@@ -28,9 +28,7 @@ async function ingestDocument(text) {
   }
 }
 
-const document = `
-Agahozo Shalom Youth Village provides education, 
-leadership development, and healing for youth.
-`;
+const document = await readFile("./scripts/appData.txt", "utf-8");
+console.log("Document read successfully ",document);
 await ingestDocument(document);
 process.exit(0);
