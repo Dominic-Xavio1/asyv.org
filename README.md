@@ -11,6 +11,13 @@ Technology Stack
 Frontend and backend: nextjs
 Database: postgres
 Authentication & Authorization: JWT (JSON Web Tokens)
+Here are the images showing the platform.
+<img width="1917" height="1067" alt="image" src="https://github.com/user-attachments/assets/d16ec773-82d0-4fe4-99ee-022363255fe4" />
+<img width="1902" height="1077" alt="image" src="https://github.com/user-attachments/assets/e0b660d4-ea8a-43b4-ba45-a9cd3691512b" />
+<img width="1917" height="1067" alt="image" src="https://github.com/user-attachments/assets/c3263b9a-b14c-47b1-9c24-a5c56f0b4c1b" />
+<img width="1917" height="1077" alt="image" src="https://github.com/user-attachments/assets/2f4b12b9-b1a4-4c51-b5e0-da2e960fcd4c" />
+<img width="1917" height="1077" alt="image" src="https://github.com/user-attachments/assets/70f4ebc0-21d1-4b63-b4da-650be77243c6" />
+
 
 Installation
 Clone the repository:
