@@ -101,6 +101,10 @@ export default function AlumniFormsPage() {
 
   const submitKid = async (e) => {
     e.preventDefault();
+    if (!kidForm.current_country || !kidForm.marital_status) {
+      toast.error("Please fill in all required fields: Country and Marital Status.");
+      return;
+    }
     try {
       const res = await fetch('/api/alumni/kid', {
         method: 'PUT',
@@ -140,6 +144,10 @@ export default function AlumniFormsPage() {
 
   const submitFe = async (e) => {
     e.preventDefault();
+    if (!feForm.degree || !feForm.level || !feForm.college_name || !feForm.country || !feForm.city) {
+      toast.error("Please fill in all required fields: Degree, Level, College Name, Country, and City.");
+      return;
+    }
     try {
       const collegePayload = (feForm.college_name || feForm.country || feForm.city) ? {
         college: { college_name: feForm.college_name || undefined, country: feForm.country || undefined, city: feForm.city || undefined },
@@ -181,6 +189,10 @@ export default function AlumniFormsPage() {
 
   const submitEmp = async (e) => {
     e.preventDefault();
+    if (!empForm.title || !empForm.industry || !empForm.company) {
+      toast.error("Please fill in all required fields: Title, Industry, and Company.");
+      return;
+    }
     try {
       const payload = editingEmp
         ? { id: editingEmp.id, ...empForm }
@@ -378,20 +390,27 @@ export default function AlumniFormsPage() {
           <form onSubmit={submitFe} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Degree *</Label>
+                <Label>Degree*</Label>
                 <Input required value={feForm.degree} onChange={(e) => setFeForm((f) => ({ ...f, degree: e.target.value }))} className="bg-white dark:bg-gray-800" />
               </div>
               <div className="space-y-2">
-                <Label>Level</Label>
-                <Input value={feForm.level} onChange={(e) => setFeForm((f) => ({ ...f, level: e.target.value }))} className="bg-white dark:bg-gray-800" />
+                <Label>Level ex: A0</Label>
+                <Input value={feForm.level} 
+                placeholder="e.g. A0, A1, Bachelors, Masters"
+                onChange={(e) => setFeForm((f) => ({ ...f, level: e.target.value }))} className="bg-white dark:bg-gray-800"required />
               </div>
               <div className="space-y-2">
-                <Label>Scholarship</Label>
-                <Input value={feForm.scholarship} onChange={(e) => setFeForm((f) => ({ ...f, scholarship: e.target.value }))} className="bg-white dark:bg-gray-800" />
+                <Label>Funding: Scholarship or self-sponsored?</Label>
+                <Input value={feForm.scholarship} onChange={(e) => setFeForm((f) => ({ ...f, scholarship: e.target.value }))} 
+                className="bg-white dark:bg-gray-800"
+                placeholder="e.g. Scholarship, Self-sponsored"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Scholarship Details</Label>
-                <Input value={feForm.scholarship_details} onChange={(e) => setFeForm((f) => ({ ...f, scholarship_details: e.target.value }))} className="bg-white dark:bg-gray-800" />
+                <Input value={feForm.scholarship_details} 
+                placeholder="Provide details ex: Government scholarship..."
+                onChange={(e) => setFeForm((f) => ({ ...f, scholarship_details: e.target.value }))} className="bg-white dark:bg-gray-800" />
               </div>
               <div className="space-y-2">
                 <Label>Enrolled</Label>

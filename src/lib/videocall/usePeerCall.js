@@ -15,7 +15,7 @@ const READY_STATUS = {
   failed: "Connection issue",
 }
 
-export function usePeerCall() {
+export function usePeerCall({ mediaMode = "video", autoAcceptPeerId = "" } = {}) {
   const peerRef = useRef(null)
   const activeCallRef = useRef(null)
   const incomingCallRef = useRef(null)
@@ -54,7 +54,7 @@ export function usePeerCall() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: mediaMode !== "audio",
         audio: true,
       })
       localStreamRef.current = stream
@@ -67,7 +67,7 @@ export function usePeerCall() {
       setStatus("failed")
       throw mediaError
     }
-  }, [])
+  }, [mediaMode])
 
   const bindCallEvents = useCallback((call) => {
     activeCallRef.current = call
@@ -154,6 +154,15 @@ export function usePeerCall() {
     })
     setIsCameraOff(nextCameraOff)
   }, [isCameraOff])
+
+  useEffect(() => {
+    if (!autoAcceptPeerId || status !== "incoming" || incomingFrom !== autoAcceptPeerId) return
+
+    acceptIncomingCall().catch(() => {
+      setError("Could not join the call. Check camera and microphone permissions.")
+      setStatus("failed")
+    })
+  }, [autoAcceptPeerId, status, incomingFrom, acceptIncomingCall])
 
   useEffect(() => {
     let mounted = true

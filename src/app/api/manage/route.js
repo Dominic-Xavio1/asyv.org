@@ -59,16 +59,15 @@ export async function POST(request) {
         // Insert new user
         const result = await pool.query(
             `INSERT INTO api_user (
-                first_name, rwandan_name, email, username, password, 
+                first_name, rwandan_name, email, password, 
                 is_student, is_alumni, is_crc, is_superuser, phone, is_staff, gender
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, first_name, rwandan_name, email, username, 
                       is_alumni, is_student, is_crc, is_superuser, phone, is_staff, gender`,
             [
                 first_name || null,
                 rwandan_name || null,
                 email,
-                username || null,
                 hashedPassword,
                 is_student || false,
                 is_alumni || false,

@@ -12,7 +12,7 @@ export async function GET(request) {
   }
   try {
     const result = await pool.query(
-      `SELECT fe.id, fe.degree, fe.level, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id,
+      `SELECT fe.id, fe.degree, fe.level, fe.status, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id,
               c.college_name, c.country, c.city
        FROM api_furthereducation fe
        LEFT JOIN api_college c ON fe.college_id = c.id
@@ -36,7 +36,7 @@ export async function POST(request) {
   }
   try {
     const body = await request.json();
-    const { alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id, college } = body;
+    const { alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id, college } = body;
 
     if (alumn_id && String(alumn_id) !== auth.userId) {
       return NextResponse.json({ error: "Can only create for yourself" }, { status: 403 });
@@ -57,10 +57,10 @@ export async function POST(request) {
     }
 
     const insertRes = await pool.query(
-      `INSERT INTO api_furthereducation (alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id`,
-      [alumnId, degree, level || null, scholarship || null, scholarship_details || null, enrolled !== undefined ? enrolled : false, finalCollegeId]
+      `INSERT INTO api_furthereducation (alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id`,
+      [alumnId, degree, level || null, status || null, scholarship || null, scholarship_details || null, enrolled !== undefined ? enrolled : false, finalCollegeId]
     );
     return NextResponse.json({ success: true, furtherEducation: insertRes.rows[0] }, { status: 201 });
   } catch (err) {
@@ -79,7 +79,7 @@ export async function PUT(request) {
   }
   try {
     const body = await request.json();
-    const { id, degree, level, scholarship, scholarship_details, enrolled, college_id, college } = body;
+    const { id, degree, level, status, scholarship, scholarship_details, enrolled, college_id, college } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
@@ -123,6 +123,7 @@ export async function PUT(request) {
     let param = 1;
     if (degree !== undefined) { updateFields.push(`degree = $${param++}`); updateValues.push(degree); }
     if (level !== undefined) { updateFields.push(`level = $${param++}`); updateValues.push(level); }
+    if (status !== undefined) { updateFields.push(`status = $${param++}`); updateValues.push(status); }
     if (scholarship !== undefined) { updateFields.push(`scholarship = $${param++}`); updateValues.push(scholarship); }
     if (scholarship_details !== undefined) { updateFields.push(`scholarship_details = $${param++}`); updateValues.push(scholarship_details); }
     if (enrolled !== undefined) { updateFields.push(`enrolled = $${param++}`); updateValues.push(enrolled); }
@@ -133,7 +134,7 @@ export async function PUT(request) {
     }
     updateValues.push(id);
     const res = await pool.query(
-      `UPDATE api_furthereducation SET ${updateFields.join(", ")} WHERE id = $${param} RETURNING id, alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id`,
+      `UPDATE api_furthereducation SET ${updateFields.join(", ")} WHERE id = $${param} RETURNING id, alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id`,
       updateValues
     );
     return NextResponse.json({ success: true, furtherEducation: res.rows[0] }, { status: 200 });

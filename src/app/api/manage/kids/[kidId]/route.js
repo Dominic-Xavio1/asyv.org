@@ -16,8 +16,8 @@ export async function GET(request, { params }) {
 
   }
 
-  const {kidId} =await params;
-console.log("The sent kid Id is this one ",kidId);
+  const { kidId } = await params;
+  console.log("The sent kid Id is this one ", kidId);
   if (!kidId) {
 
     return NextResponse.json({ error: "Kid ID required" }, { status: 400 });
@@ -176,9 +176,7 @@ export async function PUT(request, { params }) {
 
   }
 
-  const {kidId} =await params.kidId;
-
-  console.log("user Id ---------------2 ",kidId);
+  const { kidId } = await params;
 
   if (!kidId) {
 
@@ -324,9 +322,7 @@ export async function DELETE(request, { params }) {
 
   }
 
-  const kidId =await params.kidId;
-
-  console.log("User Id----------------- ",kidId);
+  const { kidId } = await params;
 
   if (!kidId) {
 

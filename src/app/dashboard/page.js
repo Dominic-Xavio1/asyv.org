@@ -10,6 +10,9 @@ import {
   Send, Edit2, Trash2, MoreVertical, FileImage, Filter, BarChart3, Calendar, MapPin, Newspaper,
   Download, GraduationCap
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
+
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -1087,6 +1090,7 @@ const VillageEventForm = ({ onClose, onSubmit, userId, existingEvent = null }) =
             accept="image/*"
             onChange={handleImageChange}
             disabled={loading}
+            required
           />
           <label htmlFor="event-image" className="cursor-pointer block space-y-2">
             <p className="text-sm text-neutral-600 dark:text-gray-400">
@@ -1525,6 +1529,7 @@ export default function Dashboard() {
   const [countClick, setCountClick] = useState(0);
   const [activeModal, setActiveModal] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
+  const [postToDelete, setPostToDelete] = useState(null);
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingVillageEvent, setEditingVillageEvent] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1572,6 +1577,10 @@ export default function Dashboard() {
   const [overviewListOpen, setOverviewListOpen] = useState(false);
   const [overviewListTitle, setOverviewListTitle] = useState('');
   const [overviewListDescription, setOverviewListDescription] = useState('');
+  const [isDeleteDialogueOpen, setIsDeleteDialogueOpen] = useState(false);
+  const [confirm, confirmDialog] = useConfirmDialog();
+   const [selectPost, setSelectedPost] = useState(null);
+   const [postButtonLoading, setPostButtonLoading] = useState(false); 
   const [overviewListItems, setOverviewListItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const hasCreatedProfile = Boolean(
@@ -2193,20 +2202,22 @@ export default function Dashboard() {
     }
   };
   const router = useRouter();
-  const handleDeletePost = async (postId) => {
-    if (!confirm('Are you sure you want to delete this post?')) {
-      return;
-    }
+  const handleDeletePost = (postId) => {
+    setPostToDelete(postId);
+  };
 
+  const confirmDeletePost = async () => {
+    if (!postToDelete) return;
+    
     try {
-      const response = await fetch(`/api/post?id=${postId}`, {
+      const response = await fetch(`/api/post?id=${postToDelete}`, {
         method: 'DELETE'
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setPosts(posts.filter(post => post.id !== postId));
+        setPosts(posts.filter(post => post.id !== postToDelete));
         toast.success('Post deleted successfully');
       } else {
         throw new Error(result.error || 'Failed to delete post');
@@ -2214,6 +2225,8 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error deleting post:', error);
       toast.error(error.message || 'Failed to delete post');
+    } finally {
+      setPostToDelete(null);
     }
   };
 
@@ -2305,7 +2318,14 @@ export default function Dashboard() {
   };
 
   const handleDeleteVillageEvent = async (eventId) => {
-    if (!confirm('Are you sure you want to delete this village event?')) {
+    const confirmed = await confirm({
+      title: 'Delete village event',
+      description: 'Are you sure you want to delete this village event?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) {
       return;
     }
 
@@ -2346,7 +2366,14 @@ export default function Dashboard() {
   };
 
   const handleDeleteOpportunity = async (opportunityId) => {
-    if (!confirm('Are you sure you want to delete this opportunity?')) {
+    const confirmed = await confirm({
+      title: 'Delete opportunity',
+      description: 'Are you sure you want to delete this opportunity?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) {
       return;
     }
 
@@ -2439,7 +2466,14 @@ export default function Dashboard() {
   };
 
   const handleDeleteGroup = async (groupId) => {
-    if (!confirm('Are you sure you want to delete this group?')) {
+    const confirmed = await confirm({
+      title: 'Delete group',
+      description: 'Are you sure you want to delete this group?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) {
       return;
     }
 
@@ -2496,6 +2530,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 pt-16 pb-24" suppressHydrationWarning>
+      {confirmDialog}
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-neutral-200 dark:border-gray-700 flex-col z-80">
         <div className="p-6 border-b border-neutral-200 dark:border-gray-700">
@@ -3872,6 +3907,36 @@ export default function Dashboard() {
           onClick={() => setShowChangePassword(false)}
         />
       )}
+
+      <Dialog open={!!postToDelete} onOpenChange={(open) => !open && setPostToDelete(null)}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-neutral-200 dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-neutral-900 dark:text-gray-100 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              Delete Post
+            </DialogTitle>
+            <DialogDescription className="text-neutral-600 dark:text-gray-400">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setPostToDelete(null)}
+              className="flex-1 sm:flex-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeletePost}
+              className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

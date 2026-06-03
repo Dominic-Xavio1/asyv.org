@@ -54,50 +54,14 @@ export async function GET(request) {
   }
 
   try {
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    
-    let query = `
+    // Return all users and let the frontend perform filtering/search.
+    const query = `
       SELECT id, first_name, rwandan_name, email, is_superuser, is_crc, is_mama
-      FROM api_user 
+      FROM api_user
+      ORDER BY first_name ASC, rwandan_name ASC
     `;
-    const params = [];
-    
-    // FIXED: Changed 'AND' to 'WHERE'
-    if (search) {
-      query += ` WHERE (
-        first_name ILIKE $1 OR 
-        rwandan_name ILIKE $1 OR 
-        email ILIKE $1
-      )`;
-      params.push(`%${search}%`);
-    }
-    
-    query += ` ORDER BY first_name ASC, rwandan_name ASC`;
-    
-    const users = await pool.query(query, params);
-
-    // FIXED: Simplified the student (kid) search logic
-    let kidResults = [];
-    if (search) {
-      const kidQuery = `
-        SELECT DISTINCT u.id, u.first_name, u.rwandan_name, u.email, 
-               u.is_superuser, u.is_crc, u.is_mama
-        FROM api_kid k
-        JOIN api_user u ON k.user_id = u.id
-        WHERE (u.first_name ILIKE $1 OR u.rwandan_name ILIKE $1 OR u.email ILIKE $1)
-      `;
-      const kidQueryResult = await pool.query(kidQuery, [`%${search}%`]);
-      kidResults = kidQueryResult.rows; // Already an array
-    }
-    
-    // Combine results and remove duplicates by ID
-    const allResults = [...users.rows, ...kidResults];
-    const uniqueResults = allResults.filter((user, index, self) => 
-      user.id && index === self.findIndex((u) => u.id === user.id)
-    );
-    
-    return NextResponse.json(uniqueResults, { status: 200 });
+    const users = await pool.query(query);
+    return NextResponse.json(users.rows, { status: 200 });
   } catch (err) {
     console.error("Error in GET /api/manage/users:", err);
     return NextResponse.json({ error: "Internal Server Error",message:err.message }, { status: 500 });

@@ -27,8 +27,8 @@ export async function POST(request) {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-const fullInfo = user;
-    return NextResponse.json({
+    const fullInfo = user;
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -38,6 +38,17 @@ const fullInfo = user;
       fullInfo,
       token
     });
+
+    // Set HTTPOnly cookie for the middleware to read
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 days
+    });
+
+    return response;
   } catch (e) {
     console.error("Database error on login", e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

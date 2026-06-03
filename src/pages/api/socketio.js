@@ -3,6 +3,7 @@ import pool from "../../connection/databaseConnection";
 import { setupOnlineUsersHandlers } from "../../services/online-users/onlineUsersSocket";
 import { handleUserOnline } from "../../services/online-users/onlineUsersSocket";
 import { setupGroupMessagesHandlers } from "../../services/group-messages/groupMessagesSocket";
+import { setupCallSignalingHandlers } from "../../services/videocall/callSignalingSocket";
 import { setIOInstance } from "../../services/notifications/notificationSocket";
 import redisClient from "../../services/redis/redisClient";
 
@@ -45,6 +46,8 @@ export default async function handler(req, res) {
 
       // Setup group messages handlers
       setupGroupMessagesHandlers(socket, io);
+
+      setupCallSignalingHandlers(socket, io);
 
       // Setup notification handlers
       socket.on("join_notifications", ({ userId }) => {

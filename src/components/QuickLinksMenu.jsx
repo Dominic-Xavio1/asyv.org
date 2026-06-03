@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, GraduationCap, Home, LayoutList, Menu, MessageCircle, Search, ShieldCheck, UserCog, UserPlus, Users, X } from 'lucide-react';
-
+import {motion} from 'framer-motion';
 export default function QuickLinksMenu() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isCrcOrSuperuser, setIsCrcOrSuperuser] = useState(false);
-
+const MotionLink = motion(Link);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -60,10 +60,18 @@ export default function QuickLinksMenu() {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
-              <Link
+              <MotionLink
+                whileHover={{ x: 4 }}   
+  whileTap={{ scale: 0.98 }}
+  
+  transition={{ 
+    type: "spring", 
+    stiffness: 400, 
+    damping: 25 
+  }}
                 key={item.id}
                 href={item.href}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm  ${
                   isActive
                     ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'
@@ -71,20 +79,27 @@ export default function QuickLinksMenu() {
               >
                 <Icon className="h-4 w-4" />
                 <span>{item.label}</span>
-              </Link>
+              </MotionLink>
             );
           })}
         </div>
       )}
 
-      <button
+      <motion.button
+      whileTap={{ scale: 0.96 }} 
+           transition={{ 
+        type: "spring", 
+        stiffness: 400, 
+        damping: 15 
+      }}
         type="button"
+
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 shadow-lg transition"
+        className="flex items-center gap-2 rounded-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 shadow-lg"
       >
         {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         <span className="text-sm font-medium">Menu</span>
-      </button>
+      </motion.button>
     </div>
   );
 }
