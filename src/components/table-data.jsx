@@ -422,12 +422,6 @@ const createColumns = (onEdit, onDelete, onViewDetails) => {
               >
                 Copy email
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(user.id.toString())}
-                className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-              >
-                Copy user ID
-              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
               <DropdownMenuItem 
                 onClick={() => onEdit(user)}
@@ -554,6 +548,11 @@ export function DataTableDemo({ className }) {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    if(!formData.first_name || !formData.email || !formData.password || !formData.gender) {
+      toast.error('Please fill in all required fields');
+      setIsLoading(false);
+      return;
+    }
     try {
       const response = await fetch('/api/manage', {
         method: 'POST',
@@ -564,6 +563,24 @@ export function DataTableDemo({ className }) {
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create user');
       }
+
+      if (formData.is_student && result.user?.id) {
+        sessionStorage.setItem(
+          'asyv_pending_student_setup',
+          JSON.stringify({
+            userId: result.user.id,
+            first_name: result.user.first_name,
+            rwandan_name: result.user.rwandan_name,
+            email: result.user.email,
+          })
+        );
+        toast.success('User created. Complete the student profile next.');
+        setIsCreateDialogOpen(false);
+        fetchData();
+        router.push('/management/advanced');
+        return;
+      }
+
       toast.success('User created successfully!');
       setIsCreateDialogOpen(false);
       fetchData();
@@ -846,7 +863,12 @@ export function DataTableDemo({ className }) {
           <DialogHeader>
             <DialogTitle className="text-gray-800 dark:text-gray-200">Create New User</DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Fill in the details to create a new user account. 
+              Fill in the details to create a new user account.
+              {formData.is_student && (
+                <span className="block mt-2 text-amber-700 dark:text-amber-400">
+                  With &quot;Is Student&quot; enabled, saving creates the account first, then opens the student (kid) form to finish setup.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit}>
@@ -873,18 +895,8 @@ export function DataTableDemo({ className }) {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
-                  />
-                </div>
-                <div className="space-y-2">
+              
+                {/* <div className="space-y-2">
                   <Label htmlFor="username" className="text-gray-700 dark:text-gray-300">Username</Label>
                   <Input
                     id="username"
@@ -893,7 +905,7 @@ export function DataTableDemo({ className }) {
                     className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
                     required
                   />
-                </div>
+                </div> */}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -913,6 +925,17 @@ export function DataTableDemo({ className }) {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+                  <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
                   />
                 </div>
@@ -1028,7 +1051,7 @@ export function DataTableDemo({ className }) {
                 disabled={isLoading}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
-                {isLoading ? "Creating..." : "Create User"}
+                {isLoading ? "Creating..." : formData.is_student ? "Create User & Continue" : "Create User"}
               </Button>
             </DialogFooter>
           </form>
@@ -1198,7 +1221,6 @@ export function DataTableDemo({ className }) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="bg-white dark:bg-gray-900">
           <DialogHeader>
@@ -1231,3 +1253,6 @@ export function DataTableDemo({ className }) {
     </div>
   )
 }
+
+
+

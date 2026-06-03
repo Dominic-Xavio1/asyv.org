@@ -2,6 +2,40 @@ import pool from "../../../../../connection/databaseConnection";
 import { NextResponse } from "next/server";
 import { requireSuperuser } from "../../requireSuperuser";
 
+export async function GET(request, { params }) {
+  const auth = await requireSuperuser(request);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const resolvedParams = await params;
+  const id = resolvedParams?.id;
+  if (!id) {
+    return NextResponse.json({ error: "Family ID required" }, { status: 400 });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT f.*, u.first_name AS mother_first_name, u.rwandan_name AS mother_rwandan_name,
+              g.grade_name, g.admission_year_to_asyv, g.graduation_year_to_asyv
+       FROM api_family f
+       LEFT JOIN api_user u ON f.mother_id = u.id
+       LEFT JOIN api_grade g ON f.grade_id = g.id
+       WHERE f.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Family not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0], { status: 200 });
+  } catch (err) {
+    console.error("Error in GET /api/manage/families/[id]:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function PUT(request, { params }) {
   const auth = await requireSuperuser(request, { fromBody: true });
   if (!auth.ok) {

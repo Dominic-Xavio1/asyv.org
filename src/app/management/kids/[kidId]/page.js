@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ export default function KidDetailPage() {
   });
   const [editingReport, setEditingReport] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [confirm, confirmDialog] = useConfirmDialog();
 
   const fetchDetails = useCallback(async () => {
     if (!kidId || !requestingUserId) return;
@@ -363,7 +365,14 @@ console.log("Returned information ",json);
   };
 
   const deleteAcademic = async (id) => {
-    if (!confirm('Delete this academic record?')) return;
+    const confirmed = await confirm({
+      title: 'Delete academic record',
+      description: 'Delete this academic record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/manage/kidacademics/${id}?requestingUserId=${requestingUserId}`, {
         method: 'DELETE',
@@ -472,7 +481,14 @@ console.log("Returned information ",json);
   };
 
   const deleteReport = async (id) => {
-    if (!confirm('Delete this report?')) return;
+    const confirmed = await confirm({
+      title: 'Delete report',
+      description: 'Delete this report?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/manage/student-reports?id=${id}`, {
         method: 'DELETE',
@@ -1224,6 +1240,7 @@ console.log("Returned information ",json);
           </form>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

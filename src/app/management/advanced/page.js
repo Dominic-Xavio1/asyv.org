@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, User, Search, UserPlus, ChevronDown } from 'lucide-react';
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ export default function AdvancedManagementPage() {
   const [addGradeOpen, setAddGradeOpen] = useState(false);
   const [addFamilyOpen, setAddFamilyOpen] = useState(false);
   const [users, setUsers] = useState([]);
+  const [confirm, confirmDialog] = useConfirmDialog();
   const [families, setFamilies] = useState([]);
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,9 @@ export default function AdvancedManagementPage() {
   const [familySearch, setFamilySearch] = useState('');
   const [motherSearch, setMotherSearch] = useState('');
   const [eapSearch, setEapSearch] = useState('');
+  const [combinationSearch, setCombinationSearch] = useState('');
+  const [universitySearch, setUniversitySearch] = useState('');
+  const [collegeSearch, setCollegeSearch] = useState('');
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [studentForm, setStudentForm] = useState({
@@ -108,7 +113,10 @@ export default function AdvancedManagementPage() {
   const [addEapOpen, setAddEapOpen] = useState(false);
   const [editEapOpen, setEditEapOpen] = useState(false);
   const [editEapId, setEditEapId] = useState('');
-  const [eapForm, setEapForm] = useState({});
+  const [eapForm, setEapForm] = useState({
+    ep: '',
+    leap_category: '',
+  });
 
   // Form states for Combination
   const [addCombinationOpen, setAddCombinationOpen] = useState(false);
@@ -134,7 +142,26 @@ export default function AdvancedManagementPage() {
     college_name: '',
     country: '',
     city: '',
+    status: '',
   });
+
+  const [collegeData, setCollegeData] = useState([]);
+  const [collegeLoading, setCollegeLoading] = useState(false);
+  const [kidsData, setKidsData] = useState([]);
+  const [addCollegeOpen, setAddCollegeOpen] = useState(false);
+  const [editCollegeOpen, setEditCollegeOpen] = useState(false);
+  const [editCollegeId, setEditCollegeId] = useState('');
+  const [collegeForm, setCollegeForm] = useState({
+    college_name: '',
+    country: '',
+    city: '',
+  });
+
+  // Searchable select state for university form
+  const [alumniSelectSearch, setAlumniSelectSearch] = useState('');
+  const [alumniSelectOpen, setAlumniSelectOpen] = useState(false);
+  const [collegeSelectSearch, setCollegeSelectSearch] = useState('');
+  const [collegeSelectOpen, setCollegeSelectOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -156,6 +183,36 @@ export default function AdvancedManagementPage() {
     }
   }, [router]);
 
+  // After "Create New User" with is_student on /management — open Add Student with user linked
+  useEffect(() => {
+    if (!requestingUserId || !hasStaffAccess || typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem('asyv_pending_student_setup');
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw);
+      sessionStorage.removeItem('asyv_pending_student_setup');
+      if (!pending?.userId) return;
+
+      setStudentForm((f) => ({ ...f, user_id: String(pending.userId) }));
+      setUsers((prev) => {
+        if (prev.some((u) => String(u.id) === String(pending.userId))) return prev;
+        return [
+          ...prev,
+          {
+            id: pending.userId,
+            first_name: pending.first_name || '',
+            rwandan_name: pending.rwandan_name || '',
+            email: pending.email || '',
+          },
+        ];
+      });
+      setAddStudentOpen(true);
+      toast('User account created. Complete the kid record below.', { icon: 'ℹ️' });
+    } catch {
+      sessionStorage.removeItem('asyv_pending_student_setup');
+    }
+  }, [requestingUserId, hasStaffAccess]);
+
   // Fetch users and families for dropdowns
   useEffect(() => {
     if (!requestingUserId) return;
@@ -163,7 +220,7 @@ export default function AdvancedManagementPage() {
     const fetchData = async () => {
       try {
         const [usersRes, familiesRes, gradesRes] = await Promise.all([
-          fetch(`/api/manage/users?search=${encodeURIComponent(userSearch)}&requestingUserId=${requestingUserId}`, {
+          fetch(`/api/manage/users?requestingUserId=${requestingUserId}`, {
             headers: { 'x-user-id': requestingUserId }
           }),
           fetch(`/api/manage/families?requestingUserId=${requestingUserId}`, {
@@ -195,7 +252,7 @@ export default function AdvancedManagementPage() {
     };
 
     fetchData();
-  }, [requestingUserId, userSearch]);
+  }, [requestingUserId]);
 
   // Fetch EAP and Combination data
   useEffect(() => {
@@ -203,7 +260,7 @@ export default function AdvancedManagementPage() {
 
     const fetchCrudData = async () => {
       try {
-        const [eapRes, combinationRes, universityRes] = await Promise.all([
+        const [eapRes, combinationRes, universityRes, collegeRes, kidsRes] = await Promise.all([
           fetch(`/api/manage/leap?requestingUserId=${requestingUserId}`, {
             headers: { 'x-user-id': requestingUserId }
           }),
@@ -211,6 +268,12 @@ export default function AdvancedManagementPage() {
             headers: { 'x-user-id': requestingUserId }
           }),
           fetch(`/api/manage/furthereducation?requestingUserId=${requestingUserId}`, {
+            headers: { 'x-user-id': requestingUserId }
+          }),
+          fetch(`/api/manage/colleges?requestingUserId=${requestingUserId}`, {
+            headers: { 'x-user-id': requestingUserId }
+          }),
+          fetch(`/api/manage/kids?requestingUserId=${requestingUserId}`, {
             headers: { 'x-user-id': requestingUserId }
           })
         ]);
@@ -229,6 +292,16 @@ export default function AdvancedManagementPage() {
           const universityDataResult = await universityRes.json();
           setUniversityData(Array.isArray(universityDataResult?.furtherEducation) ? universityDataResult.furtherEducation : []);
         }
+
+        if (collegeRes.ok) {
+          const collegeDataResult = await collegeRes.json();
+          setCollegeData(Array.isArray(collegeDataResult) ? collegeDataResult : []);
+        }
+
+        if (kidsRes.ok) {
+          const kidsDataResult = await kidsRes.json();
+          setKidsData(Array.isArray(kidsDataResult) ? kidsDataResult : []);
+        }
       } catch (error) {
         console.error('Error fetching CRUD data:', error);
         toast.error('Failed to load data');
@@ -238,23 +311,62 @@ export default function AdvancedManagementPage() {
     fetchCrudData();
   }, [requestingUserId]);
 
-  const mothers = users.filter((user) => user.is_mama === true);
-  const filteredMothers = mothers.filter((user) =>
+  const mothers = useMemo(() => users.filter((user) => user.is_mama === true), [users]);
+  const filteredMothers = useMemo(() => mothers.filter((user) =>
     motherSearch.trim() === '' ||
     [user.first_name, user.rwandan_name, user.email]
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(motherSearch.toLowerCase()))
-  );
+  ), [mothers, motherSearch]);
 
-  const alumniUsers = users.filter((user) => user.is_alumni === true);
+  const alumniUsers = useMemo(() => users.filter((user) => user), [users]);
+  // const alumniUsers = useMemo(() => users.filter((user) => user.is_alumni === true), [users]);
 
-  const filteredEapData = eapData.filter((row) => {
+  // Filter users by `userSearch` supporting multi-term matching (all terms must match any searchable field)
+  const filteredUsers = useMemo(() => {
+    const q = (userSearch || '').trim().toLowerCase();
+    if (!q) return users || [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    return (users || []).filter((user) => {
+      return terms.every((term) =>
+        [user.first_name, user.rwandan_name, user.email]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(term))
+      );
+    });
+  }, [users, userSearch]);
+
+  const filteredEapData = useMemo(() => eapData.filter((row) => {
     if (!eapSearch.trim()) return true;
     const query = eapSearch.toLowerCase();
     return Object.values(row)
       .filter((value) => value !== null && value !== undefined)
       .some((value) => String(value).toLowerCase().includes(query));
-  });
+  }), [eapData, eapSearch]);
+
+  const filteredCombinationData = useMemo(() => combinationData.filter((row) => {
+    if (!combinationSearch.trim()) return true;
+    const query = combinationSearch.toLowerCase();
+    return Object.values(row)
+      .filter((value) => value !== null && value !== undefined)
+      .some((value) => String(value).toLowerCase().includes(query));
+  }), [combinationData, combinationSearch]);
+
+  const filteredUniversityData = useMemo(() => universityData.filter((row) => {
+    if (!universitySearch.trim()) return true;
+    const query = universitySearch.toLowerCase();
+    return Object.values(row)
+      .filter((value) => value !== null && value !== undefined)
+      .some((value) => String(value).toLowerCase().includes(query));
+  }), [universityData, universitySearch]);
+
+  const filteredCollegeData = useMemo(() => collegeData.filter((row) => {
+    if (!collegeSearch.trim()) return true;
+    const query = collegeSearch.toLowerCase();
+    return Object.values(row)
+      .filter((value) => value !== null && value !== undefined)
+      .some((value) => String(value).toLowerCase().includes(query));
+  }), [collegeData, collegeSearch]);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -542,6 +654,31 @@ export default function AdvancedManagementPage() {
 
   const handleSubmitStudent = async (e) => {
     e.preventDefault();
+
+    // Validate all fields are filled
+    const fieldLabels = {
+      origin_district: 'Origin District',
+      origin_sector: 'Origin Sector',
+      current_district_or_city: 'Current District/City',
+      current_country: 'Current Country',
+      health_issue: 'Health Issue',
+      marital_status: 'Marital Status',
+      life_status: 'Life Status',
+      points_in_national_exam: 'Points in National Exam',
+      maximum_points_in_national_exam: 'Maximum Points in National Exam',
+      mention: 'Mention',
+      user_id: 'User',
+      family_id: 'Family',
+      graduation_status: 'Graduation Status',
+    };
+
+    for (const [field, label] of Object.entries(fieldLabels)) {
+      if (!studentForm[field] || studentForm[field].trim() === '') {
+        toast.error(`${label} is required`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -612,11 +749,29 @@ export default function AdvancedManagementPage() {
   // EAP CRUD Handlers
   const handleAddEap = async (e) => {
     e.preventDefault();
+    if (!eapForm.ep?.trim()) {
+      toast.error('EP is required.');
+      return;
+    }
+    if (eapForm.ep.trim().length > 100) {
+      toast.error('EP must not exceed 100 characters.');
+      return;
+    }
+    if (!eapForm.leap_category?.trim()) {
+      toast.error('Leap category is required.');
+      return;
+    }
+    if (eapForm.leap_category.trim().length > 20) {
+      toast.error('Leap category must not exceed 20 characters.');
+      return;
+    }
+
     setEapLoading(true);
 
     try {
       const payload = {
-        ...eapForm,
+        ep: eapForm.ep.trim(),
+        leap_category: eapForm.leap_category.trim(),
         requestingUserId,
       };
 
@@ -637,7 +792,7 @@ export default function AdvancedManagementPage() {
 
       toast.success('EAP record added successfully!');
       setAddEapOpen(false);
-      setEapForm({});
+      setEapForm({ ep: '', leap_category: '' });
 
       // Refresh EAP data
       const eapRes = await fetch(`/api/manage/leap?requestingUserId=${requestingUserId}`, {
@@ -665,7 +820,8 @@ export default function AdvancedManagementPage() {
 
     try {
       const payload = {
-        ...eapForm,
+        ep: eapForm.ep.trim(),
+        leap_category: eapForm.leap_category.trim(),
         requestingUserId,
       };
 
@@ -687,7 +843,7 @@ export default function AdvancedManagementPage() {
       toast.success('EAP record updated successfully!');
       setEditEapOpen(false);
       setEditEapId('');
-      setEapForm({});
+      setEapForm({ ep: '', leap_category: '' });
 
       // Refresh EAP data
       const eapRes = await fetch(`/api/manage/leap?requestingUserId=${requestingUserId}`, {
@@ -706,7 +862,14 @@ export default function AdvancedManagementPage() {
   };
 
   const handleDeleteEap = async (id) => {
-    if (!confirm('Are you sure you want to delete this EAP record?')) return;
+    const confirmed = await confirm({
+      title: 'Delete EAP record',
+      description: 'Are you sure you want to delete this EAP record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/manage/leap?id=${id}`, {
@@ -740,11 +903,14 @@ export default function AdvancedManagementPage() {
     const eap = eapData.find((item) => String(item.id) === String(id));
     if (!eap) {
       setEditEapId('');
-      setEapForm({});
+      setEapForm({ ep: '', leap_category: '' });
       return;
     }
     setEditEapId(String(eap.id));
-    setEapForm({ ...eap });
+    setEapForm({
+      ep: eap.ep || '',
+      leap_category: eap.leap_category || '',
+    });
   };
 
   // Combination CRUD Handlers
@@ -844,7 +1010,14 @@ export default function AdvancedManagementPage() {
   };
 
   const handleDeleteCombination = async (id) => {
-    if (!confirm('Are you sure you want to delete this combination?')) return;
+    const confirmed = await confirm({
+      title: 'Delete combination',
+      description: 'Are you sure you want to delete this combination?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/manage/combinations?id=${id}`, {
@@ -884,6 +1057,7 @@ export default function AdvancedManagementPage() {
         alumn_id: universityForm.alumn_id ? Number(universityForm.alumn_id) : null,
         degree: universityForm.degree || null,
         level: universityForm.level || null,
+        status: universityForm.status || null,
         scholarship: universityForm.scholarship || null,
         scholarship_details: universityForm.scholarship_details || null,
         enrolled: universityForm.enrolled,
@@ -922,6 +1096,7 @@ export default function AdvancedManagementPage() {
         college_name: '',
         country: '',
         city: '',
+        status: '',
       });
 
       const universityRes = await fetch(`/api/manage/furthereducation?requestingUserId=${requestingUserId}`, {
@@ -954,6 +1129,7 @@ export default function AdvancedManagementPage() {
         alumn_id: universityForm.alumn_id ? Number(universityForm.alumn_id) : null,
         degree: universityForm.degree || null,
         level: universityForm.level || null,
+        status: universityForm.status || null,
         scholarship: universityForm.scholarship || null,
         scholarship_details: universityForm.scholarship_details || null,
         enrolled: universityForm.enrolled,
@@ -965,7 +1141,7 @@ export default function AdvancedManagementPage() {
         },
         requestingUserId,
       };
-console.log('Updating university with payload:', payload);
+      console.log('Updating university with payload:', payload);
       const response = await fetch(`/api/manage/furthereducation?id=${editUniversityId}`, {
         method: 'PUT',
         headers: {
@@ -994,6 +1170,7 @@ console.log('Updating university with payload:', payload);
         college_name: '',
         country: '',
         city: '',
+        status: '',
       });
 
       const universityRes = await fetch(`/api/manage/furthereducation?requestingUserId=${requestingUserId}`, {
@@ -1012,7 +1189,14 @@ console.log('Updating university with payload:', payload);
   };
 
   const handleDeleteUniversity = async (id) => {
-    if (!confirm('Are you sure you want to delete this university record?')) return;
+    const confirmed = await confirm({
+      title: 'Delete university record',
+      description: 'Are you sure you want to delete this university record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/manage/furthereducation?id=${id}`, {
@@ -1039,6 +1223,163 @@ console.log('Updating university with payload:', payload);
     }
   };
 
+  const handleAddCollege = async (e) => {
+    e.preventDefault();
+    if (!collegeForm.college_name.trim()) {
+      toast.error('College name is required.');
+      return;
+    }
+    if (!collegeForm.country.trim()) {
+      toast.error('Country is required.');
+      return;
+    }
+    if (!collegeForm.city.trim()) {
+      toast.error('City is required.');
+      return;
+    }
+
+    setCollegeLoading(true);
+    try {
+      const response = await fetch('/api/manage/colleges', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': requestingUserId,
+        },
+        body: JSON.stringify({
+          requestingUserId,
+          college_name: collegeForm.college_name.trim(),
+          country: collegeForm.country.trim(),
+          city: collegeForm.city.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add college record');
+      }
+      toast.success('College record added successfully!');
+      setAddCollegeOpen(false);
+      setCollegeForm({ college_name: '', country: '', city: '' });
+      const collegeRes = await fetch(`/api/manage/colleges?requestingUserId=${requestingUserId}`, {
+        headers: { 'x-user-id': requestingUserId },
+      });
+      if (collegeRes.ok) {
+        const collegeDataResult = await collegeRes.json();
+        setCollegeData(Array.isArray(collegeDataResult) ? collegeDataResult : []);
+      }
+    } catch (error) {
+      console.error('Error adding college record:', error);
+      toast.error(error.message || 'Failed to add college record');
+    } finally {
+      setCollegeLoading(false);
+    }
+  };
+
+  const handleUpdateCollege = async (e) => {
+    e.preventDefault();
+    if (!editCollegeId) {
+      toast.error('Select a college record first');
+      return;
+    }
+    if (!collegeForm.college_name.trim()) {
+      toast.error('College name is required.');
+      return;
+    }
+    if (!collegeForm.country.trim()) {
+      toast.error('Country is required.');
+      return;
+    }
+    if (!collegeForm.city.trim()) {
+      toast.error('City is required.');
+      return;
+    }
+
+    setCollegeLoading(true);
+    try {
+      const response = await fetch(`/api/manage/colleges?id=${editCollegeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': requestingUserId,
+        },
+        body: JSON.stringify({
+          requestingUserId,
+          college_name: collegeForm.college_name.trim(),
+          country: collegeForm.country.trim(),
+          city: collegeForm.city.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update college record');
+      }
+      toast.success('College record updated successfully!');
+      setEditCollegeOpen(false);
+      setEditCollegeId('');
+      setCollegeForm({ college_name: '', country: '', city: '' });
+      const collegeRes = await fetch(`/api/manage/colleges?requestingUserId=${requestingUserId}`, {
+        headers: { 'x-user-id': requestingUserId },
+      });
+      if (collegeRes.ok) {
+        const collegeDataResult = await collegeRes.json();
+        setCollegeData(Array.isArray(collegeDataResult) ? collegeDataResult : []);
+      }
+    } catch (error) {
+      console.error('Error updating college record:', error);
+      toast.error(error.message || 'Failed to update college record');
+    } finally {
+      setCollegeLoading(false);
+    }
+  };
+
+  const handleDeleteCollege = async (id) => {
+    const confirmed = await confirm({
+      title: 'Delete college record',
+      description: 'Are you sure you want to delete this college record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/manage/colleges?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': requestingUserId },
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete college record');
+      }
+      toast.success('College record deleted successfully!');
+      const collegeRes = await fetch(`/api/manage/colleges?requestingUserId=${requestingUserId}`, {
+        headers: { 'x-user-id': requestingUserId },
+      });
+      if (collegeRes.ok) {
+        const collegeDataResult = await collegeRes.json();
+        setCollegeData(Array.isArray(collegeDataResult) ? collegeDataResult : []);
+      }
+    } catch (error) {
+      console.error('Error deleting college record:', error);
+      toast.error(error.message || 'Failed to delete college record');
+    }
+  };
+
+  const handleSelectCollegeToEdit = (id) => {
+    const record = collegeData.find((item) => String(item.id) === String(id));
+    if (!record) {
+      setEditCollegeId('');
+      setCollegeForm({ college_name: '', country: '', city: '' });
+      return;
+    }
+    setEditCollegeId(String(record.id));
+    setCollegeForm({
+      college_name: record.college_name || '',
+      country: record.country || '',
+      city: record.city || '',
+    });
+  };
+
   const handleSelectUniversityToEdit = (id) => {
     const record = universityData.find((item) => String(item.id) === String(id));
     if (!record) {
@@ -1053,6 +1394,7 @@ console.log('Updating university with payload:', payload);
         college_name: '',
         country: '',
         city: '',
+        status: '',
       });
       return;
     }
@@ -1069,6 +1411,7 @@ console.log('Updating university with payload:', payload);
       college_name: record.college_name || '',
       country: record.country || '',
       city: record.city || '',
+      status: record.status || '',
     });
   };
 
@@ -1114,22 +1457,6 @@ console.log('Updating university with payload:', payload);
               </p> */}
             </div>
             <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-              <Button onClick={() => setAddGradeOpen(true)} variant="outline" size="sm" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Add Grade
-              </Button>
-              <Button onClick={() => setEditGradeOpen(true)} variant="outline" size="sm" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Update Grade
-              </Button>
-              <Button onClick={() => setAddFamilyOpen(true)} variant="outline" size="sm" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Add Family
-              </Button>
-              <Button onClick={() => setEditFamilyOpen(true)} variant="outline" size="sm" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Update Family
-              </Button>
               <Button onClick={() => setAddStudentOpen(true)} size="sm" className="gap-1.5 bg-orange-600 hover:bg-orange-700">
                 <Plus className="h-4 w-4" />
                 Add Student
@@ -1144,8 +1471,8 @@ console.log('Updating university with payload:', payload);
                   type="button"
                   onClick={() => setActiveTab('eap')}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'eap'
-                      ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
                     }`}
                 >
                   EAP records
@@ -1154,8 +1481,8 @@ console.log('Updating university with payload:', payload);
                   type="button"
                   onClick={() => setActiveTab('combinations')}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'combinations'
-                      ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
                     }`}
                 >
                   Combinations
@@ -1164,11 +1491,21 @@ console.log('Updating university with payload:', payload);
                   type="button"
                   onClick={() => setActiveTab('universities')}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'universities'
-                      ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
                     }`}
                 >
                   University records
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('colleges')}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'colleges'
+                    ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800'
+                    }`}
+                >
+                  College records
                 </button>
               </div>
               <Button
@@ -1227,9 +1564,9 @@ console.log('Updating university with payload:', payload);
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                           <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
                             <tr>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
+                              {/* <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
                                 ID
-                              </th>
+                              </th> */}
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap">EP</th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide whitespace-nowrap">Leap Category</th>
                               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
@@ -1252,9 +1589,9 @@ console.log('Updating university with payload:', payload);
                             ) : (
                               filteredEapData.map((eap) => (
                                 <tr key={eap.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
-                                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-800 dark:text-gray-200">
+                                  {/* <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-800 dark:text-gray-200">
                                     {eap.id}
-                                  </td>
+                                  </td> */}
                                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300 max-w-[12rem] truncate" title={eap.ep != null ? String(eap.ep) : ''}>
                                     {eap.ep ?? '-'}
                                   </td>
@@ -1295,10 +1632,19 @@ console.log('Updating university with payload:', payload);
                 ) : activeTab === 'combinations' ? (
                   <Card className="border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-950/40 shadow-none">
                     <CardHeader className="pb-3 space-y-0">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                        <div className="min-w-0">
                           <CardTitle className="text-lg text-gray-900 dark:text-gray-100">Combinations</CardTitle>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Subject combinations available to students.</p>
+                          <div className="relative mt-3 sm:mt-2 max-w-md">
+                            <Input
+                              value={combinationSearch}
+                              onChange={(e) => setCombinationSearch(e.target.value)}
+                              placeholder="Search combinations..."
+                              className="pr-10"
+                            />
+                            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          </div>
                         </div>
                         <Button onClick={() => setAddCombinationOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 w-fit">
                           <Plus className="h-4 w-4" />
@@ -1311,9 +1657,9 @@ console.log('Updating university with payload:', payload);
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                           <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
                             <tr>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
+                              {/* <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
                                 ID
-                              </th>
+                              </th> */}
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">
                                 Name
                               </th>
@@ -1326,18 +1672,18 @@ console.log('Updating university with payload:', payload);
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
-                            {combinationData.length === 0 ? (
+                            {filteredCombinationData.length === 0 ? (
                               <tr>
                                 <td colSpan={4} className="px-3 py-10 text-center text-gray-500 dark:text-gray-400 text-sm">
-                                  No combinations yet.
+                                  No combinations found.
                                 </td>
                               </tr>
                             ) : (
-                              combinationData.map((combination) => (
+                              filteredCombinationData.map((combination) => (
                                 <tr key={combination.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
-                                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-800 dark:text-gray-200">
+                                  {/* <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-800 dark:text-gray-200">
                                     {combination.id}
-                                  </td>
+                                  </td> */}
                                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{combination.combination_name || '-'}</td>
                                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{combination.abbreviation || '-'}</td>
                                   <td className="px-3 py-2 whitespace-nowrap text-right">
@@ -1372,16 +1718,174 @@ console.log('Updating university with payload:', payload);
                     </CardContent>
                   </Card>
                 ) : activeTab === 'universities' ? (
+                  <div>
+                    <Card className="border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-950/40 shadow-none">
+                      <CardHeader className="pb-3 space-y-0">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                          <div className="min-w-0">
+                            <CardTitle className="text-lg text-gray-900 dark:text-gray-100">University records</CardTitle>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Track alumni further education and college details.</p>
+                            <div className="relative mt-3 sm:mt-2 max-w-md">
+                              <Input
+                                value={universitySearch}
+                                onChange={(e) => setUniversitySearch(e.target.value)}
+                                placeholder="Search university records..."
+                                className="pr-10"
+                              />
+                              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            </div>
+                          </div>
+                          <Button onClick={() => setAddUniversityOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 w-fit">
+                            <Plus className="h-4 w-4" />
+                            Add university record
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="max-h-[min(500px,50vh)] overflow-auto rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">College</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Country</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">City</th>
+                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                              {filteredUniversityData.length === 0 ? (
+                                <tr>
+                                  <td colSpan={4} className="px-3 py-10 text-center text-gray-500 dark:text-gray-400 text-sm">
+                                    No university records found.
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredUniversityData.map((record) => (
+                                  <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.college_name || '-'}</td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.country || '-'}</td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.city || '-'}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-right">
+                                      <div className="flex justify-end gap-1.5">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                                          onClick={() => {
+                                            handleSelectUniversityToEdit(record.id);
+                                            setEditUniversityOpen(true);
+                                          }}
+                                        >
+                                          Edit
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                          onClick={() => handleDeleteUniversity(record.id)}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* <Card className="border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-950/40 shadow-none">
+                      <CardHeader className="pb-3 space-y-0">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <CardTitle className="text-lg text-gray-900 dark:text-gray-100">College records</CardTitle>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Standalone colleges from .</p>
+                          </div>
+                          <Button onClick={() => setAddCollegeOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 w-fit">
+                            <Plus className="h-4 w-4" />
+                            Add college record
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="max-h-[min(500px,50vh)] overflow-auto rounded-lg border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">College</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Country</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">City</th>
+                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                              {collegeData.length === 0 ? (
+                                <tr>
+                                  <td colSpan={4} className="px-3 py-10 text-center text-gray-500 dark:text-gray-400 text-sm">
+                                    No college records yet.
+                                  </td>
+                                </tr>
+                              ) : (
+                                collegeData.map((college) => (
+                                  <tr key={college.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.college_name || '-'}</td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.country || '-'}</td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.city || '-'}</td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-right">
+                                      <div className="flex justify-end gap-1.5">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                                          onClick={() => {
+                                            handleSelectCollegeToEdit(college.id);
+                                            setEditCollegeOpen(true);
+                                          }}
+                                        >
+                                          Edit
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                          onClick={() => handleDeleteCollege(college.id)}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card> */}
+                  </div>
+                ) : activeTab === 'colleges' ? (
                   <Card className="border-neutral-200 dark:border-gray-700 bg-neutral-50/50 dark:bg-gray-950/40 shadow-none">
                     <CardHeader className="pb-3 space-y-0">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <CardTitle className="text-lg text-gray-900 dark:text-gray-100">University records</CardTitle>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Track alumni further education and college details.</p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                        <div className="min-w-0">
+                          <CardTitle className="text-lg text-gray-900 dark:text-gray-100">College records</CardTitle>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Standalone colleges from api_college.</p>
+                          <div className="relative mt-3 sm:mt-2 max-w-md">
+                            <Input
+                              value={collegeSearch}
+                              onChange={(e) => setCollegeSearch(e.target.value)}
+                              placeholder="Search college records..."
+                              className="pr-10"
+                            />
+                            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          </div>
                         </div>
-                        <Button onClick={() => setAddUniversityOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 w-fit">
+                        <Button onClick={() => setAddCollegeOpen(true)} size="sm" className="gap-2 bg-orange-600 hover:bg-orange-700 w-fit">
                           <Plus className="h-4 w-4" />
-                          Add university record
+                          Add college record
                         </Button>
                       </div>
                     </CardHeader>
@@ -1390,8 +1894,6 @@ console.log('Updating university with payload:', payload);
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                           <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
                             <tr>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">ID</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Alumni</th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">College</th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">Country</th>
                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wide">City</th>
@@ -1399,20 +1901,18 @@ console.log('Updating university with payload:', payload);
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
-                            {universityData.length === 0 ? (
+                            {filteredCollegeData.length === 0 ? (
                               <tr>
-                                <td colSpan={6} className="px-3 py-10 text-center text-gray-500 dark:text-gray-400 text-sm">
-                                  No university records yet.
+                                <td colSpan={4} className="px-3 py-10 text-center text-gray-500 dark:text-gray-400 text-sm">
+                                  No college records found.
                                 </td>
                               </tr>
                             ) : (
-                              universityData.map((record) => (
-                                <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
-                                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-800 dark:text-gray-200">{record.id}</td>
-                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.alumn_id ?? '-'}</td>
-                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.college_name || '-'}</td>
-                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.country || '-'}</td>
-                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{record.city || '-'}</td>
+                              filteredCollegeData.map((college) => (
+                                <tr key={college.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/80">
+                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.college_name || '-'}</td>
+                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.country || '-'}</td>
+                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{college.city || '-'}</td>
                                   <td className="px-3 py-2 whitespace-nowrap text-right">
                                     <div className="flex justify-end gap-1.5">
                                       <Button
@@ -1420,8 +1920,8 @@ console.log('Updating university with payload:', payload);
                                         variant="outline"
                                         className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/50"
                                         onClick={() => {
-                                          handleSelectUniversityToEdit(record.id);
-                                          setEditUniversityOpen(true);
+                                          handleSelectCollegeToEdit(college.id);
+                                          setEditCollegeOpen(true);
                                         }}
                                       >
                                         Edit
@@ -1430,7 +1930,7 @@ console.log('Updating university with payload:', payload);
                                         size="sm"
                                         variant="outline"
                                         className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/50"
-                                        onClick={() => handleDeleteUniversity(record.id)}
+                                        onClick={() => handleDeleteCollege(college.id)}
                                       >
                                         Delete
                                       </Button>
@@ -1459,7 +1959,9 @@ console.log('Updating university with payload:', payload);
               Add New Student
             </DialogTitle>
             <DialogDescription>
-              Add a new student with their personal, academic, and family information.
+              {studentForm.user_id
+                ? 'The user account is already created. Fill in kid details and link a family, then save.'
+                : 'Add a new student with their personal, academic, and family information.'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitStudent} className="space-y-6">
@@ -1532,9 +2034,9 @@ console.log('Updating university with payload:', payload);
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Relationships</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>User (Link to existing user or create new)</Label>
-                    <div className="flex gap-2">
-                      {/* <div className="flex-1 relative">
+                    {/* <Label>User (Link to existing user or create new)</Label>
+                    <div className="flex gap-2"> */}
+                    {/* <div className="flex-1 relative">
                         <Input
                           placeholder="Search users by name or email..."
                           value={userSearch}
@@ -1543,7 +2045,7 @@ console.log('Updating university with payload:', payload);
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       </div> */}
-                      <Button
+                    {/* <Button
                         type="button"
                         variant="outline"
                         size="sm"
@@ -1552,8 +2054,8 @@ console.log('Updating university with payload:', payload);
                       >
                         <UserPlus className="h-4 w-4" />
                         New User
-                      </Button>
-                    </div>
+                      </Button> */}
+                    {/* </div> */}
                     <div className="relative">
                       <Label className="text-sm font-medium">User (Link to existing user)</Label>
                       <div className="relative">
@@ -1570,13 +2072,8 @@ console.log('Updating university with payload:', payload);
                       {/* Dropdown results */}
                       {userSearch && (
                         <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1">
-                          {users
-                            .filter(user =>
-                              (user.first_name && user.first_name.toLowerCase().includes(userSearch.toLowerCase())) ||
-                              (user.rwandan_name && user.rwandan_name.toLowerCase().includes(userSearch.toLowerCase())) ||
-                              (user.email && user.email.toLowerCase().includes(userSearch.toLowerCase()))
-                            )
-                            .slice(0, 10) // Limit to 10 results
+                          {filteredUsers
+                            .slice(0, 10)
                             .map((user) => (
                               <div
                                 key={user.id}
@@ -1592,15 +2089,11 @@ console.log('Updating university with payload:', payload);
                                 </div>
                               </div>
                             ))}
-                          {users.filter(user =>
-                            (user.first_name && user.first_name.toLowerCase().includes(userSearch.toLowerCase())) ||
-                            (user.rwandan_name && user.rwandan_name.toLowerCase().includes(userSearch.toLowerCase())) ||
-                            (user.email && user.email.toLowerCase().includes(userSearch.toLowerCase()))
-                          ).length === 0 && (
-                              <div className="p-3 text-sm text-gray-500 dark:text-gray-400">
-                                No users found matching "{userSearch}"
-                              </div>
-                            )}
+                          {filteredUsers.length === 0 && (
+                            <div className="p-3 text-sm text-gray-500 dark:text-gray-400">
+                              No users found matching "{userSearch}"
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1737,226 +2230,6 @@ console.log('Updating university with payload:', payload);
         </DialogContent>
       </Dialog>
 
-      {/* Edit Grade Dialog */}
-      <Dialog open={editGradeOpen} onOpenChange={setEditGradeOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Update Grade
-            </DialogTitle>
-            <DialogDescription>
-              Select a grade and update its details.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateGrade} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Select Grade</Label>
-              <Select
-                value={editGradeId || undefined}
-                onValueChange={(value) => handleSelectGradeToEdit(value)}
-                required
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Choose grade to edit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {grades.length > 0 ? (
-                    grades.map((grade) => (
-                      <SelectItem key={grade.id} value={String(grade.id)}>
-                        {grade.grade_name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No grades available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Grade Name</Label>
-              <Input
-                required
-                value={editGradeForm.grade_name}
-                onChange={(e) => setEditGradeForm((f) => ({ ...f, grade_name: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter grade name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Admission Year to ASYV</Label>
-              <Input
-                type="number"
-                value={editGradeForm.admission_year_to_asyv}
-                onChange={(e) => setEditGradeForm((f) => ({ ...f, admission_year_to_asyv: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter admission year"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Graduation Year to ASYV</Label>
-              <Input
-                type="number"
-                value={editGradeForm.graduation_year_to_asyv}
-                onChange={(e) => setEditGradeForm((f) => ({ ...f, graduation_year_to_asyv: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter graduation year"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditGradeOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !editGradeId}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {loading ? 'Updating Grade...' : 'Update Grade'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Family Dialog */}
-      <Dialog open={editFamilyOpen} onOpenChange={setEditFamilyOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Update Family
-            </DialogTitle>
-            <DialogDescription>
-              Select a family and update its details.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateFamily} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Select Family</Label>
-              <Select
-                value={editFamilyId || undefined}
-                onValueChange={(value) => handleSelectFamilyToEdit(value)}
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Choose family to edit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {families.length > 0 ? (
-                    families.map((family) => (
-                      <SelectItem key={family.id} value={String(family.id)}>
-                        {family.family_name || family.family_number || `Family #${family.id}`}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No families available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Family Name</Label>
-              <Input
-                value={editFamilyForm.family_name}
-                onChange={(e) => setEditFamilyForm((f) => ({ ...f, family_name: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter family name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Family Number</Label>
-              <Input
-                value={editFamilyForm.family_number}
-                onChange={(e) => setEditFamilyForm((f) => ({ ...f, family_number: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter family number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mother</Label>
-              <Input
-                placeholder="Search mama by name or email..."
-                value={motherSearch}
-                onChange={(e) => setMotherSearch(e.target.value)}
-                className="bg-white dark:bg-gray-800"
-              />
-              <Select
-                value={editFamilyForm.mother_id || undefined}
-                onValueChange={(value) => setEditFamilyForm((f) => ({ ...f, mother_id: value }))}
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Select mother" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredMothers.length > 0 ? (
-                    filteredMothers.map((user) => (
-                      <SelectItem key={user.id} value={String(user.id)}>
-                        {user.first_name || 'Unknown'} {user.rwandan_name || ''}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No mama found
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Grade</Label>
-              <Select
-                value={editFamilyForm.grade_id || undefined}
-                onValueChange={(value) => setEditFamilyForm((f) => ({ ...f, grade_id: value }))}
-                required
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Select grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {grades.length > 0 ? (
-                    grades.map((grade) => (
-                      <SelectItem key={grade.id} value={String(grade.id)}>
-                        {grade.grade_name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No grades available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditFamilyOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !editFamilyId}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {loading ? 'Updating Family...' : 'Update Family'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Create User Dialog */}
       <Dialog open={showCreateUser} onOpenChange={setShowCreateUser}>
         <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
@@ -2044,183 +2317,6 @@ console.log('Updating university with payload:', payload);
         </DialogContent>
       </Dialog>
 
-      {/* Add Grade Dialog */}
-      <Dialog open={addGradeOpen} onOpenChange={setAddGradeOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Add New Grade
-            </DialogTitle>
-            <DialogDescription>
-              Add a new grade with admission and graduation years.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitGrade} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Grade Name *</Label>
-              <Input
-                required
-                value={gradeForm.grade_name}
-                onChange={(e) => setGradeForm((f) => ({ ...f, grade_name: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter grade name"
-
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Admission Year to ASYV</Label>
-              <Input
-                type="number"
-                value={gradeForm.admission_year_to_asyv}
-                onChange={(e) => setGradeForm((f) => ({ ...f, admission_year_to_asyv: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter admission year"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Graduation Year to ASYV</Label>
-              <Input
-                type="number"
-                value={gradeForm.graduation_year_to_asyv}
-                onChange={(e) => setGradeForm((f) => ({ ...f, graduation_year_to_asyv: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter graduation year"
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddGradeOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {loading ? 'Adding Grade...' : 'Add Grade'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Family Dialog */}
-      <Dialog open={addFamilyOpen} onOpenChange={setAddFamilyOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Add New Family
-            </DialogTitle>
-            <DialogDescription>
-              Add a new family with name, number, mother, and grade.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitFamily} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Family Name</Label>
-              <Input
-                value={familyForm.family_name}
-                onChange={(e) => setFamilyForm((f) => ({ ...f, family_name: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter family name"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Family Number</Label>
-              <Input
-                value={familyForm.family_number}
-                onChange={(e) => setFamilyForm((f) => ({ ...f, family_number: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter family number"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mother</Label>
-              <Input
-                placeholder="Search mama by name or email..."
-                value={motherSearch}
-                onChange={(e) => setMotherSearch(e.target.value)}
-                className="bg-white dark:bg-gray-800"
-              />
-              <Select
-                value={familyForm.mother_id || undefined}
-                onValueChange={(value) => setFamilyForm((f) => ({ ...f, mother_id: value }))}
-                required
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Select mother" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredMothers.length > 0 ? (
-                    filteredMothers.map((user) => (
-                      <SelectItem key={user.id} value={String(user.id)}>
-                        {user.first_name || 'Unknown'} {user.rwandan_name || ''}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No mama found
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Grade</Label>
-              <Select
-                value={familyForm.grade_id || undefined}
-                onValueChange={(value) => setFamilyForm((f) => ({ ...f, grade_id: value }))}
-                required
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Select grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {grades.length > 0 ? (
-                    grades.map((grade) => (
-                      <SelectItem key={grade.id} value={String(grade.id)}>
-                        {grade.grade_name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
-                      No grades available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddFamilyOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {loading ? 'Adding Family...' : 'Add Family'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Add EAP Dialog */}
       <Dialog open={addEapOpen} onOpenChange={setAddEapOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900">
@@ -2234,17 +2330,32 @@ console.log('Updating university with payload:', payload);
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddEap} className="space-y-4">
-            {eapData.length > 0 && Object.keys(eapData[0]).filter(key => key !== 'id').map((key) => (
-              <div key={key} className="space-y-2">
-                <Label>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Label>
-                <Input
-                  value={eapForm[key] || ''}
-                  onChange={(e) => setEapForm((f) => ({ ...f, [key]: e.target.value }))}
-                  className="bg-white dark:bg-gray-800"
-                  placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                />
-              </div>
-            ))}
+            <div className="space-y-2">
+              <Label htmlFor="eap-ep">EP</Label>
+              <Input
+                id="eap-ep"
+                value={eapForm.ep}
+                onChange={(e) => setEapForm((f) => ({ ...f, ep: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter EP name"
+                maxLength={100}
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">Maximum 100 characters.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="eap-leap-category">Leap category</Label>
+              <Input
+                id="eap-leap-category"
+                value={eapForm.leap_category}
+                onChange={(e) => setEapForm((f) => ({ ...f, leap_category: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter Leap category"
+                maxLength={20}
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">Maximum 20 characters.</p>
+            </div>
             <DialogFooter>
               <Button
                 type="button"
@@ -2280,16 +2391,16 @@ console.log('Updating university with payload:', payload);
           </DialogHeader>
           <form onSubmit={handleUpdateEap} className="space-y-4">
             <div className="space-y-2">
-              <Label>Select EAP Record</Label>
+              {/* <Label>Select EAP Record</Label>
               <Select
                 value={editEapId || undefined}
                 onValueChange={(value) => handleSelectEapToEdit(value)}
                 required
-              >
-                <SelectTrigger className="bg-white dark:bg-gray-800">
+              > */}
+              {/* <SelectTrigger className="bg-white dark:bg-gray-800">
                   <SelectValue placeholder="Choose EAP record to edit" />
-                </SelectTrigger>
-                <SelectContent>
+                </SelectTrigger> */}
+              {/* <SelectContent>
                   {eapData.length > 0 ? (
                     eapData.map((eap) => (
                       <SelectItem key={eap.id} value={String(eap.id)}>
@@ -2301,20 +2412,35 @@ console.log('Updating university with payload:', payload);
                       No EAP records available
                     </SelectItem>
                   )}
-                </SelectContent>
-              </Select>
+                </SelectContent> */}
+              {/* </Select> */}
             </div>
-            {eapData.length > 0 && Object.keys(eapData[0]).filter(key => key !== 'id').map((key) => (
-              <div key={key} className="space-y-2">
-                <Label>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Label>
-                <Input
-                  value={eapForm[key] || ''}
-                  onChange={(e) => setEapForm((f) => ({ ...f, [key]: e.target.value }))}
-                  className="bg-white dark:bg-gray-800"
-                  placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                />
-              </div>
-            ))}
+            <div className="space-y-2">
+              <Label htmlFor="edit-eap-ep">EP</Label>
+              <Input
+                id="edit-eap-ep"
+                value={eapForm.ep}
+                onChange={(e) => setEapForm((f) => ({ ...f, ep: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter EP name"
+                maxLength={100}
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">Maximum 100 characters.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-eap-leap-category">Leap category</Label>
+              <Input
+                id="edit-eap-leap-category"
+                value={eapForm.leap_category}
+                onChange={(e) => setEapForm((f) => ({ ...f, leap_category: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter Leap category"
+                maxLength={20}
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">Maximum 20 characters.</p>
+            </div>
             <DialogFooter>
               <Button
                 type="button"
@@ -2365,7 +2491,8 @@ console.log('Updating university with payload:', payload);
                 value={combinationForm.abbreviation}
                 onChange={(e) => setCombinationForm((f) => ({ ...f, abbreviation: e.target.value }))}
                 className="bg-white dark:bg-gray-800"
-                placeholder="Enter abbreviation (optional)"
+                placeholder="Enter abbreviation "
+                required
               />
             </div>
             <DialogFooter>
@@ -2467,7 +2594,7 @@ console.log('Updating university with payload:', payload);
       </Dialog>
 
       {/* Add University Dialog */}
-      <Dialog open={addUniversityOpen} onOpenChange={setAddUniversityOpen}>
+      <Dialog open={addUniversityOpen} onOpenChange={(open) => { setAddUniversityOpen(open); if (!open) { setAlumniSelectOpen(false); setCollegeSelectOpen(false); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -2481,24 +2608,145 @@ console.log('Updating university with payload:', payload);
           <form onSubmit={handleAddUniversity} className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label>Alumni ID</Label>
-                <Input
-                  required
-                  value={universityForm.alumn_id}
-                  onChange={(e) => setUniversityForm((f) => ({ ...f, alumn_id: e.target.value }))}
-                  className="bg-white dark:bg-gray-800"
-                  placeholder="Enter alumni ID"
-                />
+                <Label>Alumni <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <div
+                    onClick={() => { setAlumniSelectOpen(!alumniSelectOpen); setAlumniSelectSearch(''); }}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer dark:bg-gray-800 hover:border-orange-400 transition-colors"
+                  >
+                    <span className={universityForm.alumn_id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}>
+                      {universityForm.alumn_id
+                        ? (() => { const k = kidsData.find(a => String(a.id) === String(universityForm.alumn_id)); return k ? `${k.user_first_name || ''} ${k.user_rwandan_name || ''} (${k.user_email || 'ID: ' + k.id})`.trim() : `Kid #${universityForm.alumn_id}`; })()
+                        : 'Select a student...'}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${alumniSelectOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                  {alumniSelectOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700">
+                      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          <input
+                            autoFocus
+                            value={alumniSelectSearch}
+                            onChange={(e) => setAlumniSelectSearch(e.target.value)}
+                            placeholder="Search by name or email..."
+                            className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {kidsData
+                          .filter(k => {
+                            if (!alumniSelectSearch.trim()) return true;
+                            const q = alumniSelectSearch.toLowerCase();
+                            return [k.user_first_name, k.user_rwandan_name, k.user_email, String(k.id)]
+                              .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                          })
+                          .slice(0, 50)
+                          .map(k => (
+                            <div
+                              key={k.id}
+                              onClick={() => {
+                                setUniversityForm(f => ({ ...f, alumn_id: String(k.id) }));
+                                setAlumniSelectOpen(false);
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-orange-50 dark:hover:bg-gray-700 transition-colors ${String(universityForm.alumn_id) === String(k.id) ? 'bg-orange-50 dark:bg-gray-700 font-medium' : ''
+                                }`}
+                            >
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 text-xs font-semibold dark:bg-orange-900 dark:text-orange-300">
+                                {(k.user_first_name || '?')[0].toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-gray-900 dark:text-gray-100">{k.user_first_name || ''} {k.user_rwandan_name || ''}</p>
+                                <p className="truncate text-xs text-gray-500 dark:text-gray-400">{k.user_email || `ID: ${k.id}`}</p>
+                              </div>
+                            </div>
+                          ))}
+                        {kidsData.filter(k => {
+                          if (!alumniSelectSearch.trim()) return true;
+                          const q = alumniSelectSearch.toLowerCase();
+                          return [k.user_first_name, k.user_rwandan_name, k.user_email, String(k.id)]
+                            .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                        }).length === 0 && (
+                            <p className="px-3 py-4 text-sm text-center text-gray-400">No students found.</p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>College Name</Label>
-                <Input
-                  required
-                  value={universityForm.college_name}
-                  onChange={(e) => setUniversityForm((f) => ({ ...f, college_name: e.target.value }))}
-                  className="bg-white dark:bg-gray-800"
-                  placeholder="Enter college name"
-                />
+                <Label>College <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <div
+                    onClick={() => { setCollegeSelectOpen(!collegeSelectOpen); setCollegeSelectSearch(''); }}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer dark:bg-gray-800 hover:border-orange-400 transition-colors"
+                  >
+                    <span className={universityForm.college_id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}>
+                      {universityForm.college_id
+                        ? (() => { const c = collegeData.find(c => String(c.id) === String(universityForm.college_id)); return c ? `${c.college_name} — ${c.country || ''}` : `College #${universityForm.college_id}`; })()
+                        : 'Select a college...'}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${collegeSelectOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                  {collegeSelectOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700">
+                      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          <input
+                            autoFocus
+                            value={collegeSelectSearch}
+                            onChange={(e) => setCollegeSelectSearch(e.target.value)}
+                            placeholder="Search by college name, country, or city..."
+                            className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {collegeData
+                          .filter(c => {
+                            if (!collegeSelectSearch.trim()) return true;
+                            const q = collegeSelectSearch.toLowerCase();
+                            return [c.college_name, c.country, c.city]
+                              .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                          })
+                          .slice(0, 50)
+                          .map(c => (
+                            <div
+                              key={c.id}
+                              onClick={() => {
+                                setUniversityForm(f => ({
+                                  ...f,
+                                  college_id: c.id,
+                                  college_name: c.college_name || '',
+                                  country: c.country || '',
+                                  city: c.city || ''
+                                }));
+                                setCollegeSelectOpen(false);
+                              }}
+                              className={`px-3 py-2 text-sm cursor-pointer hover:bg-orange-50 dark:hover:bg-gray-700 transition-colors ${String(universityForm.college_id) === String(c.id) ? 'bg-orange-50 dark:bg-gray-700 font-medium' : ''
+                                }`}
+                            >
+                              <p className="font-medium text-gray-900 dark:text-gray-100">{c.college_name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{[c.city, c.country].filter(Boolean).join(', ') || 'No location'}</p>
+                            </div>
+                          ))}
+                        {collegeData.filter(c => {
+                          if (!collegeSelectSearch.trim()) return true;
+                          const q = collegeSelectSearch.toLowerCase();
+                          return [c.college_name, c.country, c.city]
+                            .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                        }).length === 0 && (
+                            <p className="px-3 py-4 text-sm text-center text-gray-400">No colleges found.</p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -2507,8 +2755,9 @@ console.log('Updating university with payload:', payload);
                     required
                     value={universityForm.country}
                     onChange={(e) => setUniversityForm((f) => ({ ...f, country: e.target.value }))}
-                    className="bg-white dark:bg-gray-800"
+                    className={`bg-white dark:bg-gray-800 ${universityForm.college_id ? 'opacity-60' : ''}`}
                     placeholder="Enter country"
+                    readOnly={!!universityForm.college_id}
                   />
                 </div>
                 <div className="space-y-2">
@@ -2517,8 +2766,9 @@ console.log('Updating university with payload:', payload);
                     required
                     value={universityForm.city}
                     onChange={(e) => setUniversityForm((f) => ({ ...f, city: e.target.value }))}
-                    className="bg-white dark:bg-gray-800"
+                    className={`bg-white dark:bg-gray-800 ${universityForm.college_id ? 'opacity-60' : ''}`}
                     placeholder="Enter city"
+                    readOnly={!!universityForm.college_id}
                   />
                 </div>
               </div>
@@ -2529,7 +2779,8 @@ console.log('Updating university with payload:', payload);
                     value={universityForm.degree}
                     onChange={(e) => setUniversityForm((f) => ({ ...f, degree: e.target.value }))}
                     className="bg-white dark:bg-gray-800"
-                    placeholder="Enter degree (optional)"
+                    placeholder="Ex Business and Economics"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -2538,7 +2789,8 @@ console.log('Updating university with payload:', payload);
                     value={universityForm.level}
                     onChange={(e) => setUniversityForm((f) => ({ ...f, level: e.target.value }))}
                     className="bg-white dark:bg-gray-800"
-                    placeholder="Enter level (optional)"
+                    placeholder="Ex A0"
+                    required
                   />
                 </div>
               </div>
@@ -2548,8 +2800,9 @@ console.log('Updating university with payload:', payload);
                   <Input
                     value={universityForm.scholarship}
                     onChange={(e) => setUniversityForm((f) => ({ ...f, scholarship: e.target.value }))}
-                    className="bg-white dark:bg-gray-800"
-                    placeholder="Enter scholarship details"
+                    className="bg-white dark:bg-gray-800 placeholder:text-xs"
+                    placeholder="Self sponsored, full or partial scholarship"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -2564,14 +2817,32 @@ console.log('Updating university with payload:', payload);
                   </select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Scholarship Details</Label>
-                <Input
-                  value={universityForm.scholarship_details}
-                  onChange={(e) => setUniversityForm((f) => ({ ...f, scholarship_details: e.target.value }))}
-                  className="bg-white dark:bg-gray-800"
-                  placeholder="Enter scholarship details (optional)"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Scholarship Details</Label>
+                  <Input
+                    value={universityForm.scholarship_details}
+                    onChange={(e) => setUniversityForm((f) => ({ ...f, scholarship_details: e.target.value }))}
+                    className="bg-white dark:bg-gray-800"
+                    placeholder="Enter scholarship details"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <select
+                    value={universityForm.status || ''}
+                    onChange={(e) => setUniversityForm((f) => ({ ...f, status: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm dark:bg-gray-800"
+                  >
+                    <option value="">Select status...</option>
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Graduated">Graduated</option>
+                    <option value="Dropped Out">Dropped Out</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Postponed">Postponed</option>
+                  </select>
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -2589,6 +2860,162 @@ console.log('Updating university with payload:', payload);
                 className="bg-orange-600 hover:bg-orange-700"
               >
                 {universityLoading ? 'Adding record...' : 'Add university record'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add College Dialog */}
+      <Dialog open={addCollegeOpen} onOpenChange={setAddCollegeOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Add College Record
+            </DialogTitle>
+            <DialogDescription>
+              Add a new college record.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddCollege} className="space-y-4">
+            <div className="space-y-2">
+              <Label>College Name</Label>
+              <Input
+                required
+                value={collegeForm.college_name}
+                onChange={(e) => setCollegeForm((f) => ({ ...f, college_name: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter college name"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Input
+                  required
+                  value={collegeForm.country}
+                  onChange={(e) => setCollegeForm((f) => ({ ...f, country: e.target.value }))}
+                  className="bg-white dark:bg-gray-800"
+                  placeholder="Enter country"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  required
+                  value={collegeForm.city}
+                  onChange={(e) => setCollegeForm((f) => ({ ...f, city: e.target.value }))}
+                  className="bg-white dark:bg-gray-800"
+                  placeholder="Enter city"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddCollegeOpen(false)}
+                disabled={collegeLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={collegeLoading}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {collegeLoading ? 'Adding record...' : 'Add college record'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit College Dialog */}
+      <Dialog open={editCollegeOpen} onOpenChange={setEditCollegeOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Update College Record
+            </DialogTitle>
+            <DialogDescription>
+              Edit an existing college record from api_college.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateCollege} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select College Record</Label>
+              <Select
+                value={editCollegeId || undefined}
+                onValueChange={(value) => handleSelectCollegeToEdit(value)}
+              >
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue placeholder="Choose college record to edit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {collegeData.length > 0 ? (
+                    collegeData.map((college) => (
+                      <SelectItem key={college.id} value={String(college.id)}>
+                        {college.college_name || `College #${college.id}`}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="-1" className="text-sm text-gray-500 dark:text-gray-400" disabled>
+                      No college records available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>College Name</Label>
+              <Input
+                required
+                value={collegeForm.college_name}
+                onChange={(e) => setCollegeForm((f) => ({ ...f, college_name: e.target.value }))}
+                className="bg-white dark:bg-gray-800"
+                placeholder="Enter college name"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Input
+                  required
+                  value={collegeForm.country}
+                  onChange={(e) => setCollegeForm((f) => ({ ...f, country: e.target.value }))}
+                  className="bg-white dark:bg-gray-800"
+                  placeholder="Enter country"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  required
+                  value={collegeForm.city}
+                  onChange={(e) => setCollegeForm((f) => ({ ...f, city: e.target.value }))}
+                  className="bg-white dark:bg-gray-800"
+                  placeholder="Enter city"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditCollegeOpen(false)}
+                disabled={collegeLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={collegeLoading || !editCollegeId}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {collegeLoading ? 'Updating record...' : 'Update college record'}
               </Button>
             </DialogFooter>
           </form>
@@ -2633,14 +3060,74 @@ console.log('Updating university with payload:', payload);
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Alumni ID</Label>
-              <Input
-                required
-                value={universityForm.alumn_id}
-                onChange={(e) => setUniversityForm((f) => ({ ...f, alumn_id: e.target.value }))}
-                className="bg-white dark:bg-gray-800"
-                placeholder="Enter alumni ID"
-              />
+              <Label>Student <span className="text-red-500">*</span></Label>
+              <div className="relative">
+                <div
+                  onClick={() => { setAlumniSelectOpen(!alumniSelectOpen); setAlumniSelectSearch(''); }}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer dark:bg-gray-800 hover:border-orange-400 transition-colors"
+                >
+                  <span className={universityForm.alumn_id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}>
+                    {universityForm.alumn_id
+                      ? (() => { const k = kidsData.find(a => String(a.id) === String(universityForm.alumn_id)); return k ? `${k.user_first_name || ''} ${k.user_rwandan_name || ''} (${k.user_email || 'ID: ' + k.id})`.trim() : `Kid #${universityForm.alumn_id}`; })()
+                      : 'Select a student...'}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${alumniSelectOpen ? 'rotate-180' : ''}`} />
+                </div>
+                {alumniSelectOpen && (
+                  <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-700">
+                    <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input
+                          autoFocus
+                          value={alumniSelectSearch}
+                          onChange={(e) => setAlumniSelectSearch(e.target.value)}
+                          placeholder="Search by name or email..."
+                          className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {kidsData
+                        .filter(k => {
+                          if (!alumniSelectSearch.trim()) return true;
+                          const q = alumniSelectSearch.toLowerCase();
+                          return [k.user_first_name, k.user_rwandan_name, k.user_email, String(k.id)]
+                            .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                        })
+                        .slice(0, 50)
+                        .map(k => (
+                          <div
+                            key={k.id}
+                            onClick={() => {
+                              setUniversityForm(f => ({ ...f, alumn_id: String(k.id) }));
+                              setAlumniSelectOpen(false);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-orange-50 dark:hover:bg-gray-700 transition-colors ${String(universityForm.alumn_id) === String(k.id) ? 'bg-orange-50 dark:bg-gray-700 font-medium' : ''
+                              }`}
+                          >
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 text-xs font-semibold dark:bg-orange-900 dark:text-orange-300">
+                              {(k.user_first_name || '?')[0].toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-gray-900 dark:text-gray-100">{k.user_first_name || ''} {k.user_rwandan_name || ''}</p>
+                              <p className="truncate text-xs text-gray-500 dark:text-gray-400">{k.user_email || `ID: ${k.id}`}</p>
+                            </div>
+                          </div>
+                        ))}
+                      {kidsData.filter(k => {
+                        if (!alumniSelectSearch.trim()) return true;
+                        const q = alumniSelectSearch.toLowerCase();
+                        return [k.user_first_name, k.user_rwandan_name, k.user_email, String(k.id)]
+                          .filter(Boolean).some(v => v.toLowerCase().includes(q));
+                      }).length === 0 && (
+                          <p className="px-3 py-4 text-sm text-center text-gray-400">No students found.</p>
+                        )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>College Name</Label>
@@ -2746,6 +3233,7 @@ console.log('Updating university with payload:', payload);
           </form>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </>
   );
 }

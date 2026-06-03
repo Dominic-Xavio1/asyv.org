@@ -33,6 +33,25 @@ export async function GET(request) {
 
         // If user is alumni, fetch employment data
         if (user.is_alumni) {
+            const kidResult = await pool.query(
+                `SELECT id, current_country, marital_status 
+                 FROM api_kid 
+                 WHERE user_id = $1 LIMIT 1`,
+                [userId]
+            );
+            if (kidResult.rows.length > 0) {
+                response.kid = kidResult.rows[0];
+                
+                const leapResult = await pool.query(
+                    `SELECT kl.id, kl.kid_id, kl.leap_id, l.ep, l.leap_category 
+                     FROM api_kidleap kl JOIN api_leap l ON kl.leap_id = l.id
+                     WHERE kl.kid_id = $1 ORDER BY kl.id`,
+                    [response.kid.id]
+                );
+                response.kidLeap = leapResult.rows;
+                console.log("Kid Leap Data:", leapResult.rows);
+            }
+
             const employmentResult = await pool.query(
                 `SELECT id, title, industry, company, on_going, alumn_id 
                  FROM api_employment 

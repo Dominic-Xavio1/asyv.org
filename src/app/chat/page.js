@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
 
 
 import toast from "react-hot-toast"
@@ -437,6 +438,7 @@ export default function ChatPage() {
 
   const [showEmoji, setShowEmoji] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
+  const [confirm, confirmDialog] = useConfirmDialog()
 
   const [typingUsers, setTypingUsers] = useState([])
 
@@ -640,11 +642,15 @@ export default function ChatPage() {
 
         const profile = profileLookup[key]
 
+        const firstName = profile?.first_name || ''
+        const rwandanName = profile?.rwandan_name || ''
+        const displayName = [firstName, rwandanName].filter(Boolean).join(' ') || profile?.username || `User ${key}`
+
         return {
 
           id: key,
 
-          name: profile?.username || profile?.full_name || `User ${key}`,
+          name: displayName,
 
           avatar: profile?.profile_image || '/default.png',
 
@@ -975,13 +981,13 @@ export default function ChatPage() {
 
         try {
 
-          const usersRes = await fetch('/api/users')
+          const usersRes = await fetch('/api/users/all')
 
           const usersJson = await usersRes.json()
 
           if (usersJson?.users && Array.isArray(usersJson.users)) {
 
-            usersJson.users.forEach(u => { if (u.created_by) profileLookup[String(u.created_by)] = u })
+            usersJson.users.forEach(u => { if (u.id) profileLookup[String(u.id)] = u })
 
           }
 
@@ -1901,30 +1907,37 @@ export default function ChatPage() {
       return
     }
 
+    if (!currentUser?.id) {
+      toast.error("You must be logged in to start a call")
+      return
+    }
+
     const isGroupChat = selectedChat.isGroup || selectedChat.type === "group"
     if (isGroupChat) {
-      toast.error("Calls are currently available for 1-to-1 chats only")
+      toast.error("Calls are currently available for private chats only")
+      return
+    }
+
+    const targetUserId = selectedChat?.user?.id
+    if (!targetUserId) {
+      toast.error("Could not find the person to call")
       return
     }
 
     const targetName = selectedChat?.user?.name || "Friend"
+    const callId = crypto.randomUUID()
     const params = new URLSearchParams({
+      role: "caller",
+      callId,
+      targetUserId: String(targetUserId),
       conversationId: String(selectedChat.id),
       targetName,
       mode,
+      auto: "1",
     })
-    const callUrl = `/videocall?${params.toString()}`
 
-    try {
-      await handleSendMessage({
-        text: `📞 ${mode === "audio" ? "Voice" : "Video"} call invite sent. Open Video Call page and use this chat to share/copy your call ID.`,
-      })
-    } catch (error) {
-      console.error("Failed to send call invite message:", error)
-    }
-
-    window.open(callUrl, "_blank", "noopener,noreferrer")
-  }, [handleSendMessage, selectedChat])
+    window.open(`/videocall?${params.toString()}`, "_blank", "noopener,noreferrer")
+  }, [currentUser, selectedChat])
 
 
 
@@ -2676,6 +2689,8 @@ export default function ChatPage() {
 
                     EmojiPicker={EmojiPicker}
 
+                    confirm={confirm}
+
                   />
 
                 )}
@@ -2956,6 +2971,7 @@ export default function ChatPage() {
                     onlineUsers={onlineUsers}
                     EmojiPicker={EmojiPicker}
                     isDesktop
+                    confirm={confirm}
                   />
                 )}
               </Card>
@@ -2964,6 +2980,7 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+      {confirmDialog}
       <UserSearchDialog
         open={controlOpen}
         onOpenChange={setControlOpen}
@@ -3000,6 +3017,8 @@ function MobileChatContent({
   messagesEndRef, messagesContainerRef, MediaMessage, onlineUsers, EmojiPicker,
 
   isDesktop = false,
+
+  confirm,
 
 }) {
 
@@ -3091,7 +3110,15 @@ function MobileChatContent({
           <div className="flex items-center gap-0.5 flex-shrink-0">
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              onClick={() => onStartCall?.("audio")}
+              // onClick={() => onStartCall?.("audio")}
+                     onClick={async () => {
+                await confirm({
+                  title: 'Feature unavailable',
+                  description: 'This feature is coming soon!',
+                  confirmText: 'Okay',
+                  cancelText: 'Close',
+                })
+              }}
             >
 
               <Phone className="h-4 w-4" />
@@ -3099,13 +3126,28 @@ function MobileChatContent({
             </Button>
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              onClick={() => onStartCall?.("video")}
+              // onClick={() => onStartCall?.("video")}
+                     onClick={async () => {
+                await confirm({
+                  title: 'Feature unavailable',
+                  description: 'This feature is coming soon!',
+                  confirmText: 'Okay',
+                  cancelText: 'Close',
+                })
+              }}
             >
               <Video className="h-4 w-4" />
             </Button>
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              onClick={() => window.confirm("This features is coming soon!")}
+              onClick={async () => {
+                await confirm({
+                  title: 'Feature unavailable',
+                  description: 'This feature is coming soon!',
+                  confirmText: 'Okay',
+                  cancelText: 'Close',
+                })
+              }}
             >
 
               <MoreVertical className="h-4 w-4" />
@@ -3404,12 +3446,16 @@ function MobileChatContent({
 
                       <button
 
-                        onClick={() => {
-
-                          if (!window.confirm("Are you sure you want to delete this message?")) return
-
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: 'Delete message',
+                            description: 'Are you sure you want to delete this message?',
+                            confirmText: 'Delete',
+                            cancelText: 'Cancel',
+                            destructive: true,
+                          })
+                          if (!confirmed) return
                           handleDeleteMessage(message.id, isGroup)
-
                         }}
 
                         className="opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 self-end"

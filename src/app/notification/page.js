@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { useConfirmDialog } from "@/components/ui/use-confirm-dialog"
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -81,6 +82,7 @@ export default function NotificationPage() {
   const [currentUser, setCurrentUser] = useState(null)
   const [socket, setSocket] = useState(null)
   const router = useRouter()
+  const [confirm, confirmDialog] = useConfirmDialog()
   const [respondingToInvitation, setRespondingToInvitation] = useState({
     id: null,
     action: null
@@ -96,6 +98,7 @@ export default function NotificationPage() {
   })
 
   const [users, setUsers] = useState([])
+  const [userSearch, setUserSearch] = useState("")
   const socketRef = useRef(null)
 
   useEffect(() => {
@@ -521,8 +524,13 @@ const deleteAllNotifications = async () => {
           )}
           {isCrcOrSuperuser && (
             <Button 
-              onClick={() => {
-                const confirmed =window.confirm("Are you sure you want to send a notification?")
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: 'Send notification',
+                  description: 'Are you sure you want to send a notification?',
+                  confirmText: 'Continue',
+                  cancelText: 'Cancel',
+                })
                 if (confirmed) {
                   setIsSendDialogOpen(true)
                   fetchUsers()
@@ -546,8 +554,15 @@ const deleteAllNotifications = async () => {
               {viewMode!=="received" && (
                 <Button
                   className="bg-orange-500 hover:bg-orange-600 w-full sm:w-auto"
-                  onClick={()=>{
-                    if(window.confirm("Delete all sent notifications? This will permanently remove them from your history.")){
+                  onClick={async () => {
+                    const confirmed = await confirm({
+                      title: 'Delete all notifications',
+                      description: 'Delete all sent notifications? This will permanently remove them from your history.',
+                      confirmText: 'Delete all',
+                      cancelText: 'Cancel',
+                      destructive: true,
+                    })
+                    if (confirmed) {
                       deleteAllNotifications()
                     }
                   }}
@@ -820,7 +835,7 @@ const deleteAllNotifications = async () => {
                   value={sendFormData.recipient_ids}
                   onValueChange={(value) =>
                     setSendFormData({ ...sendFormData, recipient_ids: value })
-                  }
+                  } 
                 >
                   <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200">
                     <SelectValue />
@@ -837,8 +852,24 @@ const deleteAllNotifications = async () => {
                   <Label className="text-gray-700 dark:text-gray-300">
                     Select Users
                   </Label>
+                  <Input
+                    type="text"
+                    placeholder="Search users..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="mb-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+                  />
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2 bg-white dark:bg-gray-800">
-                    {users.map((user) => (
+                    {users
+                      .filter((user) => {
+                        const searchLower = userSearch.toLowerCase()
+                        return (
+                          user.first_name?.toLowerCase().includes(searchLower) ||
+                          user.rwandan_name?.toLowerCase().includes(searchLower) ||
+                          user.email?.toLowerCase().includes(searchLower)
+                        )
+                      })
+                      .map((user) => (
                       <label
                         key={user.id}
                         className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
@@ -965,6 +996,7 @@ const deleteAllNotifications = async () => {
           </form>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   )
 }

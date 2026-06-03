@@ -32,15 +32,15 @@ import {
 } from "@/components/ui/table";
 
 const createColumns = (onView) => [
-  {
-    accessorKey: "id",
-    header: "ID",
-    cell: ({ row }) => (
-      <div className="font-mono text-sm text-gray-600 dark:text-gray-400">
-        {row.getValue("id")}
-      </div>
-    ),
-  },
+  // {
+  //   accessorKey: "id",
+  //   header: "ID",
+  //   cell: ({ row }) => (
+  //     <div className="font-mono text-sm text-gray-600 dark:text-gray-400">
+  //       {row.getValue("id")}
+  //     </div>
+  //   ),
+  // },
   {
     accessorKey: "user_first_name",
     header: ({ column }) => (

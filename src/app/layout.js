@@ -3,9 +3,9 @@ import "./globals.css";
 import NavBar from "@/components/layout/navagation";
 import NotificationManager from '@/components/NotificationManager'
 import ChatNotificationManager from '@/components/ChatNotificationManager'
+import IncomingCallManager from '@/components/IncomingCallManager'
 import MobileBottomNav from "@/components/MobileBottomNav";
 import QuickLinksMenu from "@/components/QuickLinksMenu";
-import { FireworksBackground } from "@/components/animate-ui/components/backgrounds/fireworks"
 import { Providers } from "./provider"
 import { GoogleProvider } from '@/components/providers'
 import { Toaster } from 'react-hot-toast'
@@ -55,6 +55,7 @@ export default function RootLayout({ children }) {
                 <NavBar />
                 <NotificationManager />
                 <ChatNotificationManager />
+                <IncomingCallManager />
                 {children}
                 <MobileBottomNav />
                 <QuickLinksMenu />
@@ -68,13 +69,14 @@ export default function RootLayout({ children }) {
     </html>
   )
 }
-if (process.env.NODE_ENV === "development") {
-  const originalError = console.error
 
-  console.error = (...args) => {
-    if (typeof args[0] === "string" && args[0].includes("Encountered two children with the same key")) {
-      throw new Error(args[0])
-    }
-    originalError(...args)
-  }
-}
+// if (process.env.NODE_ENV === "development") {
+//   const originalError = console.error
+
+//   console.error = (...args) => {
+//     if (typeof args[0] === "string" && args[0].includes("Encountered two children with the same key")) {
+//       throw new Error(args[0])
+//     }
+//     originalError(...args)
+//   }
+// }

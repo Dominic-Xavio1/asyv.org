@@ -1,14 +1,17 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {MessageCirclePlus} from "lucide-react"
 export default function UserSearchDialog({ open, onOpenChange, onSelect, isDarkMode = false }) {
   const [allUsers, setAllUsers] = useState([])
   const [query, setQuery] = useState("")
   const [highlighted, setHighlighted] = useState(0)
   const inputRef = useRef(null)
   const listRef = useRef(null)
-
+  const [openCreateChat, setOpenCreateChat] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
   useEffect(() => {
     async function fetchUsers() {
       try {
@@ -37,9 +40,8 @@ export default function UserSearchDialog({ open, onOpenChange, onSelect, isDarkM
   })
 
   function handleSelect(user) {
-    onOpenChange(false)
-    if (!window.confirm(`Create conversation with ${user.first_name} ${user.rwandan_name}`)) return
-    onSelect(user)
+    setSelectedUser(user)
+    setOpenCreateChat(true)
   }
 
   function handleKeyDown(e) {
@@ -101,7 +103,7 @@ export default function UserSearchDialog({ open, onOpenChange, onSelect, isDarkM
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 9999;
+          z-index: 40;
           animation: usd-fade-in 0.18s ease;
           font-family: 'Figtree', sans-serif;
         }
@@ -420,10 +422,10 @@ export default function UserSearchDialog({ open, onOpenChange, onSelect, isDarkM
             </div>
 
             <div className="usd-meta">
-              {query
+              {/* {query
                 ? `${filtered.length} result${filtered.length !== 1 ? "s" : ""} for "${query}"`
                 : `${allUsers.length} member${allUsers.length !== 1 ? "s" : ""} in your village`
-              }
+              } */}
             </div>
           </div>
 
@@ -484,6 +486,52 @@ export default function UserSearchDialog({ open, onOpenChange, onSelect, isDarkM
           </div>
         </div>
       </div>
+      <Dialog
+        open={openCreateChat}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenCreateChat(false)
+            setSelectedUser(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-neutral-200 dark:border-gray-800 ">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-neutral-900 dark:text-gray-100 flex items-center gap-2">
+              <MessageCirclePlus className="w-5 h-5 text-orange-500" />
+              Create Chat
+            </DialogTitle>
+            <DialogDescription className="text-neutral-600 dark:text-gray-400">
+              Create a new chat conversation with<span className="font-bold"> {selectedUser ? `${selectedUser.first_name?.toUpperCase()} ${selectedUser.rwandan_name?.toUpperCase()}` : "this user"}</span>. This will allow you to exchange messages and share content privately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenCreateChat(false)
+                setSelectedUser(null)
+              }}
+              className="flex-1 sm:flex-none text-md"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (selectedUser) {
+                  onSelect(selectedUser)
+                }
+                setOpenCreateChat(false)
+                setSelectedUser(null)
+              }}
+              className="flex-1 sm:flex-none text-md bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500"
+            >
+              Create Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

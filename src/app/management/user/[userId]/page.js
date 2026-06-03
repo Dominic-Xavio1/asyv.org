@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import toast from 'react-hot-toast';
@@ -25,10 +26,13 @@ export default function UserDetailsPage() {
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
     const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
     const [isFEDialogOpen, setIsFEDialogOpen] = useState(false);
+    const [confirm, confirmDialog] = useConfirmDialog();
     const [editingEmployment, setEditingEmployment] = useState(null);
     const [editingReport, setEditingReport] = useState(null);
     const [editingComment, setEditingComment] = useState(null);
     const [editingFE, setEditingFE] = useState(null);
+    const [isKidLeapDialogOpen, setIsKidLeapDialogOpen] = useState(false);
+    const [editingKidLeap, setEditingKidLeap] = useState(null);
 
     // Form states
     const [employmentForm, setEmploymentForm] = useState({
@@ -40,6 +44,7 @@ export default function UserDetailsPage() {
     const [feForm, setFeForm] = useState({
         degree: '',
         level: '',
+        status: '',
         scholarship: '',
         scholarship_details: '',
         enrolled: false,
@@ -48,6 +53,27 @@ export default function UserDetailsPage() {
         country: '',
         city: ''
     });
+
+    // Debounced search state for alumni and college selects
+    const [alumniSelectSearch, setAlumniSelectSearch] = useState('');
+    const [collegeSelectSearch, setCollegeSelectSearch] = useState('');
+    const [alumniSearchTimeout, setAlumniSearchTimeout] = useState(null);
+    const [collegeSearchTimeout, setCollegeSearchTimeout] = useState(null);
+
+    // Helper to debounce search inputs
+    const handleAlumniSearchChange = (e) => {
+        const value = e.target.value;
+        setAlumniSelectSearch(value);
+        if (alumniSearchTimeout) clearTimeout(alumniSearchTimeout);
+        setAlumniSearchTimeout(setTimeout(() => setAlumniSelectSearch(value), 200));
+    };
+    const handleCollegeSearchChange = (e) => {
+        const value = e.target.value;
+        setCollegeSelectSearch(value);
+        if (collegeSearchTimeout) clearTimeout(collegeSearchTimeout);
+        setCollegeSearchTimeout(setTimeout(() => setCollegeSelectSearch(value), 200));
+    };
+
     const [reportForm, setReportForm] = useState({
         year: '',
         combination: '',
@@ -60,6 +86,17 @@ export default function UserDetailsPage() {
         teacher_role: '',
         comment: ''
     });
+    const [kidLeapForm, setKidLeapForm] = useState({
+        leap_id: ''
+    });
+    const [leapOptions, setLeapOptions] = useState([]);
+    
+    // Profile (Kid) states
+    const [isKidDialogOpen, setIsKidDialogOpen] = useState(false);
+    const [kidForm, setKidForm] = useState({
+        current_country: '',
+        marital_status: ''
+    });
 
     useEffect(() => {
         // Check if current user is superuser
@@ -68,14 +105,27 @@ export default function UserDetailsPage() {
             if (fullInfo) {
                 try {
                     const user = JSON.parse(fullInfo);
-                    setIsSuperuser(user.is_superuser === true);
+                    setIsSuperuser(user.is_superuser === true || user.is_crc === true);
                 } catch (e) {
                     console.error('Error parsing user info:', e);
                 }
             }
         }
         fetchUserDetails();
+        fetchLeapOptions();
     }, [userId]);
+
+    const fetchLeapOptions = async () => {
+        try {
+            const response = await fetch('/api/manage/leap');
+            if (response.ok) {
+                const data = await response.json();
+                setLeapOptions(Array.isArray(data) ? data : []);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const fetchUserDetails = async () => {
         try {
@@ -109,6 +159,12 @@ export default function UserDetailsPage() {
 
     const handleSubmitFE = async (e) => {
         e.preventDefault();
+        
+        if (!feForm.degree || !feForm.level || !feForm.college_name || !feForm.country || !feForm.city) {
+            toast.error("Please fill in all required fields: Degree, Level, College, Country, and City.");
+            return;
+        }
+
         try {
             const url = '/api/manage/furthereducation';
             const method = editingFE ? 'PUT' : 'POST';
@@ -118,8 +174,8 @@ export default function UserDetailsPage() {
             } : {};
 
             const body = editingFE
-                ? { id: editingFE.id, degree: feForm.degree, level: feForm.level, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload }
-                : { alumn_id: userId, degree: feForm.degree, level: feForm.level, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload };
+                ? { id: editingFE.id, degree: feForm.degree, level: feForm.level, status: feForm.status || null, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload }
+                : { alumn_id: userId, degree: feForm.degree, level: feForm.level, status: feForm.status || null, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload };
 
             const response = await fetch(url, {
                 method,
@@ -141,7 +197,7 @@ export default function UserDetailsPage() {
     // Further Education handlers
     const handleAddFE = () => {
         setEditingFE(null);
-        setFeForm({ degree: '', level: '', scholarship: '', scholarship_details: '', enrolled: false, college_id: '', college_name: '', country: '', city: '' });
+        setFeForm({ degree: '', level: '', status: '', scholarship: '', scholarship_details: '', enrolled: false, college_id: '', college_name: '', country: '', city: '' });
         setIsFEDialogOpen(true);
     };
 
@@ -150,6 +206,7 @@ export default function UserDetailsPage() {
         setFeForm({
             degree: fe.degree || '',
             level: fe.level || '',
+            status: fe.status || '',
             scholarship: fe.scholarship || '',
             scholarship_details: fe.scholarship_details || '',
             enrolled: fe.enrolled || false,
@@ -162,7 +219,14 @@ export default function UserDetailsPage() {
     };
 
     const handleDeleteFE = async (id) => {
-        if (!confirm('Are you sure you want to delete this further education record?')) return;
+        const confirmed = await confirm({
+          title: 'Delete education record',
+          description: 'Are you sure you want to delete this further education record?',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        })
+        if (!confirmed) return;
         try {
             const response = await fetch(`/api/manage/furthereducation?id=${id}`, { method: 'DELETE' });
             const result = await response.json();
@@ -175,6 +239,75 @@ export default function UserDetailsPage() {
         }
     };
 
+
+    // KidLeap handlers
+    const handleSubmitKidLeap = async (e) => {
+        e.preventDefault();
+        
+        if (!kidLeapForm.leap_id) {
+            toast.error("Please select a LEAP activity.");
+            return;
+        }
+
+        try {
+            const url = editingKidLeap ? `/api/manage/kid-leap?id=${editingKidLeap.id}` : '/api/manage/kid-leap';
+            const method = editingKidLeap ? 'PUT' : 'POST';
+            const body = {
+                leap_id: kidLeapForm.leap_id,
+                ...(editingKidLeap ? {} : { kid_id: userData.kid.id })
+            };
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to save LEAP activity');
+            toast.success(editingKidLeap ? 'LEAP activity updated' : 'LEAP activity added');
+            setIsKidLeapDialogOpen(false);
+            fetchUserDetails();
+        } catch (err) {
+            console.error('Error saving LEAP activity:', err);
+            toast.error(err.message || 'Failed to save LEAP activity');
+        }
+    };
+
+    const handleAddKidLeap = () => {
+        setEditingKidLeap(null);
+        setKidLeapForm({ leap_id: '' });
+        setIsKidLeapDialogOpen(true);
+    };
+
+    const handleEditKidLeap = (leap) => {
+        setEditingKidLeap(leap);
+        setKidLeapForm({
+            leap_id: leap.leap_id ? String(leap.leap_id) : ''
+        });
+        setIsKidLeapDialogOpen(true);
+    };
+
+    const handleDeleteKidLeap = async (id) => {
+        const confirmed = await confirm({
+          title: 'Delete LEAP activity',
+          description: 'Are you sure you want to delete this LEAP activity?',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        })
+        if (!confirmed) return;
+        try {
+            const response = await fetch(`/api/manage/kid-leap?id=${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to delete record');
+            toast.success('LEAP activity deleted');
+            fetchUserDetails();
+        } catch (err) {
+            console.error('Error deleting LEAP activity:', err);
+            toast.error(err.message || 'Failed to delete LEAP activity');
+        }
+    };
 
     // Employment CRUD handlers
     const handleAddEmployment = () => {
@@ -200,7 +333,14 @@ export default function UserDetailsPage() {
     };
 
     const handleDeleteEmployment = async (id) => {
-        if (!confirm('Are you sure you want to delete this employment record?')) {
+        const confirmed = await confirm({
+          title: 'Delete employment record',
+          description: 'Are you sure you want to delete this employment record?',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        })
+        if (!confirmed) {
             return;
         }
         try {
@@ -221,6 +361,11 @@ export default function UserDetailsPage() {
 
     const handleSubmitEmployment = async (e) => {
         e.preventDefault();
+        if (!employmentForm.title || !employmentForm.industry || !employmentForm.company) {
+            toast.error("Please fill in all required fields: Title, Industry, and Company.");
+            return;
+        }
+
         try {
             const url = '/api/manage/employment';
             const method = editingEmployment ? 'PUT' : 'POST';
@@ -244,6 +389,44 @@ export default function UserDetailsPage() {
         } catch (error) {
             console.error('Error saving employment:', error);
             toast.error(error.message || 'Failed to save employment');
+        }
+    };
+
+    // Kid Profile Handler
+    const handleEditKid = () => {
+        if (!userData || !userData.kid) return;
+        setKidForm({
+            current_country: userData.kid.current_country || '',
+            marital_status: userData.kid.marital_status || ''
+        });
+        setIsKidDialogOpen(true);
+    };
+
+    const handleSubmitKid = async (e) => {
+        e.preventDefault();
+        if (!kidForm.current_country || !kidForm.marital_status) {
+            toast.error("Please fill in all required fields: Country and Marital Status.");
+            return;
+        }
+        try {
+            const url = `/api/manage/kids/${userData.kid.id}`;
+            const body = {
+                current_country: kidForm.current_country,
+                marital_status: kidForm.marital_status
+            };
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to update profile info');
+            toast.success('Profile info updated');
+            setIsKidDialogOpen(false);
+            fetchUserDetails();
+        } catch (err) {
+            console.error('Error saving profile info:', err);
+            toast.error(err.message || 'Failed to update profile info');
         }
     };
 
@@ -271,7 +454,14 @@ export default function UserDetailsPage() {
     };
 
     const handleDeleteReport = async (id) => {
-        if (!confirm('Are you sure you want to delete this academic report?')) {
+        const confirmed = await confirm({
+          title: 'Delete academic report',
+          description: 'Are you sure you want to delete this academic report?',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        })
+        if (!confirmed) {
             return;
         }
         try {
@@ -341,7 +531,14 @@ export default function UserDetailsPage() {
     };
 
     const handleDeleteComment = async (id) => {
-        if (!confirm('Are you sure you want to delete this teacher comment?')) {
+        const confirmed = await confirm({
+          title: 'Delete teacher comment',
+          description: 'Are you sure you want to delete this teacher comment?',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        })
+        if (!confirmed) {
             return;
         }
         try {
@@ -403,10 +600,11 @@ export default function UserDetailsPage() {
         );
     }
 
-    const { user, employment = [], furtherEducation = [], academicReports = [], teacherComments = [] } = userData;
+    const { user, employment = [], furtherEducation = [], academicReports = [], teacherComments = [], kidLeaps = [] } = userData;
 
     return (
         <div className="container mx-auto px-4 pt-16 pb-24 max-w-6xl">
+            {confirmDialog}
             <Button
                 variant="outline"
                 onClick={() => router.back()}
@@ -469,6 +667,41 @@ export default function UserDetailsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Kid Profile Info (for Alumni) */}
+            {user.is_alumni && userData.kid && (
+                <Card className="mb-6">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <User className="h-5 w-5" />
+                                    Profile Info
+                                </CardTitle>
+                                <CardDescription>Current country and marital status</CardDescription>
+                            </div>
+                            {isSuperuser && (
+                                <Button onClick={handleEditKid} size="sm" className="bg-green-600 hover:bg-green-500">
+                                    <Edit2 className="mr-2 h-4 w-4" />
+                                    Edit Profile
+                                </Button>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Country</label>
+                                <p className="text-lg font-semibold">{userData.kid.current_country || '-'}</p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Marital Status</label>
+                                <p className="text-lg">{userData.kid.marital_status || '-'}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Employment Information (for Alumni) */}
             {user.is_alumni && (
@@ -601,6 +834,10 @@ export default function UserDetailsPage() {
                                         <div>
                                             <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Enrolled</label>
                                             <p className="text-lg">{fe.enrolled ? 'Yes' : 'No'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                                            <p className="text-lg font-medium text-orange-600 dark:text-orange-400">{fe.status || '-'}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-gray-500 dark:text-gray-400">College</label>
@@ -843,6 +1080,46 @@ export default function UserDetailsPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Kid Profile Dialog */}
+            <Dialog open={isKidDialogOpen} onOpenChange={setIsKidDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Edit Profile Info</DialogTitle>
+                        <DialogDescription>
+                            Update current country and marital status.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitKid}>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="current_country">Current Country *</Label>
+                                <Input
+                                    id="current_country"
+                                    required
+                                    value={kidForm.current_country}
+                                    onChange={(e) => setKidForm({ ...kidForm, current_country: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="marital_status">Marital Status *</Label>
+                                <Input
+                                    id="marital_status"
+                                    required
+                                    value={kidForm.marital_status}
+                                    onChange={(e) => setKidForm({ ...kidForm, marital_status: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsKidDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" className="bg-green-600 hover:bg-green-500">Save</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
             {/* Further Education Dialog */}
             <Dialog open={isFEDialogOpen} onOpenChange={setIsFEDialogOpen}>
                 <DialogContent className="max-w-2xl mt-10 mb-20 max-h-[600px] overflow-y-auto">
@@ -879,6 +1156,21 @@ export default function UserDetailsPage() {
                                     <SelectContent>
                                         <SelectItem value="true">Yes</SelectItem>
                                         <SelectItem value="false">No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select value={feForm.status || 'Ongoing'} onValueChange={(v) => setFeForm({ ...feForm, status: v })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Ongoing">Ongoing</SelectItem>
+                                        <SelectItem value="Graduated">Graduated</SelectItem>
+                                        <SelectItem value="Dropped Out">Dropped Out</SelectItem>
+                                        <SelectItem value="Suspended">Suspended</SelectItem>
+                                        <SelectItem value="Postponed">Postponed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

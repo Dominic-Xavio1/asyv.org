@@ -15,7 +15,7 @@ const ONLINE_TTL_SECONDS = 90;
 
 // Redis key prefixes for better organization
 const REDIS_KEYS = {
-  USER_SOCKET: 'online:user:socket:',      // user:socket:userId -> socketId
+  USER_SOCKETS: 'online:user:sockets:',    // user:sockets:userId -> Set of socketIds
   SOCKET_USER: 'online:socket:user:',      // socket:user:socketId -> userId
   USER_PRESENCE: 'online:presence:',       // presence:userId -> user data JSON
   ONLINE_SET: 'online:users:set',          // Set of all online user IDs
@@ -31,12 +31,10 @@ export async function setUserOnline(userId, socketId, userData = null) {
   try {
     const client = await redisClient.getClient();
     
-    // Store mapping: userId -> socketId
-    await client.setEx(
-      `${REDIS_KEYS.USER_SOCKET}${userId}`,
-      ONLINE_TTL_SECONDS,
-      socketId
-    );
+    // Add socketId to the user's sockets set
+    await client.sAdd(`${REDIS_KEYS.USER_SOCKETS}${userId}`, socketId);
+    // Set TTL for the user's sockets set
+    await client.expire(`${REDIS_KEYS.USER_SOCKETS}${userId}`, ONLINE_TTL_SECONDS);
 
     // Store mapping: socketId -> userId (for quick lookup on disconnect)
     await client.setEx(
@@ -73,15 +71,23 @@ export async function setUserOffline(userId, socketId) {
   try {
     const client = await redisClient.getClient();
     
-    // Remove socket mappings
-    await client.del(`${REDIS_KEYS.USER_SOCKET}${userId}`);
+    // Remove this specific socket from the user's sockets set
+    await client.sRem(`${REDIS_KEYS.USER_SOCKETS}${userId}`, socketId);
+    // Remove mapping: socketId -> userId
     await client.del(`${REDIS_KEYS.SOCKET_USER}${socketId}`);
     
-    // Remove from online set
-    await client.sRem(REDIS_KEYS.ONLINE_SET, userId);
+    // Check if the user has any remaining active sockets
+    const remainingSocketsCount = await client.sCard(`${REDIS_KEYS.USER_SOCKETS}${userId}`);
     
-    // Remove presence data
-    await client.del(`${REDIS_KEYS.USER_PRESENCE}${userId}`);
+    if (remainingSocketsCount === 0) {
+      // No more active sockets! The user is now truly offline.
+      await client.del(`${REDIS_KEYS.USER_SOCKETS}${userId}`);
+      await client.sRem(REDIS_KEYS.ONLINE_SET, userId);
+      await client.del(`${REDIS_KEYS.USER_PRESENCE}${userId}`);
+    } else {
+      // User is still online with other sockets, refresh the set TTL
+      await client.expire(`${REDIS_KEYS.USER_SOCKETS}${userId}`, ONLINE_TTL_SECONDS);
+    }
 
     return { success: true };
   } catch (error) {
@@ -115,8 +121,8 @@ export async function refreshUserOnline(userId, socketId) {
   try {
     const client = await redisClient.getClient();
     
-    // Refresh TTL for both mappings
-    await client.expire(`${REDIS_KEYS.USER_SOCKET}${userId}`, ONLINE_TTL_SECONDS);
+    // Refresh TTL for the sockets set and specific socket
+    await client.expire(`${REDIS_KEYS.USER_SOCKETS}${userId}`, ONLINE_TTL_SECONDS);
     await client.expire(`${REDIS_KEYS.SOCKET_USER}${socketId}`, ONLINE_TTL_SECONDS);
     
     // Refresh presence data if it exists
@@ -140,7 +146,7 @@ export async function refreshUserOnline(userId, socketId) {
 export async function isUserOnline(userId) {
   try {
     const client = await redisClient.getClient();
-    const exists = await client.exists(`${REDIS_KEYS.USER_SOCKET}${userId}`);
+    const exists = await client.exists(`${REDIS_KEYS.USER_SOCKETS}${userId}`);
     return exists === 1;
   } catch (error) {
     console.error('Error checking if user is online:', error);
@@ -259,7 +265,7 @@ export async function cleanupExpiredUsers() {
     let cleanedCount = 0;
     
     for (const userId of onlineUserIds) {
-      const exists = await client.exists(`${REDIS_KEYS.USER_SOCKET}${userId}`);
+      const exists = await client.exists(`${REDIS_KEYS.USER_SOCKETS}${userId}`);
       if (!exists) {
         // Socket mapping expired, remove from set
         await client.sRem(REDIS_KEYS.ONLINE_SET, userId);

@@ -26,8 +26,10 @@ export async function GET(request) {
       }
 
       const famRes = await pool.query(
-        `SELECT f.id, f.family_name, f.grade_id, g.grade_name
+        `SELECT f.id, f.family_name, f.grade_id, g.grade_name,
+                f.mother_id, u.first_name AS mother_first_name, u.rwandan_name AS mother_rwandan_name
          FROM api_family f
+         LEFT JOIN api_user u ON u.id = f.mother_id
          LEFT JOIN api_grade g ON g.id = f.grade_id
          WHERE f.id = $1`,
         [familyId]
@@ -37,10 +39,10 @@ export async function GET(request) {
       }
 
       const studentsRes = await pool.query(
-        `SELECT u.id, u.first_name, u.rwandan_name, u.email, u.phone, k.id AS kid_id
-         FROM api_user u
-         INNER JOIN api_kid k ON k.user_id = u.id AND k.family_id = $1
-         WHERE u.is_alumni = true
+        `SELECT u.id, u.first_name, u.rwandan_name, u.email, u.phone, u.is_alumni, k.id AS kid_id
+         FROM api_kid k
+         INNER JOIN api_user u ON u.id = k.user_id
+         WHERE k.family_id = $1
          ORDER BY u.first_name NULLS LAST, u.rwandan_name NULLS LAST`,
         [familyId]
       );
@@ -67,10 +69,12 @@ export async function GET(request) {
       }
 
       const familiesRes = await pool.query(
-        `SELECT f.id, f.family_name, COUNT(DISTINCT u.id)::int AS alumni_count
+        `SELECT f.id,
+                f.family_name,
+                COUNT(DISTINCT u.id)::int AS alumni_count
          FROM api_family f
-         INNER JOIN api_kid k ON k.family_id = f.id
-         INNER JOIN api_user u ON u.id = k.user_id AND u.is_alumni = true
+         LEFT JOIN api_kid k ON k.family_id = f.id
+         LEFT JOIN api_user u ON u.id = k.user_id AND u.is_alumni = true
          WHERE f.grade_id = $1
          GROUP BY f.id, f.family_name
          ORDER BY f.family_name`,

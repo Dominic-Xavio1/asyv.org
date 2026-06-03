@@ -10,7 +10,7 @@ export async function GET(request) {
        
 
         if (alumnId) {
-            const q = `SELECT fe.id, fe.degree, fe.level, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id, c.college_name, c.country, c.city
+            const q = `SELECT fe.id, fe.degree, fe.level,fe.status, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id, c.college_name, c.country, c.city
                        FROM api_furthereducation AS fe
                        LEFT JOIN api_college AS c ON fe.college_id = c.id
                        WHERE fe.alumn_id = $1
@@ -21,7 +21,7 @@ export async function GET(request) {
 
         // fallback: return all with joined user name and college details
         const response = await pool.query(
-            `SELECT fe.id, fe.alumn_id, fe.degree, fe.level, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id,
+            `SELECT fe.id, fe.alumn_id, fe.degree, fe.level, fe.status, fe.scholarship, fe.scholarship_details, fe.enrolled, fe.college_id,
                     c.college_name, c.country, c.city,
                     u.rwandan_name, u.first_name
              FROM api_furthereducation AS fe
@@ -40,7 +40,7 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id, college } = body;
+        const { alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id, college } = body;
 
         if (!alumn_id || !degree) {
             return NextResponse.json({ error: 'Alumni ID and degree are required' }, { status: 400 });
@@ -56,10 +56,10 @@ export async function POST(request) {
         }
 
         const insertRes = await pool.query(
-            `INSERT INTO api_furthereducation (alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING id, alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id`,
-            [alumn_id, degree, level || null, scholarship || null, scholarship_details || null, enrolled !== undefined ? enrolled : false, finalCollegeId]
+            `INSERT INTO api_furthereducation (alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING id, alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id`,
+            [alumn_id, degree, level || null, status || null, scholarship || null, scholarship_details || null, enrolled !== undefined ? enrolled : false, finalCollegeId]
         );
 
         const fe = insertRes.rows[0];
@@ -80,7 +80,7 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { id, degree, level, scholarship, scholarship_details, alumn_id, enrolled, college_id, college } = body;
+        const { id, degree, level, status, scholarship, scholarship_details, alumn_id, enrolled, college_id, college } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'FurtherEducation ID is required' }, { status: 400 });
@@ -116,6 +116,7 @@ export async function PUT(request) {
         if (alumn_id !== undefined) { updateFields.push(`alumn_id = $${param++}`); updateValues.push(alumn_id); }
         if (degree !== undefined) { updateFields.push(`degree = $${param++}`); updateValues.push(degree); }
         if (level !== undefined) { updateFields.push(`level = $${param++}`); updateValues.push(level); }
+        if (status !== undefined) { updateFields.push(`status = $${param++}`); updateValues.push(status); }
         if (scholarship !== undefined) { updateFields.push(`scholarship = $${param++}`); updateValues.push(scholarship); }
         if (scholarship_details !== undefined) { updateFields.push(`scholarship_details = $${param++}`); updateValues.push(scholarship_details); }
         if (enrolled !== undefined) { updateFields.push(`enrolled = $${param++}`); updateValues.push(enrolled); }
@@ -126,7 +127,7 @@ export async function PUT(request) {
         }
 
         updateValues.push(id);
-        const q = `UPDATE api_furthereducation SET ${updateFields.join(', ')} WHERE id = $${param} RETURNING id, alumn_id, degree, level, scholarship, scholarship_details, enrolled, college_id`;
+        const q = `UPDATE api_furthereducation SET ${updateFields.join(', ')} WHERE id = $${param} RETURNING id, alumn_id, degree, level, status, scholarship, scholarship_details, enrolled, college_id`;
         const res = await pool.query(q, updateValues);
         if (res.rows.length === 0) {
             return NextResponse.json({ error: 'Further education record not found' }, { status: 404 });

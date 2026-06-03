@@ -14,6 +14,7 @@ export async function GET(request) {
               k.points_in_national_exam, k.maximum_points_in_national_exam, k.mention,
               k.user_id, k.family_id, k.graduation_status,
               u.first_name AS user_first_name, u.rwandan_name AS user_rwandan_name, u.email AS user_email,
+              u.is_alumni,
               f.family_name, f.family_number
        FROM api_kid k
        LEFT JOIN api_user u ON k.user_id = u.id
@@ -34,6 +35,7 @@ export async function POST(request) {
   }
   try {
     const body = await request.json();
+    console.log("Received POST /api/manage/kids with body:", body);
     const {
       requestingUserId,
       origin_district,
@@ -51,7 +53,10 @@ export async function POST(request) {
       family_id,
       graduation_status,
     } = body;
-    console.log("has_children", has_children);
+    const checkForUser = await pool.query("SELECT id FROM api_kid WHERE user_id = $1", [user_id]);
+    if (checkForUser.rowCount != 0) {
+      return NextResponse.json({ error: "User with provided user_id already exists" }, { status: 400 });
+    }
     const result = await pool.query(
       `INSERT INTO api_kid (
         origin_district, origin_sector, current_district_or_city, current_country,
@@ -79,7 +84,7 @@ export async function POST(request) {
     );
     return NextResponse.json({ success: true, kid: result.rows[0] }, { status: 201 });
   } catch (err) {
-    console.error("Error in POST /api/manage/kids:", err);
+    console.error("Error in POST /api/manage/kids: ", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
