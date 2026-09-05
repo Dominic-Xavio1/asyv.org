@@ -40,12 +40,22 @@ export async function POST(request) {
                 error: "Email, password, and first_name are required" 
             }, { status: 400 });
         }
+        if(is_student && is_alumni){
+            return NextResponse.json({ 
+                error: "User cannot be both a student and an alumni" 
+            }, { status: 400 });
+        }
 
         // Check if user already exists
         const existingUser = await pool.query(
             "SELECT id FROM api_user WHERE email = $1",
             [email]
         );
+        const phoneCheck = await pool.query(
+            "SELECT id FROM api_user WHERE phone = $1",
+            [phone]
+        );
+       
 
         if (existingUser.rows.length > 0) {
             return NextResponse.json({ 
@@ -53,6 +63,12 @@ export async function POST(request) {
             }, { status: 409 });
         }
 
+        if (phoneCheck.rows.length > 0) {
+            return NextResponse.json({ 
+                error: "User with this phone number already exists" 
+            }, { status: 409 });
+        }
+        
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -140,7 +156,14 @@ export async function PUT(request) {
                 }, { status: 409 });
             }
         }
-
+        const isAlumniCheck = is_alumni !== undefined ? is_alumni : existingUser.rows[0].is_alumni;
+        const isStudentCheck = is_student !== undefined ? is_student : existingUser.rows[0].is_student;
+        
+        if(isStudentCheck && isAlumniCheck){
+            return NextResponse.json({ 
+                error: "User cannot be both a student and an alumni" 
+            }, { status: 400 });
+        }
         // Build update query dynamically
         const updateFields = [];
         const updateValues = [];

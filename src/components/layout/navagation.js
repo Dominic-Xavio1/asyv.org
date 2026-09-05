@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState,useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, MessageCircle, User, Sun, Moon, LogOut, Search, Menu, X, Bell, Users, UserCog, Compass, Calendar, ChevronRight, Loader, ExternalLink } from 'lucide-react';
 import { useTheme } from '@/lib/theme'
@@ -130,7 +131,6 @@ const pathname = usePathname();
 
         const response = await fetch("/api/users");
         const data = await response.json();
-console.log("data which I am fetching ",data);
         if (data.users && Array.isArray(data.users)) {
           const userProfile = data.users.find(
             (user) => user.email === userEmail
@@ -348,8 +348,16 @@ switch(label){
         <div className="flex justify-between items-center h-14 lg:h-16">
           {/* Logo */}
           <div className="flex items-center cursor-pointer">
-           <Link href="/feed"><img src="/agahozo.png" alt="ASYV Logo" className="hidden md:block w-[70px] h-auto object-cover" /></Link> 
-            <Link href="/feed"><img src="/agahozo.png" alt="ASYV Small" className="md:hidden w-[52px] h-auto object-cover" /></Link>
+           <Link href="/feed"><Image src="/agahozo.png" alt="ASYV Logo" className="hidden md:block object-cover" 
+           height={70}
+            width={70}
+            priority={true}
+           /></Link> 
+            <Link href="/feed"><Image src="/agahozo.png" alt="ASYV Small" className="md:hidden  object-cover" 
+            width={52}
+            height={52}
+            priority={true}
+            /></Link>
             {/* <ContainerTextFlip  words={["CHOOSE","LISTEN","BRIGHT"]}/> */}
             { (isMobile || !pathname.includes("/dashboard")) && (
               <Link href="/feed">
@@ -367,9 +375,14 @@ switch(label){
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
             {navItems.map(({ path, icon: Icon, label }) => (
               <Link key={path} href={getHref(label)}>
-              <motion.button
-              whileHover={{scale:1.02}}
+              <motion.button     
+              whileHover={{scale:1.02,y:-1,x:4}}
               whileTap={{scale:0.95}}
+               transition={{ 
+                              type: "spring", 
+                              stiffness: 400, 
+                              damping: 25 
+                            }}
                 role="link"
                 data-path={path}
                 className="flex items-center space-x-2 px-2 lg:px-3 py-2 rounded-lg transition-colors duration-200 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 relative"

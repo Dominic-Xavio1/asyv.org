@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { X, Upload, Link, Plus } from "lucide-react"
+import { useConfirmDialog } from "@/components/ui/use-confirm-dialog"
 
 // Predefined options
 const INTEREST_OPTIONS = [
@@ -42,6 +43,7 @@ const SKILL_OPTIONS = [
 ]
 
 export function DialogDemo({ open, setOpen }) {
+  const [confirm, confirmDialog] = useConfirmDialog()
   const [currentUser, setCurrentUsers] = useState(null);
   const [existingProfile, setExistingProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +83,7 @@ export function DialogDemo({ open, setOpen }) {
      const getProfiles = async ()=>{
       const res = await fetch('/api/users');
       const data = await res.json()
-const userProfile = data.users.find(user => user.created_by === currentUser?.id);
+const userProfile = data?.users?.find(user => user.created_by === currentUser?.id)||null;
 if (userProfile) {
   setFormData({
     fullName: userProfile.full_name || fullInfo?.rwandan_name || "",
@@ -261,6 +263,39 @@ if (userProfile) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validation
+    if (!formData.fullName?.trim()) {
+      toast.error('Full name is required')
+      return
+    }
+    if (!formData.username?.trim()) {
+      toast.error('Username is required')
+      return
+    }
+    if (!formData.email?.trim()) {
+      toast.error('Email is required')
+      return
+    }
+    
+    // ask user to confirm they've filled all fields
+    try {
+      const confirmed = await confirm({
+        title: "Confirm submission",
+        description: "Are you sure you filled all the fields before creating/updating your profile?",
+        confirmText: "Yes, submit",
+        cancelText: "Review fields",
+        destructive: false,
+      })
+
+      if (!confirmed) {
+        toast('Submission cancelled')
+        return
+      }
+    } catch (err) {
+      console.error('Confirm dialog error', err)
+      return
+    }
     
     try {
       const form = new FormData();
@@ -663,6 +698,7 @@ if (userProfile) {
           </DialogFooter>
         </form>
       </DialogContent>
+      {confirmDialog}
     </Dialog>
   )
 }

@@ -370,6 +370,17 @@ export default function AdvancedManagementPage() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!newUserForm.first_name?.trim()) {
+      toast.error('First name is required');
+      return;
+    }
+    if (!newUserForm.email?.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    
     setCreatingUser(true);
 
     try {
@@ -421,6 +432,13 @@ export default function AdvancedManagementPage() {
 
   const handleSubmitGrade = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!gradeForm.grade_name?.trim()) {
+      toast.error('Grade name is required');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -600,6 +618,17 @@ export default function AdvancedManagementPage() {
 
   const handleSubmitFamily = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!familyForm.family_name?.trim()) {
+      toast.error('Family name is required');
+      return;
+    }
+    if (!familyForm.family_number?.trim()) {
+      toast.error('Family number is required');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -916,6 +945,17 @@ export default function AdvancedManagementPage() {
   // Combination CRUD Handlers
   const handleAddCombination = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!combinationForm.combination_name?.trim()) {
+      toast.error('Combination name is required');
+      return;
+    }
+    if (!combinationForm.abbreviation?.trim()) {
+      toast.error('Abbreviation is required');
+      return;
+    }
+    
     setCombinationLoading(true);
 
     try {
@@ -1050,6 +1090,37 @@ export default function AdvancedManagementPage() {
   // University CRUD handlers
   const handleAddUniversity = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!universityForm.alumn_id?.trim()) {
+      toast.error('Alumni is required');
+      return;
+    }
+    if (!universityForm.degree?.trim()) {
+      toast.error('Degree is required');
+      return;
+    }
+    if (!universityForm.level?.trim()) {
+      toast.error('Level is required');
+      return;
+    }
+    if (!universityForm.status?.trim()) {
+      toast.error('Status is required');
+      return;
+    }
+    if (!universityForm.college_name?.trim()) {
+      toast.error('College name is required');
+      return;
+    }
+    if (!universityForm.country?.trim()) {
+      toast.error('Country is required');
+      return;
+    }
+    if (!universityForm.city?.trim()) {
+      toast.error('City is required');
+      return;
+    }
+    
     setUniversityLoading(true);
 
     try {

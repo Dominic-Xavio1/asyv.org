@@ -104,7 +104,9 @@ const MobileBottomNav = () => {
             return (
               <Link key={item.label} href={item.href}>
                 <motion.button
-                  whileTap={{ scale: 0.85 }}
+                  whileHover={{ scale: 1.06, y: -2 }}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all duration-300 relative mobile-nav-item ${
                     active
                       ? 'text-orange-600 dark:text-orange-400 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/40 dark:to-orange-800/20 shadow-md'
@@ -146,7 +148,9 @@ const MobileBottomNav = () => {
           {isDashboard && (
             <motion.button
               onClick={() => setSideMenuOpen(!sideMenuOpen)}
-              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.06, y: -2 }}
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className={`flex flex-col items-center justify-center w-16 h-16 rounded-2xl transition-all duration-300 relative mobile-nav-item ${
                 sideMenuOpen
                   ? 'text-purple-600 dark:text-purple-400 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/40 dark:to-purple-800/20 shadow-md'

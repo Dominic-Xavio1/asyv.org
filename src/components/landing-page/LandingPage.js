@@ -183,6 +183,7 @@ export default function LandingPage({ onAuthSuccess }) {
                                     alt={item.title}
                                     width={160}
                                     height={216}
+                                    priority={true}
                                     className="w-full h-full object-cover rounded-l-lg"
                                   />
                                 </div>
@@ -452,6 +453,7 @@ export default function LandingPage({ onAuthSuccess }) {
                       src={connect}
                       alt="Phone"
                       width={580}
+                      priority={true}
                       height={576}
                       className="w-full max-w-md md:max-w-lg lg:max-w-none h-auto object-cover"
                     />
@@ -486,6 +488,7 @@ export default function LandingPage({ onAuthSuccess }) {
                         height={800}
                         className="box-border caret-transparent w-full"
                         alt="Video Call"
+                        priority={true}
                       />
                     </motion.div>
                   </div>
@@ -614,6 +617,7 @@ export default function LandingPage({ onAuthSuccess }) {
                       src={jesi}
                       width={800}
                       height={600}
+                      priority={true}
                       alt="Mentorship"
                       className="aspect-square box-border caret-transparent object-cover w-full rounded-lg"
                     />

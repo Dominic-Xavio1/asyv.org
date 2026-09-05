@@ -35,6 +35,8 @@ export default async function handler(req, res) {
       },
     });
 
+    console.log("Socket.IO server initialized on path", SOCKET_PATH);
+
     res.socket.server.io = io;
     
     // Set IO instance for notification service

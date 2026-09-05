@@ -132,41 +132,66 @@ export async function PUT(request){
   try {
     const formData = await request.formData();
     const data = Object.fromEntries(formData);
-    const { id, title, content, media_url } = data;
-    
+    const { id, title, content, media_type } = data;
+    const mediaFile = formData.get('media_url');
+
     if (!id) {
-      return NextResponse.json(
-        { error: "Post id is required" }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Post id is required" }, { status: 400 });
     }
-    
+
+    // Handle file upload or string URL for media (same logic as POST)
+    const isFile = mediaFile instanceof File;
+    let mediaUrl = null;
+
+    if (isFile && mediaFile.size > 0) {
+      await ensureUploadDir();
+      const bytes = await mediaFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const timestamp = Date.now();
+      const ext = mediaFile.name.split('.').pop() || 'jpg';
+      const filename = `${title || 'post'}-${timestamp}.${ext}`;
+      const filepath = join(UPLOAD_DIR, filename);
+      await writeFile(filepath, buffer);
+      mediaUrl = `/uploads/posts/${filename}`;
+    } else if (!isFile && mediaFile && typeof mediaFile === 'string' && mediaFile.trim() !== '') {
+      mediaUrl = mediaFile;
+    }
+
+    // Determine media type if not provided
+    let detectedMediaType = media_type || null;
+    if (isFile && mediaFile.size > 0) {
+      const fileType = mediaFile.type;
+      if (fileType && fileType.startsWith('video/')) {
+        detectedMediaType = 'video';
+      } else if (fileType && fileType.startsWith('image/')) {
+        detectedMediaType = 'image';
+      }
+    } else if (!isFile && mediaUrl) {
+      const urlLower = mediaUrl.toLowerCase();
+      if (urlLower.match(/\.(mp4|mov|avi|webm|mkv)$/)) {
+        detectedMediaType = 'video';
+      } else if (urlLower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+        detectedMediaType = 'image';
+      }
+    }
+
     const response = await pool.query(
       `UPDATE api_post 
        SET title = $1, content = $2, media_url = COALESCE($3, media_url), 
-           media_type = COALESCE($4, media_type), updated_at = CURRENT_TIMESTAMP
+           media_type = COALESCE($4, media_type)
        WHERE id = $5
-       RETURNING id, created_by, title, content, media_url, media_type, created_at, updated_at`,
-      [title, content, media_url || null, media_type || null, id]
+       RETURNING id, created_by, title, content, media_url, media_type, created_at`,
+      [title, content, mediaUrl || null, detectedMediaType || null, id]
     );
-    
+
     if (response.rows.length === 0) {
-      return NextResponse.json(
-        { error: "Post not found" }, 
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
-    
-    return NextResponse.json({
-      success: true,
-      post: response.rows[0]
-    });
+
+    return NextResponse.json({ success: true, post: response.rows[0] });
   } catch(e) {
     console.log("/api/post PUT Error: ", e);
-    return NextResponse.json(
-      { error: "Failed to update post", details: e.message }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update post", details: e.message }, { status: 500 });
   }
 }
 export async function DELETE(request){

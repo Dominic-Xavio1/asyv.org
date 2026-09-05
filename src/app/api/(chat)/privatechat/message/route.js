@@ -45,7 +45,7 @@ export async function POST(request) {
     // Insert message
     console.log("📝 Inserting private message:", { conversationId, senderId, content, media_url });
     const response = await pool.query(
-      `INSERT INTO private_message (conversation_id, sender_id, content, media_url)
+      `INSERT INTO (conversation_id, sender_id, content, media_url)
        VALUES ($1, $2, $3, $4)
        RETURNING id, conversation_id, sender_id, content, media_url, created_at`,
       [conversationId, senderId, content || null, media_url || null]

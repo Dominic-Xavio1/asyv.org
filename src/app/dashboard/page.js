@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion as framerMotion, AnimatePresence } from "framer-motion"
 import { utils, writeFile } from 'xlsx';
+import { InteractiveButton } from '@/components/ui/interactive-button';
 import {
   Bell, MessageSquare, UserCog, Lock, KeyRound, ShieldCheck, LayoutList, Users,
   BookOpen, LogOut, ArrowLeft, Menu, X, Home, Plus, ChevronRight, Upload,
@@ -164,10 +165,13 @@ const PostForm = ({ onClose, onSubmit, userId, existingPost = null }) => {
       }
 
       const result = await response.json();
-      toast.success(existingPost ? 'Post updated successfully!' : 'Post Created successfully!');
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to save post');
+      console.log("result of post", result)
+      if(result.error) {
+        toast.error(result.error || 'Failed to save post');
+        console.log("error of post", result.error)
+        return;
       }
+      toast.success(existingPost ? 'Post updated successfully!' : 'Post Created successfully!');
 
       if (onSubmit) {
         onSubmit(result.post || existingPost);
@@ -1086,11 +1090,11 @@ const VillageEventForm = ({ onClose, onSubmit, userId, existingEvent = null }) =
           <input
             type="file"
             id="event-image"
-            className="hidden"
+            className="cursor-pointer"
             accept="image/*"
             onChange={handleImageChange}
             disabled={loading}
-            required
+            // required
           />
           <label htmlFor="event-image" className="cursor-pointer block space-y-2">
             <p className="text-sm text-neutral-600 dark:text-gray-400">
@@ -1475,16 +1479,18 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
           </div>
         </div>
         <div className="relative">
-          <button
+          <InteractiveButton
+            kind="icon"
             onClick={() => setShowMenu(!showMenu)}
             className="p-1 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded transition-colors"
           >
             <MoreVertical className="w-5 h-5 text-neutral-400 dark:text-gray-500" />
-          </button>
+          </InteractiveButton>
           {showMenu && (
             <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-900 rounded-lg shadow-lg dark:shadow-xl border border-neutral-200 dark:border-gray-700 py-1 z-10">
               {onEdit && (
-                <button
+                <InteractiveButton
+                  kind="icon" 
                   onClick={() => {
                     onEdit(item);
                     setShowMenu(false);
@@ -1493,9 +1499,11 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
                 >
                   <Edit2 className="w-4 h-4" />
                   Edit
-                </button>
+                </InteractiveButton>
               )}
-              <button
+              <InteractiveButton
+                type="button"
+                kind="destructive"
                 onClick={() => {
                   onDelete(item.id);
                   setShowMenu(false);
@@ -1504,7 +1512,7 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
-              </button>
+              </InteractiveButton>
             </div>
           )}
         </div>
@@ -2097,7 +2105,7 @@ export default function Dashboard() {
     let items = [];
     let title = '';
     let description = '';
-
+console.log("Opening overview list for type:", overviewStats);
     if (type === 'education') {
       items = overviewStats.continuedEducationStudents || [];
       title = 'Alumni in Further Education';

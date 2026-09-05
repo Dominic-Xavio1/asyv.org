@@ -1,12 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { io } from "socket.io-client"
 
 import { CALL_OFFER_TTL_MS, CALL_SIGNALING_EVENTS } from "@/lib/videocall/callConstants"
 import { getStoredUserDisplayName } from "@/lib/videocall/callUser"
-
-const SOCKET_PATH = "/api/socketio"
+import { createAppSocket, joinUserRoom } from "@/lib/socket/client"
 
 export function useCallSignaling({
   enabled = false,
@@ -93,11 +91,16 @@ export function useCallSignaling({
   useEffect(() => {
     if (!enabled || !userId) return undefined
 
-    const socket = io(undefined, { path: SOCKET_PATH })
+    const socket = createAppSocket()
     socketRef.current = socket
 
     socket.on("connect", () => {
-      socket.emit("join_user", { userId })
+      joinUserRoom(socket, userId)
+      setSocketReady(true)
+    })
+
+    socket.on("reconnect", () => {
+      joinUserRoom(socket, userId)
       setSocketReady(true)
     })
 

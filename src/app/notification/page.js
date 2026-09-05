@@ -858,7 +858,7 @@ const deleteAllNotifications = async () => {
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     className="mb-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200"
-                  />
+                  />{console.log("users ",users)}
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2 bg-white dark:bg-gray-800">
                     {users
                       .filter((user) => {
