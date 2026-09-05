@@ -1,7 +1,317 @@
-# Technical Support and Contact Information
+# ASYV ALUMNI & STUDENT PLATFORM - COMPREHENSIVE DOCUMENTATION MANUAL
 
-For any technical issues, system bugs, or more information regarding the ASYV Alumni Management System, please contact the technical team:
+This manual serves as the primary system-wide documentation and knowledge base for the Agahozo-Shalom Youth Village (ASYV) Platform. The AI Assistant uses this information to assist users (students, alumni, staff, CRCs, and superusers) with guide instructions, navigational locations, administrative tasks, and technical support.
 
-- **Dominic Savio**: Technical Lead (Email: dominicxavio09@gmail.com)
-- **Joseph**: Technical Support (Email: joseph@asyv.org)
-If you encounter an error during navigation, data export issues, or need help with your account, please reach out to Savio or Joseph for immediate assistance.
+---
+
+## SECTION 1: SYSTEM OVERVIEW AND MISSION
+
+The ASYV Platform is a web-based community network and information management system designed for students, alumni, staff, and administrators of Agahozo-Shalom Youth Village. Its primary goals are to:
+1. **Connect the Community**: Provide real-time feed sharing, comments, notifications, and instant messaging so that ASYV members can keep in touch, network, and grow.
+2. **Track Alumni Outcomes**: Log post-graduation statistics (e.g., college enrollments, career paths, and employment status) to measure community progress.
+3. **Manage Student Records**: Track academic performance (grades, exam points), family housing arrangements, and official reports (academic, behavioral, medical, general).
+
+---
+
+## SECTION 2: USER ROLES AND PERMISSION HIERARCHY
+
+The platform features a secure, role-based access control system based on user flags in the `api_user` database. The roles are defined as follows:
+
+1. **Student (`is_student = true`)**
+   - Active students residing in the village.
+   - Access is restricted to social features: community feed (`/dashboard`), real-time group and direct messaging (`/chat`), personal notifications, and directory searches. They cannot access management pages or student records.
+2. **Alumni (`is_alumni = true`)**
+   - Graduates of ASYV.
+   - Access is similar to students, with the addition of the **Alumni Tracking Panel** (`/alumni/forms`). Alumni can register their post-graduation activities (e.g., further education, college choices, employment details, and current country or sector).
+3. **Staff / Family Mother (`is_staff = true`)**
+   - Village staff members, including family mothers and educators.
+   - Can access family overview boards to track kids assigned to their families, view academic summaries, and write general comments.
+4. **CRC - Community Relations Coordinator (`is_crc = true`)**
+   - Administrative role with high-level viewing permissions.
+   - Can search, filter, and view detailed profiles of students and alumni, run reports on cohort statistics, and monitor system metrics. They cannot delete core system tables.
+5. **Superuser / Superadmin (`is_superuser = true`)**
+   - Complete system administration role.
+   - Access to all administrative dashboards (`/management` and `/management/advanced`).
+   - Can perform CRUD (Create, Read, Update, Delete) operations on user accounts, kids profiles, academic marks, combinations, grades, family groups, and university records. Can upload official student reports.
+
+---
+
+## SECTION 3: SYSTEM NAVIGATION AND ROUTING GUIDE
+
+Here are the key page locations and paths within the application:
+- **Landing Page (`/`)**: Renders the welcome page, highlighting ASYV's mission and showing links to log in.
+- **Login Page (`/login`)**: The entry portal for all users. Supports standard email/password forms and Google OAuth sign-in. Note: Google sign-in is only allowed if the user's email was pre-registered in the database by an administrator. Otherwise, it redirects to `/login?error=EmailNotRegistered`.
+- **Dashboard / Social Feed (`/dashboard`)**: The main community homepage. Users can write posts (supporting text and image uploads), comment on posts, and like updates. Includes a Quick Links floating menu and mobile bottom navigation.
+- **Real-Time Chat (`/chat`)**: The messaging interface. Users can search for peers, start direct messages, create or join group chats, modify group settings (add/remove members), and see online/offline states and typing indicators.
+- **User Management Dashboard (`/management`)**: Superuser-only interface to manage user accounts, roles, and genders.
+- **Advanced Management Dashboard (`/management/advanced`)**: Superuser-only portal to manage student combinations, grades, universities, family assignments, and Education Assistance Program (EAP) records.
+- **Student Profile View (`/management/user/[userId]`)**: Accessible to superusers and CRCs. Displays a student's full registration records, family details, health status, and academic progress history.
+- **Alumni Survey Forms (`/alumni/forms`)**: Alumni-only interface to submit employment status and higher education achievements.
+- **Video Call (`/videocall`)**: Real-time video conferencing module using PeerJS.
+- **Notifications Hub (`/notification`)**: Page listing system actions (likes, comments, messages, family alerts).
+
+---
+
+## SECTION 4: ADMINISTRATIVE PROCEDURES (FOR SUPERUSERS)
+
+This section provides step-by-step instructions for Superusers to perform administrative tasks on the platform:
+
+### 1. HOW TO CREATE AND REGISTER A NEW USER
+All user accounts must be registered by a Superuser.
+- **Step 1**: Log in as a Superuser and navigate to the User Management dashboard at `/management`.
+- **Step 2**: Click the **"Add User"** button located at the top-right of the user table. This opens the "Create New User" dialog box.
+- **Step 3**: Fill in the required fields:
+  - **First Name** (Required)
+  - **Email** (Required, must be unique)
+  - **Password** (Required)
+  - **Gender** (Required, select "Male" or "Female")
+  - **Rwandan Name** (Optional)
+  - **Phone** (Optional)
+- **Step 4**: Set the roles by configuring the dropdown selectors for:
+  - *Is Student* (Yes/No)
+  - *Is Alumni* (Yes/No)
+  - *Is Staff* (Yes/No)
+  - *Is CRC* (Yes/No)
+  - *Is Superuser* (Yes/No)
+- **Step 5**: Click **"Create User"** to submit the form.
+- **Step 6 (CRITICAL REDIRECTION RULE)**: If **"Is Student"** is set to **"Yes"**, saving the form will automatically redirect you to the Advanced Management dashboard at `/management/advanced` to complete the student's profile details.
+  - On this redirected screen, you must select the newly created user and enter their student profile details (origin district, origin sector, current city/district, current country, health issues, marital status, national exam points, maximum national exam points, mention, family assignment, and graduation status) to link their account to the village database.
+
+### 2. HOW TO CONFIGURE ADVANCED DATABASE SETTINGS
+All core village entities are managed from the Advanced Management dashboard at `/management/advanced`.
+
+- **Managing Subject Combinations**:
+  - Select the "Combinations" tab to create, edit, or delete combination abbreviation entries (e.g., combination name: "Physics-Chemistry-Mathematics", abbreviation: "PCM").
+- **Managing Grades and Graduation cohorts**:
+  - Select the "Grades" tab to define cohort levels (e.g., Grade name: "Class of 2024", admission year to ASYV: 2020, graduation year: 2024).
+- **Managing Families**:
+  - Select the "Families" tab to register ASYV family details (e.g., Family Name: "Nelson Mandela", Family Number: 3, Grade assignment, and Mother assignment to a Staff user ID).
+- **Managing Universities and Colleges**:
+  - Select the "Colleges" tab to insert, update, or delete records of higher education institutes that alumni attend.
+- **Managing EAP (Education Assistance Program)**:
+  - Select the "EAP" tab to manage academic sponsorship levels and logs tracking graduates receiving financial aid.
+
+### 3. HOW TO CREATE AND MANAGE STUDENT REPORTS
+Staff and Superusers can document student records (academic reports, medical entries, behavioral write-ups, and general certificates) and link them directly to their user profiles.
+- **Process**:
+  1. Navigate to `/management/advanced` or the specific student details page at `/management/user/[userId]`.
+  2. Locate the **"Student Reports"** module.
+  3. Enter a Title and Description for the report.
+  4. Select the **Report Type**: *academic*, *behavioral*, *medical*, or *general*.
+  5. Upload the report document (the PDF/image file is securely stored, and its reference URL is stored in the database).
+  6. Click **"Save Report"**. The record is linked to the student (`student_id`) and displays under their profile history.
+
+---
+
+## SECTION 5: TECHNICAL DATABASE SCHEMA
+
+For advanced query validation and statistical calculations (Text-to-SQL), the Postgres relational database structure is mapped below:
+
+1. **`api_user`**: Holds general credential and profile roles.
+   - `id` (INTEGER, Primary Key)
+   - `first_name` (VARCHAR), `rwandan_name` (VARCHAR), `email` (VARCHAR), `username` (VARCHAR)
+   - `is_student` (BOOLEAN), `is_alumni` (BOOLEAN), `is_staff` (BOOLEAN), `is_crc` (BOOLEAN), `is_superuser` (BOOLEAN)
+   - `gender` (VARCHAR: 'male' or 'female')
+   - `phone` (VARCHAR)
+2. **`api_kid`**: Profile extension table specifically for student metrics.
+   - `id` (INTEGER, Primary Key)
+   - `user_id` (INTEGER, Foreign Key referencing `api_user.id`)
+   - `family_id` (INTEGER, Foreign Key referencing `api_family.id`)
+   - `origin_district` (VARCHAR), `origin_sector` (VARCHAR)
+   - `points_in_national_exam` (INTEGER), `maximum_points_in_national_exam` (INTEGER), `mention` (VARCHAR)
+   - `graduation_status` (VARCHAR)
+3. **`api_kidacademics`**: Academic marks history.
+   - `id` (INTEGER, Primary Key)
+   - `kid_id` (INTEGER, Foreign Key referencing `api_kid.id`)
+   - `combination_id` (INTEGER, Foreign Key referencing `api_combination.id`)
+   - `academic_year` (INTEGER), `level` (VARCHAR - e.g. 'Senior 4'), `marks` (NUMERIC)
+4. **`api_combination`**: High-school subject paths.
+   - `id` (INTEGER, Primary Key)
+   - `combination_name` (VARCHAR), `abbreviation` (VARCHAR)
+5. **`api_family`**: ASYV residential families.
+   - `id` (INTEGER, Primary Key)
+   - `family_name` (VARCHAR), `family_number` (INTEGER)
+   - `mother_id` (INTEGER, Foreign Key referencing `api_user.id` - a staff member)
+   - `grade_id` (INTEGER, Foreign Key referencing `api_grade.id`)
+6. **`api_grade`**: Graduation cohort timelines.
+   - `id` (INTEGER, Primary Key)
+   - `grade_name` (VARCHAR), `admission_year_to_asyv` (INTEGER), `graduation_year_to_asyv` (INTEGER)
+7. **`student_reports`**: Official reports repository.
+   - `id` (INTEGER, Primary Key)
+   - `student_id` (INTEGER, Foreign Key referencing `api_user.id`)
+   - `title` (VARCHAR), `description` (TEXT), `report_file` (TEXT - upload url)
+   - `report_type` (VARCHAR - 'academic', 'behavioral', 'medical', 'general')
+   - `created_by` (INTEGER, Foreign Key referencing `api_user.id`)
+   - `created_at` (TIMESTAMP)
+
+---
+
+## SECTION 6: TECHNICAL SUPPORT AND SYSTEM CONTACTS
+
+If you encounter navigation errors, database connection failures, account permission conflicts, or data export glitches, contact the support team:
+
+- **Dominic Savio** (Technical Lead)
+  - Email: dominicxavio09@gmail.com
+  - Contact for: Core backend bugs, session authentication problems, API integrations, and database maintenance requests.
+- **Joseph** (Technical Support)
+  - Email: joseph@asyv.org
+  - Contact for: General user support, password reset requests, report template configurations, and user registration issues.
+- **Submitting Feedback**:
+  If you find bugs, report them immediately with screenshots and console error logs.
+# Alumni Management System AI Knowledge Base
+
+## Purpose
+
+This document gives the AI assistant deep context about the Alumni
+Management System. The AI should answer management, education,
+employment, institution, country and alumni profile questions.
+
+The AI must treat the alumni database as the source of truth.
+
+------------------------------------------------------------------------
+
+# Core Alumni Statistics
+
+## Overall Population
+
+Total graduates: - 1617 alumni
+
+Education and career outcomes: - Continued education alumni: 867 -
+Employed alumni: 624 - Alumni with either education or employment
+outcome: 1025
+
+Percentages: - Continued education rate: 54% - Employment rate: 39% -
+Positive outcome rate: 63%
+
+------------------------------------------------------------------------
+
+# Geographic Distribution
+
+The AI should understand alumni distribution by country.
+
+Recorded study/work locations include:
+
+## Rwanda
+
+-   Alumni count: 734
+
+## United States
+
+-   Alumni count: 56
+
+## Kenya
+
+-   Alumni count: 14
+
+The AI should answer questions like:
+
+"How many alumni are in Rwanda?" "How many alumni went to the United
+States?" "Compare alumni distribution by country."
+
+------------------------------------------------------------------------
+
+# Education Analysis
+
+The AI should analyze:
+
+-   Universities attended
+-   Countries of study
+-   Degrees/programs
+-   Graduation cohorts
+-   Families
+
+Examples:
+
+"How many alumni studied at University of Rwanda?"
+
+"Which institutions have the highest number of alumni?"
+
+"List alumni studying outside Rwanda."
+
+------------------------------------------------------------------------
+
+# Important Institutions
+
+Examples of institutions found:
+
+-   University of Rwanda
+-   Kepler University
+-   African Leadership University at Kigali
+-   United States International University Africa
+-   University of Kigali
+-   University of Lay Adventists of Kigali
+-   Institute Catholique de Kabgayi
+
+The AI should group alumni by institution.
+
+------------------------------------------------------------------------
+
+# Alumni Profile Fields
+
+Each alumni record may contain:
+
+-   id
+-   first_name
+-   rwandan_name
+-   email
+-   phone
+-   kid_id
+-   family
+-   grade
+-   institution
+
+------------------------------------------------------------------------
+
+# Employment Information
+
+The AI can analyze employment records.
+
+Top employers include:
+
+1.  Agahozo-Shalom Youth Village: 48 alumni
+2.  Rwanda Nation Police: 12 alumni
+3.  Local government: 12 alumni
+4.  Self-employed: 11 alumni
+5.  Envision Rwanda: 10 alumni
+
+The AI should answer:
+
+"Where do alumni work?" "Which companies employ the most alumni?"
+
+------------------------------------------------------------------------
+
+# Education vs Employment Questions
+
+The AI should support:
+
+-   How many alumni continued education?
+-   How many are employed?
+-   Which countries have alumni studying?
+-   Which institutions are most popular?
+-   Which families have the most alumni?
+-   Which grades have the strongest outcomes?
+
+------------------------------------------------------------------------
+
+# Data Accuracy Rules
+
+1.  Never create fake alumni.
+2.  Never guess missing statistics.
+3.  If information does not exist, say it is unavailable.
+4.  Use calculations from database records.
+5.  Protect personal contact information.
+
+------------------------------------------------------------------------
+
+# AI Reporting Format
+
+For statistics:
+
+Provide: - number - percentage - comparison - short explanation
+
+Example:
+
+"There are 1617 graduates. Among them, 867 continued education (54%),
+while 624 are employed (39%)."
+
+The AI acts as an alumni data analyst for the management system.

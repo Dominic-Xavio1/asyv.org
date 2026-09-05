@@ -3,10 +3,33 @@ export function getStoredUser() {
 
   try {
     const storedUser = localStorage.getItem("user")
-    return storedUser ? JSON.parse(storedUser) : null
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser)
+      if (parsed?.id != null) return parsed
+    }
+
+    const fullInfo = localStorage.getItem("fullInfo")
+    if (fullInfo) {
+      const profile = JSON.parse(fullInfo)
+      if (profile?.id != null) {
+        return {
+          id: profile.id,
+          email: profile.email,
+          username: profile.username,
+          second_name: profile.rwandan_name,
+        }
+      }
+    }
   } catch {
     return null
   }
+
+  return null
+}
+
+export function getStoredUserId() {
+  const user = getStoredUser()
+  return user?.id != null ? String(user.id) : null
 }
 
 export function getStoredUserDisplayName() {

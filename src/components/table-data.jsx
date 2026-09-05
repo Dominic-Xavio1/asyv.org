@@ -594,6 +594,13 @@ export function DataTableDemo({ className }) {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if(!formData.first_name || !formData.email || !formData.gender) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       // Don't send password if it's empty

@@ -1,62 +1,81 @@
-import * as React from "react"
-import { cva } from "class-variance-authority";
-import { motion } from "framer-motion" // 1. Import motion
-import { Slot } from "radix-ui" // Assuming this is @radix-ui/react-slot
+'use client';
 
-import { cn } from "@/lib/utils"
+import * as React from 'react';
+import { cva } from 'class-variance-authority';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Slot } from '@radix-ui/react-slot';
+
+import { cn } from '@/lib/utils';
+import { getButtonMotionProps } from '@/lib/motion-presets';
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-white hover:bg-destructive/90 ...",
-        outline: "border bg-background shadow-xs ...",
-        secondary: "bg-secondary text-secondary-foreground ...",
-        ghost: "hover:bg-accent ...",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
+        destructive:
+          'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+        outline:
+          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+        secondary:
+          'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
+        ghost:
+          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+        link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: "h-9 px-4 py-2",
-        xs: "h-6 px-2 text-xs",
-        sm: "h-8 px-3",
-        lg: "h-10 px-6",
-        icon: "size-9",
+        default: 'h-9 px-4 py-2',
+        xs: 'h-6 px-2 text-xs',
+        sm: 'h-8 px-3',
+        lg: 'h-10 px-6',
+        icon: 'size-9',
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: 'default',
+      size: 'default',
     },
   }
-)
+);
 
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant = 'default',
+  size = 'default',
   asChild = false,
+  disabled,
   ...props
 }) {
-  // 2. If asChild is true, we use Slot. Otherwise, we use motion.button
-  const Comp = asChild ? Slot : motion.button
+  const prefersReducedMotion = useReducedMotion();
+  const motionProps =
+    asChild || prefersReducedMotion || disabled
+      ? {}
+      : getButtonMotionProps({ variant, size });
+
+  if (asChild) {
+    return (
+      <Slot
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  }
 
   return (
-    <Comp
+    <motion.button
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      // 3. Add your global Framer Motion props here
-      // They will only apply if Comp is motion.button
-      whileHover={!asChild ? { scale: 1.02 } : {}}
-      whileTap={!asChild ? { scale: 0.95 } : {}}
-      transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      
+      disabled={disabled}
       className={cn(buttonVariants({ variant, size, className }))}
-      {...props} 
+      {...motionProps}
+      {...props}
     />
-  ); 
+  );
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };

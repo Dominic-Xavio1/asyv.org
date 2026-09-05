@@ -44,7 +44,7 @@ export default function UserDetailsPage() {
     const [feForm, setFeForm] = useState({
         degree: '',
         level: '',
-        status: '',
+         status: 'Ongoing',
         scholarship: '',
         scholarship_details: '',
         enrolled: false,
@@ -160,8 +160,8 @@ export default function UserDetailsPage() {
     const handleSubmitFE = async (e) => {
         e.preventDefault();
         
-        if (!feForm.degree || !feForm.level || !feForm.college_name || !feForm.country || !feForm.city) {
-            toast.error("Please fill in all required fields: Degree, Level, College, Country, and City.");
+        if (!feForm.degree || !feForm.level || !feForm.college_name || !feForm.country || !feForm.city || !feForm.status) {
+            toast.error("Please fill in all required fields: Degree, Level, College, Country, City, and Status.");
             return;
         }
 
@@ -785,7 +785,7 @@ export default function UserDetailsPage() {
             )}
 
             {/* Further Education (for Alumni) */}
-            {user.is_alumni && furtherEducation.length > 0 && (
+            {user.is_alumni && (
                 <Card className="mb-6">
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -805,52 +805,56 @@ export default function UserDetailsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {furtherEducation.map((fe) => (
-                                <div key={fe.id} className="border rounded-lg p-4 relative">
-                                    {isSuperuser && (
-                                        <div className="absolute top-4 right-4 flex gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => handleEditFE(fe)}>
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteFE(fe.id)} className="text-red-600 hover:text-red-700">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Degree</label>
-                                            <p className="text-lg font-semibold">{fe.degree || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Level</label>
-                                            <p className="text-lg">{fe.level || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Scholarship</label>
-                                            <p className="text-lg">{fe.scholarship || '-'} {fe.scholarship_details ? `- ${fe.scholarship_details}` : ''}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Enrolled</label>
-                                            <p className="text-lg">{fe.enrolled ? 'Yes' : 'No'}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                                            <p className="text-lg font-medium text-orange-600 dark:text-orange-400">{fe.status || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">College</label>
-                                            <p className="text-lg">{fe.college_name || '-'}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</label>
-                                            <p className="text-lg">{(fe.city ? fe.city + ', ' : '') + (fe.country || '') || '-'}</p>
+                        {furtherEducation.length > 0 ? (
+                            <div className="space-y-4">
+                                {furtherEducation.map((fe) => (
+                                    <div key={fe.id} className="border rounded-lg p-4 relative">
+                                        {isSuperuser && (
+                                            <div className="absolute top-4 right-4 flex gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => handleEditFE(fe)}>
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={() => handleDeleteFE(fe.id)} className="text-red-600 hover:text-red-700">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Degree</label>
+                                                <p className="text-lg font-semibold">{fe.degree || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Level</label>
+                                                <p className="text-lg">{fe.level || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Scholarship</label>
+                                                <p className="text-lg">{fe.scholarship || '-'} {fe.scholarship_details ? `- ${fe.scholarship_details}` : ''}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Enrolled</label>
+                                                <p className="text-lg">{fe.enrolled ? 'Yes' : 'No'}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                                                <p className="text-lg font-medium text-orange-600 dark:text-orange-400">{fe.status || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">College</label>
+                                                <p className="text-lg">{fe.college_name || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</label>
+                                                <p className="text-lg">{(fe.city ? fe.city + ', ' : '') + (fe.country || '') || '-'}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-gray-500 dark:text-gray-400">No further education records have been recorded.</p>
+                        )}
                     </CardContent>
                 </Card>
             )}
@@ -859,7 +863,7 @@ export default function UserDetailsPage() {
             {user.is_student && (
                 <>
                     {/* Academic Reports */}
-                    <Card className="mb-6">
+                    {/* <Card className="mb-6">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -943,10 +947,10 @@ export default function UserDetailsPage() {
                                 <p className="text-gray-500 dark:text-gray-400">No academic reports found.</p>
                             )}
                         </CardContent>
-                    </Card>
+                    </Card> */}
 
                     {/* Teacher Comments */}
-                    <Card className="mb-6">
+                    {/* <Card className="mb-6">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -1014,7 +1018,7 @@ export default function UserDetailsPage() {
                                 <p className="text-gray-500 dark:text-gray-400">No teacher comments found.</p>
                             )}
                         </CardContent>
-                    </Card>
+                    </Card> */}
                 </>
             )}
 
@@ -1137,11 +1141,35 @@ export default function UserDetailsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="level">Level</Label>
-                                <Input id="level" value={feForm.level} onChange={(e) => setFeForm({ ...feForm, level: e.target.value })} />
+                                <Select value={feForm.level || ''} onValueChange={(value) => setFeForm({ ...feForm, level: value })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a degree level..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="A0">A0 – Certificate / Foundation Year</SelectItem>
+                                        <SelectItem value="A1">A1 – Diploma / Advanced Certificate</SelectItem>
+                                        <SelectItem value="A2">A2 – Undergraduate Degree</SelectItem>
+                                        <SelectItem value="A3">A3 – Postgraduate Diploma / Honours</SelectItem>
+                                        <SelectItem value="A4">A4 – Master’s Degree</SelectItem>
+                                        <SelectItem value="A5">A5 – Doctorate / PhD</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="scholarship">Scholarship</Label>
-                                <Input id="scholarship" value={feForm.scholarship} onChange={(e) => setFeForm({ ...feForm, scholarship: e.target.value })} />
+                                <Select value={feForm.scholarship || ''} onValueChange={(value) => setFeForm({ ...feForm, scholarship: value })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select scholarship type..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Full Scholarship">Full Scholarship</SelectItem>
+                                        <SelectItem value="Partial Scholarship">Partial Scholarship</SelectItem>
+                                        <SelectItem value="Self Sponsored">Self Sponsored</SelectItem>
+                                        <SelectItem value="Government Sponsored">Government Sponsored</SelectItem>
+                                        <SelectItem value="Employer Sponsored">Employer Sponsored</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="scholarship_details">Scholarship Details</Label>
@@ -1161,7 +1189,7 @@ export default function UserDetailsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="status">Status</Label>
-                                <Select value={feForm.status || 'Ongoing'} onValueChange={(v) => setFeForm({ ...feForm, status: v })}>
+                                <Select value={feForm.status || 'Select option...'} onValueChange={(v) => setFeForm({ ...feForm, status: v })}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select status..." />
                                     </SelectTrigger>

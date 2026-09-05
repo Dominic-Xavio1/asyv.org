@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import toast from 'react-hot-toast';
-
+import {useConfirmDialog} from "@/components/ui/use-confirm-dialog";
 
 function AlumniByGradeContent() {
   const router = useRouter();
@@ -309,11 +309,29 @@ function AlumniByGradeContent() {
   };
 
   const handleCreateGrade = async (event) => {
-    event.preventDefault();
+     event.preventDefault();
     if (!gradeForm.grade_name.trim()) {
       toast.error('Grade name is required.');
       return;
     }
+      try {
+      const confirmed = await confirm({
+        title: "Confirm creation",
+        description: "Are you sure you want to create this grade?",
+        confirmText: "Yes, submit",
+        cancelText: "Review fields",
+        destructive: false,
+      })
+
+      if (!confirmed) {
+        toast('Submission cancelled')
+        return
+      }
+    } catch (err) {
+      console.error('Confirm dialog error', err)
+      return
+    }
+   
 
     setGradeActionLoading(true);
     try {
@@ -356,6 +374,23 @@ function AlumniByGradeContent() {
     if (!editGradeForm.grade_name.trim()) {
       toast.error('Grade name is required.');
       return;
+    }
+      try {
+      const confirmed = await confirm({
+        title: "Confirm update",
+        description: "Are you sure you want to update this grade?",
+        confirmText: "Yes, submit",
+        cancelText: "Review fields",
+        destructive: false,
+      })
+
+      if (!confirmed) {
+        toast('Submission cancelled')
+        return
+      }
+    } catch (err) {
+      console.error('Confirm dialog error', err)
+      return
     }
 
     setGradeActionLoading(true);
@@ -620,7 +655,7 @@ function AlumniByGradeContent() {
       cancelled = true;
     };
   }, [requestingUserId, allowed, gradeIdParam, familyIdParam, fetchJson]);
-
+const [confirm,confirmDialog] = useConfirmDialog();
   const title = useMemo(() => {
     if (familyDetail) return familyDetail.family_name || 'Family';
     if (gradeDetail) return gradeDetail.grade_name || 'Grade';
@@ -888,6 +923,7 @@ function AlumniByGradeContent() {
                   type="number"
                   value={gradeForm.admission_year_to_asyv}
                   onChange={(event) => setGradeForm((form) => ({ ...form, admission_year_to_asyv: event.target.value }))}
+                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -897,6 +933,7 @@ function AlumniByGradeContent() {
                   type="number"
                   value={gradeForm.graduation_year_to_asyv}
                   onChange={(event) => setGradeForm((form) => ({ ...form, graduation_year_to_asyv: event.target.value }))}
+                  required
                 />
               </div>
             </div>
@@ -998,10 +1035,12 @@ function AlumniByGradeContent() {
               <div className="grid gap-2">
                 <Label htmlFor="edit-admission-year">Admission year</Label>
                 <Input
+
                   id="edit-admission-year"
                   type="number"
                   value={editGradeForm.admission_year_to_asyv}
                   onChange={(event) => setEditGradeForm((form) => ({ ...form, admission_year_to_asyv: event.target.value }))}
+                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -1011,6 +1050,7 @@ function AlumniByGradeContent() {
                   type="number"
                   value={editGradeForm.graduation_year_to_asyv}
                   onChange={(event) => setEditGradeForm((form) => ({ ...form, graduation_year_to_asyv: event.target.value }))}
+                  required
                 />
               </div>
             </div>
@@ -1243,6 +1283,7 @@ function AlumniByGradeContent() {
           </form>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

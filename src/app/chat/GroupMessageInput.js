@@ -317,20 +317,37 @@ export default function GroupMessageInput({
   }
   // ── Typing indicator emit ──────────────────────────────────────────────
   const emitTyping = (isTyping) => {
-    if (!socket?.connected || !selectedChat?.id || !currentUserId) return
+    if (!socket || !selectedChat?.id || !currentUserId) return
     const isGroup = selectedChat?.isGroup || selectedChat?.type === "group"
+    // Use server-expected event names so start/stop are handled correctly
     if (isGroup) {
-      socket.emit("typing_group", {
-        groupId: selectedChat.id,
-        userId: currentUserId,
-        isTyping,
-      })
+      if (isTyping) {
+        socket.emit('group_typing_started', {
+          groupId: String(selectedChat.id),
+          userId: String(currentUserId),
+          isTyping: true,
+        })
+      } else {
+        socket.emit('group_typing_stopped', {
+          groupId: String(selectedChat.id),
+          userId: String(currentUserId),
+          isTyping: false,
+        })
+      }
     } else {
-      socket.emit("typing_private", {
-        conversationId: selectedChat.id,
-        userId: currentUserId,
-        isTyping,
-      })
+      if (isTyping) {
+        socket.emit('private_typing_started', {
+          conversationId: String(selectedChat.id),
+          userId: String(currentUserId),
+          isTyping: true,
+        })
+      } else {
+        socket.emit('private_typing_stopped', {
+          conversationId: String(selectedChat.id),
+          userId: String(currentUserId),
+          isTyping: false,
+        })
+      }
     }
   }
 

@@ -49,6 +49,17 @@ export function AuthModal({ onClose, initialMode = "login", onSuccess }) {
   const handleLoginSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    
+    // Validation
+    if (!loginData.email?.trim()) {
+      setError("Email is required")
+      return
+    }
+    if (!loginData.password?.trim()) {
+      setError("Password is required")
+      return
+    }
+    
     setLoading(true)
     
     try {
@@ -66,6 +77,33 @@ export function AuthModal({ onClose, initialMode = "login", onSuccess }) {
   const handleSignupSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    
+    // Validation
+    if (!signupData.full_name?.trim()) {
+      setError("Full name is required")
+      return
+    }
+    if (!signupData.email?.trim()) {
+      setError("Email is required")
+      return
+    }
+    if (!signupData.password?.trim()) {
+      setError("Password is required")
+      return
+    }
+    if (!signupData.password_confirm?.trim()) {
+      setError("Please confirm your password")
+      return
+    }
+    if (signupData.password !== signupData.password_confirm) {
+      setError("Passwords do not match")
+      return
+    }
+    if (!signupData.role) {
+      setError("Please select a role")
+      return
+    }
+    
     setLoading(true)
 
     try {

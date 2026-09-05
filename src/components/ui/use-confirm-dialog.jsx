@@ -1,15 +1,14 @@
 "use client"
 
 import { useCallback, useRef, useState } from "react"
+import { InteractiveButton } from "@/components/ui/interactive-button"
 import {
   AlertDialog,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogAction,
 } from "./alert-dialog"
 
 export function useConfirmDialog() {
@@ -65,11 +64,12 @@ export function useConfirmDialog() {
           ) : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel type="button" onClick={() => closeDialog(false)}>
+          <InteractiveButton type="button" kind="ghost" onClick={() => closeDialog(false)}>
             {dialogState.cancelText}
-          </AlertDialogCancel>
-          <AlertDialogAction
+          </InteractiveButton>
+          <InteractiveButton
             type="button"
+            kind="destructive"
             onClick={() => closeDialog(true)}
             className={
               dialogState.destructive
@@ -78,7 +78,7 @@ export function useConfirmDialog() {
             }
           >
             {dialogState.confirmText}
-          </AlertDialogAction>
+          </InteractiveButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

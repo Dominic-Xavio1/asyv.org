@@ -4,7 +4,10 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 
 import { useTheme } from '@/lib/theme'
 
-import { io } from "socket.io-client"
+import { createAppSocket, joinUserRoom } from "@/lib/socket/client"
+import { CALL_SIGNALING_EVENTS } from "@/lib/videocall/callConstants"
+import { getStoredUser } from "@/lib/videocall/callUser"
+import { useIncomingCallStore } from "@/stores/incomingCallStore"
 
 // import { FireworksBackground } from "@/components/animate-ui/components/backgrounds/fireworks"
 
@@ -439,8 +442,13 @@ export default function ChatPage() {
   const [showEmoji, setShowEmoji] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [confirm, confirmDialog] = useConfirmDialog()
+  const setIncomingCall = useIncomingCallStore((s) => s.setIncomingCall)
+  const clearIncomingCall = useIncomingCallStore((s) => s.clearIncomingCall)
 
-  const [typingUsers, setTypingUsers] = useState([])
+  const [typingMap, setTypingMap] = useState({})
+
+  // Derived list of typing users for the currently selected chat
+  const typingUsers = selectedChat ? (typingMap[String(selectedChat.id)] || []) : []
 
   const { resolvedTheme } = useTheme();
 
@@ -889,13 +897,7 @@ export default function ChatPage() {
 
   useEffect(() => {
 
-    try {
-
-      const storedUser = localStorage.getItem("user")
-
-      if (storedUser) setCurrentUser(JSON.parse(storedUser))
-
-    } catch (err) { console.error("Error reading current user from localStorage:", err) }
+    setCurrentUser(getStoredUser())
 
   }, [])
 
@@ -1099,19 +1101,13 @@ export default function ChatPage() {
 
     if (!currentUser?.id) return
 
-    const socketInstance = io(undefined, { path: "/api/socketio" })
+    const socketInstance = createAppSocket()
 
     setSocket(socketInstance)
 
-
-
-    socketInstance.on("connect", () => {
-
-      console.log("Chat Socket connected successfully");
-
-      socketInstance.emit("join_user", { userId: currentUser.id })
-
-      socketInstance.emit("join_notifications", { userId: currentUser.id });
+    const joinChatRooms = () => {
+      joinUserRoom(socketInstance, currentUser.id)
+      socketInstance.emit("join_notifications", { userId: currentUser.id })
 
       if (selectedChat?.id) {
 
@@ -1124,10 +1120,42 @@ export default function ChatPage() {
       }
 
       socketInstance.emit("get_online_users")
+    }
 
+    const onIncomingCall = (payload) => {
+      if (!payload?.callId) return
+      setIncomingCall(payload)
+    }
+
+    const onIncomingCallExpired = (payload) => {
+      const current = useIncomingCallStore.getState().incomingCall
+      if (!current || String(current.callId) !== String(payload?.callId)) return
+      toast.error("Call timed out")
+      clearIncomingCall()
+    }
+
+    const onIncomingCallCancelled = (payload) => {
+      const current = useIncomingCallStore.getState().incomingCall
+      if (!current || String(current.callId) !== String(payload?.callId)) return
+      toast.error("Caller cancelled the call")
+      clearIncomingCall()
+    }
+
+    socketInstance.on("connect", () => {
+      console.log("Chat Socket connected successfully")
+      joinChatRooms()
     })
 
+    socketInstance.on("reconnect", () => {
+      joinChatRooms()
+    })
+    socketInstance.on("connect_error", (err) => {
+      console.error("Chat Socket connect_error:", err)
+    })
 
+    socketInstance.on(CALL_SIGNALING_EVENTS.incoming, onIncomingCall)
+    socketInstance.on(CALL_SIGNALING_EVENTS.expired, onIncomingCallExpired)
+    socketInstance.on(CALL_SIGNALING_EVENTS.cancelled, onIncomingCallCancelled)
 
     socketInstance.on("online_users_list", (data) => {
 
@@ -1210,6 +1238,7 @@ export default function ChatPage() {
       const msgId = String(message.id)
 
       if (String(message.sender_id) !== String(currentUser?.id)) {
+        console.log(`Message from ${message || 'Someone'} in conversation ${convId}`)
 
         toast.success(`New message from ${message.sender_name || 'Someone'}`);
 
@@ -1457,74 +1486,67 @@ export default function ChatPage() {
 
 
 
+    // Track typing per conversation/group so we can show indicators in lists and headers
     socketInstance.on("typing_private", ({ conversationId, userId, userName, isTyping }) => {
-
-      if (selectedChat && String(selectedChat.id) === String(conversationId) && String(userId) !== String(currentUser?.id)) {
-
+      try {
+        const key = String(conversationId)
+        if (String(userId) === String(currentUser?.id)) return
         if (isTyping) {
-
-          setTypingUsers((prev) => {
-
-            const exists = prev.some(u => String(u.userId) === String(userId));
-
-            if (exists) return prev;
-
-            return [...prev, { userId: String(userId), userName: userName || `User ${userId}` }];
-
-          });
-
+          setTypingMap((prev) => {
+            const list = Array.isArray(prev[key]) ? [...prev[key]] : []
+            const exists = list.some(u => String(u.userId) === String(userId))
+            if (exists) return prev
+            list.push({ userId: String(userId), userName: userName || `User ${userId}` })
+            return { ...prev, [key]: list }
+          })
         }
-
-      }
-
+      } catch (e) { console.error('typing_private handler error', e) }
     });
-
-
 
     socketInstance.on("user_stopped", ({ conversationId, userId }) => {
-
-      if (selectedChat && String(selectedChat.id) === String(conversationId)) {
-
-        setTypingUsers((prev) => prev.filter(u => String(u.userId) !== String(userId)));
-
-      }
-
+      try {
+        const key = String(conversationId)
+        setTypingMap((prev) => {
+          const list = Array.isArray(prev[key]) ? prev[key].filter(u => String(u.userId) !== String(userId)) : []
+          if (list.length === 0) {
+            const copy = { ...prev }
+            delete copy[key]
+            return copy
+          }
+          return { ...prev, [key]: list }
+        })
+      } catch (e) { console.error('user_stopped handler error', e) }
     });
-
-
 
     socketInstance.on("typing_group", ({ groupId, userId, userName, isTyping }) => {
-
-      if (selectedChat && String(selectedChat.id) === String(groupId) && String(userId) !== String(currentUser?.id)) {
-
+      try {
+        const key = String(groupId)
+        if (String(userId) === String(currentUser?.id)) return
         if (isTyping) {
-
-          setTypingUsers((prev) => {
-
-            const exists = prev.some(u => String(u.userId) === String(userId));
-
-            if (exists) return prev;
-
-            return [...prev, { userId: String(userId), userName: userName || `User ${userId}` }];
-
-          });
-
+          setTypingMap((prev) => {
+            const list = Array.isArray(prev[key]) ? [...prev[key]] : []
+            const exists = list.some(u => String(u.userId) === String(userId))
+            if (exists) return prev
+            list.push({ userId: String(userId), userName: userName || `User ${userId}` })
+            return { ...prev, [key]: list }
+          })
         }
-
-      }
-
+      } catch (e) { console.error('typing_group handler error', e) }
     });
 
-
-
     socketInstance.on("group_stopped", ({ groupId, userId }) => {
-
-      if (selectedChat && String(selectedChat.id) === String(groupId)) {
-
-        setTypingUsers((prev) => prev.filter(u => String(u.userId) !== String(userId)));
-
-      }
-
+      try {
+        const key = String(groupId)
+        setTypingMap((prev) => {
+          const list = Array.isArray(prev[key]) ? prev[key].filter(u => String(u.userId) !== String(userId)) : []
+          if (list.length === 0) {
+            const copy = { ...prev }
+            delete copy[key]
+            return copy
+          }
+          return { ...prev, [key]: list }
+        })
+      } catch (e) { console.error('group_stopped handler error', e) }
     });
 
 
@@ -1567,18 +1589,21 @@ export default function ChatPage() {
 
       clearInterval(activityInterval)
 
+      socketInstance.off(CALL_SIGNALING_EVENTS.incoming, onIncomingCall)
+      socketInstance.off(CALL_SIGNALING_EVENTS.expired, onIncomingCallExpired)
+      socketInstance.off(CALL_SIGNALING_EVENTS.cancelled, onIncomingCallCancelled)
+
       socketInstance.disconnect()
 
-      setTypingUsers([])
+      setTypingMap({})
 
     }
 
-  }, [currentUser, selectedChat, mapConversationToChat, mapMessageToUi, loadOnlineUsers, parseReplyFromContent])
+  }, [currentUser, selectedChat, mapConversationToChat, mapMessageToUi, loadOnlineUsers, parseReplyFromContent, setIncomingCall, clearIncomingCall])
 
 
 
   useEffect(() => {
-    setTypingUsers([])
     setReplyToMessage(null)
   }, [selectedChat?.id])
 
@@ -1786,9 +1811,34 @@ export default function ChatPage() {
 
     const sendViaSocket = () => {
 
-      return new Promise((resolve, reject) => {
+      const waitForConnect = (sock, timeout = 5000) => {
+        return new Promise((res, rej) => {
+          if (!sock) return rej(new Error('No socket'))
+          if (sock.connected) return res()
+          const onConnect = () => { cleanup(); res() }
+          const onError = (err) => { cleanup(); rej(err || new Error('connect_error')) }
+          const timer = setTimeout(() => { cleanup(); rej(new Error('Socket connect timeout')) }, timeout)
+          const cleanup = () => {
+            clearTimeout(timer)
+            try { sock.off('connect', onConnect); sock.off('connect_error', onError); sock.off('connect_timeout', onError) } catch (_) {}
+          }
+          sock.on('connect', onConnect)
+          sock.on('connect_error', onError)
+          sock.on('connect_timeout', onError)
+        })
+      }
 
-        if (!socket || !socket.connected) { reject(new Error("Socket not connected")); return }
+      return new Promise(async (resolve, reject) => {
+
+        if (!socket) { reject(new Error("Socket not connected")); return }
+
+        try {
+          if (!socket.connected) {
+            await waitForConnect(socket, 5000)
+          }
+        } catch (e) {
+          return reject(new Error("Socket not connected"))
+        }
 
         const eventName = isGroupChat ? "send_group_message" : "send_private_message"
 
@@ -1800,69 +1850,49 @@ export default function ChatPage() {
 
           : { conversationId: chatId, senderId, content: msgContent, mediaUrl: mediaUrl || null, replyToMessageId: replyMeta?.id || null }
 
+        let responded = false
         socket.emit(eventName, messagePayload, (response) => {
-
+          responded = true
           if (response?.success) {
-
             setMessages((prev) => {
-
               const filtered = prev.filter((msg) => msg.id !== tempId)
-
               const realMessage = mapMessageToUi(response.message)
-
               if (!realMessage) return filtered
               return [...filtered, { ...realMessage, replyToText: realMessage.replyToText || replyMeta?.text || null }]
-
             })
 
             setChats((prev) => {
-
               let preview = ""
-
               if (response.message.content) {
                 const parsedPreview = parseReplyFromContent(response.message.content).text
                 preview = parsedPreview.length > 50
                   ? parsedPreview.substring(0, 50) + "..." : parsedPreview
-
               } else if (response.message.media_url) {
-
                 const url = response.message.media_url.toLowerCase()
-
                 if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) preview = "📷 Photo"
-
                 else if (url.match(/\.(mp4|webm|mov)$/)) preview = "🎥 Video"
-
                 else if (url.match(/\.(mp3|wav|ogg)$/)) preview = "🎵 Audio"
-
                 else preview = "📎 File"
-
               } else { preview = "No messages yet" }
 
               return prev.map((chat) => {
-
                 if (String(chat.id) !== chatId) return chat
-
                 return { ...chat, lastMessage: preview, timestamp: formatTime(response.message.created_at), sortTime: response.message.created_at }
-
               }).sort((a, b) => {
-
                 const timeA = a.sortTime ? new Date(a.sortTime).getTime() : 0
-
                 const timeB = b.sortTime ? new Date(b.sortTime).getTime() : 0
-
                 return timeB - timeA
-
               })
-
             })
 
             resolve(response)
-
           } else { reject(new Error(response?.error || "Failed to send message")) }
-
         })
 
-        setTimeout(() => { reject(new Error("Socket timeout")) }, 5000)
+        // Fallback timeout if the server callback isn't called
+        setTimeout(() => {
+          if (!responded) reject(new Error("Socket timeout"))
+        }, 5000)
 
       })
 
@@ -1882,14 +1912,32 @@ export default function ChatPage() {
 
       if (messageData) {
 
-        toast.error("Failed to send message. Please try again.")
+        if (socketError.message === "Socket not connected") {
+          toast.error("Connection lost. Reconnecting...")
+          // Attempt to reconnect
+          if (socket && !socket.connected) {
+            socket.connect()
+          }
+        } else {
+          toast.error("Failed to send message. Please try again.")
+        }
+        console.log("Message data that failed to send:", messageData)
 
       } else {
 
         setMessageInput(content)
         setReplyToMessage(replyMeta || null)
+        console.log("Message content that failed to send:", content, "Reply meta:", replyMeta)
 
-        toast.error("Failed to send message. Please try again.")
+        if (socketError.message === "Socket not connected") {
+          toast.error("Connection lost. Reconnecting...")
+          // Attempt to reconnect
+          if (socket && !socket.connected) {
+            socket.connect()
+          }
+        } else {
+          toast.error("Failed to send message. Please try again.")
+        }
 
       }
 
@@ -2513,7 +2561,14 @@ export default function ChatPage() {
 
                               <div className="flex items-center gap-2 min-w-0">
 
-                                <p className={`text-sm font-semibold ${textColor} truncate`}>{chat.user.name}</p>
+                                <div className="min-w-0">
+                                  <p className={`text-sm font-semibold ${textColor} truncate`}>{chat.user.name}</p>
+                                  {Array.isArray(typingMap[String(chat.id)]) && typingMap[String(chat.id)].length > 0 && (
+                                    <p className="text-xs text-green-500 truncate">
+                                      {typingMap[String(chat.id)].slice(0,2).map(u => u.userName).join(', ')} {typingMap[String(chat.id)].length > 1 ? 'are typing...' : 'is typing...'}
+                                    </p>
+                                  )}
+                                </div>
 
                                 {chat.type === 'group' && (
 
@@ -2843,7 +2898,14 @@ export default function ChatPage() {
 
                                 <div className="flex items-center gap-2 min-w-0">
 
-                                  <p className={`text-sm font-semibold truncate`}>{chat.user.name}</p>
+                                  <div className="min-w-0">
+                                    <p className={`text-sm font-semibold truncate`}>{chat.user.name}</p>
+                                    {Array.isArray(typingMap[String(chat.id)]) && typingMap[String(chat.id)].length > 0 && (
+                                      <p className="text-xs text-green-500 truncate">
+                                        {typingMap[String(chat.id)].slice(0,2).map(u => u.userName).join(', ')} {typingMap[String(chat.id)].length > 1 ? 'are typing...' : 'is typing...'}
+                                      </p>
+                                    )}
+                                  </div>
 
                                   {chat.type === 'group' && (
 
@@ -3077,15 +3139,21 @@ function MobileChatContent({
               <h2 className={`font-semibold text-sm  truncate`}>{selectedChat?.user?.name}</h2>
 
               <div className="flex items-center gap-2 min-w-0">
-                <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'} truncate`}>
+                {typingUsers && typingUsers.length > 0 ? (
+                  <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'} truncate`}>
+                    {typingUsers.slice(0, 2).map(u => u.userName).join(', ')}{typingUsers.length > 1 ? ' are typing...' : ' is typing...'}
+                  </p>
+                ) : (
+                  <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'} truncate`}>
 
-                  {isGroup
+                    {isGroup
 
-                    ? `${selectedChat.user.memberCount} members`
+                      ? `${selectedChat.user.memberCount} members`
 
-                    : (onlineUsers.some(user => String(user.id) === String(selectedChat?.user?.id)) ? "Active now" : "Offline")}
+                      : (onlineUsers.some(user => String(user.id) === String(selectedChat?.user?.id)) ? "Active now" : "Offline")}
 
-                </p>
+                  </p>
+                )}
 
                 {isGroup && (
                   <button
@@ -3110,15 +3178,15 @@ function MobileChatContent({
           <div className="flex items-center gap-0.5 flex-shrink-0">
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              // onClick={() => onStartCall?.("audio")}
-                     onClick={async () => {
-                await confirm({
-                  title: 'Feature unavailable',
-                  description: 'This feature is coming soon!',
-                  confirmText: 'Okay',
-                  cancelText: 'Close',
-                })
-              }}
+              onClick={() => onStartCall?.("audio")}
+            //        onClick={async () => {
+            //   await confirm({
+            //     title: 'Feature unavailable',
+            //     description: 'This feature is coming soon!',
+            //     confirmText: 'Okay',
+            //     cancelText: 'Close',
+            //   })
+            // }}
             >
 
               <Phone className="h-4 w-4" />
@@ -3126,15 +3194,7 @@ function MobileChatContent({
             </Button>
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
-              // onClick={() => onStartCall?.("video")}
-                     onClick={async () => {
-                await confirm({
-                  title: 'Feature unavailable',
-                  description: 'This feature is coming soon!',
-                  confirmText: 'Okay',
-                  cancelText: 'Close',
-                })
-              }}
+              onClick={() => onStartCall?.("video")}
             >
               <Video className="h-4 w-4" />
             </Button>
@@ -3216,7 +3276,7 @@ function MobileChatContent({
                           </div>
                         </div>
 
-                        <span className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                        <span className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"} ${onlineUsers.some((u) => String(u.id) === String(m?.id)) ? "text-orange-400 font-bold" : "text-gray-500"}`}>
                           {onlineUsers.some((u) => String(u.id) === String(m?.id)) ? "Online" : "Offline"}
                         </span>
                       </div>
@@ -3427,7 +3487,6 @@ function MobileChatContent({
                         )
 
                       )}
-
                       <p className={`text-[11px] ${textMuted}`}>{message.timestamp}</p>
 
                     </div>

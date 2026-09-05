@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Search, Calendar, User, Filter, ChevronRight, ChevronLeft, Grid, List, X, MapPin, Mail, Briefcase, Heart, Eye, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InteractiveButton } from '@/components/ui/interactive-button';
 import {
   Select,
   SelectContent,
@@ -263,7 +264,7 @@ export default function SearchResultsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                People
+                Asyv Members Profiles
               </h1>
               <div className="md:hidden flex items-center gap-2">
                 <button
@@ -539,7 +540,9 @@ export default function SearchResultsPage() {
               const parsedSkills = Array.isArray(u.skills) ? u.skills : (typeof u.skills === 'string' ? JSON.parse(u.skills || '[]') : []);
               
               return (
-                <div key={u.id} className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 p-4 hover:shadow-xl hover:border-green-200 dark:hover:border-green-800 hover:scale-[1.02] ${viewMode === 'list' ? 'flex items-start gap-4' : ''}`}>
+                <div key={u.id}
+                onClick={() => openProfileModal(u)}
+                className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 p-4 hover:shadow-xl hover:border-green-200 dark:hover:border-green-800 hover:scale-[1.02] ${viewMode === 'list' ? 'flex items-start gap-4' : ''}`}>
                   <div className="flex-shrink-0">
                     {/* Profile Image with hover effect */}
                     <div className="relative group">
@@ -577,16 +580,18 @@ export default function SearchResultsPage() {
                     {u.bio && (
                       <div className="mt-2 mb-3">
                         <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                          {truncateText(u.bio, 120)}
+                          {truncateText(u.bio, 220)}
                         </p>
-                        {u.bio.length > 10 && (
-                          <button
+                        {u.bio.length > 30 && (
+                          <InteractiveButton
+                            type="button"
+                            kind="ghost"
                             onClick={() => openProfileModal(u)}
                             className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-xs font-medium mt-1 flex items-center gap-1 transition-colors"
                           >
                             <Eye size={12} />
                             View full profile
-                          </button>
+                          </InteractiveButton>
                         )}
                       </div>
                     )}

@@ -31,6 +31,8 @@ const geistMono = Geist_Mono({
 // });
 export const metadata = {
   title: "asyv.org Platform",
+  description: 'Asyv community is a platform for all asyv members to connect, share and grow together.',
+  generator:'Dominique Savio',
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },

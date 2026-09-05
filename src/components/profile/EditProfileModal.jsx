@@ -24,6 +24,17 @@ export function EditProfileModal({ open, onOpenChange }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validation
+    if (!formData.username?.trim()) {
+      toast.error('Username is required')
+      return
+    }
+    if (!formData.email?.trim()) {
+      toast.error('Email is required')
+      return
+    }
+    
     setIsLoading(true)
     try {
       const response = await fetch("/api/users/profile", {

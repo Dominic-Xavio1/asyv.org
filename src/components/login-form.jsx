@@ -162,6 +162,7 @@ export function LoginForm({
         localStorage.setItem("fullInfo", JSON.stringify(data.fullInfo));
 
         localStorage.setItem("second_name", JSON.stringify(data.user.second_name));
+        window.dispatchEvent(new Event("asyv-auth-updated"));
         console.log("Login successful, user data:", data);       
         toast.success(`Welcome back, ${data.fullInfo.first_name} ${data.fullInfo.rwandan_name}!`, { duration: 3000 });
 

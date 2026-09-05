@@ -1,11 +1,10 @@
 'use client';
 
 
-
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { MessageCircle, Share2, Heart, Search, Filter,Calendar, ChevronRight, Compass, Flame, Loader, AlertCircle, ExternalLink, X, Trash2, MapPin, Smile } from 'lucide-react';
+import { MessageCircle, Share2, Heart, Search, Filter, Calendar, ChevronRight, Compass, Flame, Loader, AlertCircle, ExternalLink, X, Trash2, MapPin, Smile } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Image from 'next/image';
@@ -28,6 +27,7 @@ import defaultAvatar from '../../../public/default.png';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
+import { InteractiveButton } from '@/components/ui/interactive-button';
 
 const EmojiPicker = dynamic(() => import('@/components/emojiPicker'), { ssr: false });
 
@@ -63,13 +63,14 @@ const OpportunityDescription = ({ description }) => {
         {expanded || !isLong ? description : preview}
       </p>
       {isLong && (
-        <button
+        <InteractiveButton
           type="button"
+          kind="ghost"
           onClick={() => setExpanded(!expanded)}
-          className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline mt-1"
+          className="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline mt-1 bg-transparent border-0 p-0 h-auto"
         >
           {expanded ? 'Show less' : 'Read more'}
-        </button>
+        </InteractiveButton>
       )}
     </div>
   );
@@ -247,13 +248,13 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
   return (
 
-    <motion.div 
-    
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: 20 }}
-    transition={{ duration: 0.5, ease: "easeInOut" }}
-    className="mt-4 pt-4 border-t border-neutral-200 dark:border-gray-700 space-y-4">
+    <motion.div
+
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+      className="mt-4 pt-4 border-t border-neutral-200 dark:border-gray-700 space-y-4">
 
       {loading ? (
 
@@ -269,59 +270,58 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
               <div className="flex ">
 
-              <div className="relative flex-shrink-0 overflow-hidden">
+                <div className="relative flex-shrink-0 overflow-hidden">
 
-                <Avatar className="w-[40px] h-[40px] ml-4 object-cover">
+                  <Avatar className="w-[40px] h-[40px] ml-4 object-cover">
 
-                  <AvatarImage src={comment.profile_image || defaultAvatar} 
+                    <AvatarImage src={comment.profile_image || defaultAvatar}
 
-                  alt={comment.full_name || comment.username} />
+                      alt={comment.full_name || comment.username} />
 
-                </Avatar>
-
-              </div>
-
-              <div className="flex-1">
-
-                <div className="bg-neutral-50 dark:bg-gray-800 rounded-lg p-3">
-
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">
-                      {comment.full_name || comment.username || 'Unknown User'}
-                    </p>
-                    {currentUserId === comment.user_id && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.90 }}
-                        onClick={async () => {
-                          const confirmed = await confirm({
-                            title: 'Delete comment',
-                            description: 'Are you sure you want to delete this comment?',
-                            confirmText: 'Delete',
-                            cancelText: 'Cancel',
-                            destructive: true,
-                          });
-                          if (!confirmed) return;
-                          deleteComment(comment.id);
-                        }}
-                        className="ml-2 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </motion.button>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-neutral-700 dark:text-gray-300 mt-1">{comment.content}</p>
+                  </Avatar>
 
                 </div>
 
-                <p className="text-xs text-neutral-500 dark:text-gray-400 mt-1 ml-3">
+                <div className="flex-1">
 
-                  {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString()}
+                  <div className="bg-neutral-50 dark:bg-gray-800 rounded-lg p-3">
 
-                </p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm text-neutral-900 dark:text-gray-200">
+                        {comment.full_name || comment.username || 'Unknown User'}
+                      </p>
+                      {currentUserId === comment.user_id && (
+                        <InteractiveButton
+                         
+                          onClick={async () => {
+                            const confirmed = await confirm({
+                              title: 'Delete comment',
+                              description: 'Are you sure you want to delete this comment?',
+                              confirmText: 'Delete',
+                              cancelText: 'Cancel',
+                              destructive: true,
+                            });
+                            if (!confirmed) return;
+                            deleteComment(comment.id);
+                          }}
+                          className="ml-2 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </InteractiveButton>
+                      )}
+                    </div>
 
-              </div>
+                    <p className="text-sm text-neutral-700 dark:text-gray-300 mt-1">{comment.content}</p>
+
+                  </div>
+
+                  <p className="text-xs text-neutral-500 dark:text-gray-400 mt-1 ml-3">
+
+                    {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString()}
+
+                  </p>
+
+                </div>
 
               </div>
 
@@ -337,11 +337,11 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
       )}
 
-      
+
 
       {currentUserId && (
 
-        
+
 
         <Card>
 
@@ -353,75 +353,56 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
 
             <CardContent>
 
-<form onSubmit={handleSubmitComment} className="flex gap-2 items-center">
+              <form onSubmit={handleSubmitComment} className="flex gap-2 items-center">
 
-          <div className="relative flex-1 flex gap-2 items-center">
+                <div className="relative flex-1 flex gap-2 items-center">
 
-            {showEmoji && (
-              <div className="absolute bottom-full left-0 mb-2 z-50">
-                <Card className="bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 shadow-xl overflow-hidden">
-                  <EmojiPicker onSelect={handleEmojiSelect} theme={emojiTheme} />
-                </Card>
-              </div>
-            )}
+                  {showEmoji && (
+                    <div className="absolute bottom-full left-0 mb-2 z-50">
+                      <Card className="bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 shadow-xl overflow-hidden">
+                        <EmojiPicker onSelect={handleEmojiSelect} theme={emojiTheme} />
+                      </Card>
+                    </div>
+                  )}
 
-            <input
+                  <input
 
-              type="text"
+                    type="text"
 
-              value={newComment}
+                    value={newComment}
 
-              onChange={(e) => setNewComment(e.target.value)}
+                    onChange={(e) => setNewComment(e.target.value)}
 
-              placeholder="Write a comment..."
+                    placeholder="Write a comment..."
 
-              className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+                    className="flex-1 px-3 py-2 text-sm border border-neutral-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 dark:focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
 
-              disabled={submitting}
-            />
-            <motion.button
-                            whileHover={{ y: -4 }}   
-                            whileTap={{ scale: 1.02 }}
-                            
-                            transition={{ 
-                              type: "spring", 
-                              stiffness: 400, 
-                              damping: 25 
-                            }}
-              type="button"
-              onClick={() => setShowEmoji((open) => !open)}
-              disabled={submitting}
-              className="p-2 rounded-lg border border-neutral-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-700 transition-colors shrink-0"
-              aria-label="Add emoji"
-            >
-              <Smile className={`h-5 w-5 ${showEmoji ? 'text-orange-500' : 'text-gray-600'}`	} />
-            </motion.button>
+                    disabled={submitting}
+                  />
+                  <InteractiveButton
+                    type="button"
+                    kind="icon"
+                    active={showEmoji}
+                    onClick={() => setShowEmoji((open) => !open)}
+                    disabled={submitting}
+                    className="p-2 rounded-lg border border-neutral-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-700 transition-colors shrink-0"
+                    aria-label="Add emoji"
+                  >
+                    <Smile className={`h-5 w-5 ${showEmoji ? 'text-orange-500' : 'text-gray-600'}`} />
+                  </InteractiveButton>
 
-          </div>
+                </div>
 
-          <motion.button 
-                whileHover={{ x: 4 }}   
-                whileTap={{ scale: 0.98 }}
-                
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 400, 
-                  damping: 25 
-                }}
+                <InteractiveButton
+                  type="submit"
+                  kind="submit"
+                  disabled={!newComment.trim() || submitting}
+                  className="px-4 py-2 bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  {submitting ? 'Posting...' : 'Post'}
+                </InteractiveButton>
 
-            type="submit"
-
-            disabled={!newComment.trim() || submitting}
-
-            className="px-4 py-2 bg-green-700 dark:bg-green-600 text-white rounded-lg hover:bg-green-800 dark:hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-
-          >
-
-            {submitting ? 'Posting...' : 'Post'}
-
-          </motion.button>
-
-        </form>
+              </form>
 
             </CardContent>
 
@@ -475,7 +456,7 @@ const LikeParticles = ({ trigger, burstKey }) => {
 const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) => {
 
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
-const [burstKey, setBurstKey] = useState(0);
+  const [burstKey, setBurstKey] = useState(0);
   const [likes, setLikes] = useState(post.likes || 0);
 
   const [commentBurstKey, setCommentBurstKey] = useState(0);
@@ -490,13 +471,13 @@ const [burstKey, setBurstKey] = useState(0);
 
   const triggerHeartRain = () => {
     const newHearts = Array.from({ length: 12 }).map((_, i) => ({
-      id: Date.now() + i, 
-      left: Math.random() * 80 + 10 + "%", 
+      id: Date.now() + i,
+      left: Math.random() * 80 + 10 + "%",
       duration: 1.5 + Math.random() * 1.5,
       delay: Math.random() * 0.4,
-      size: 20 + Math.random() * 20 
+      size: 20 + Math.random() * 20
     }));
-  
+
     setHearts(newHearts);
     setTimeout(() => setHearts([]), 3500);
   };
@@ -513,7 +494,7 @@ const [burstKey, setBurstKey] = useState(0);
 
   }, [post.id, currentUserId]);
 
-const [burstOrigin, setBurstOrigin] = useState(null);
+  const [burstOrigin, setBurstOrigin] = useState(null);
 
   const fetchLikeStatus = async () => {
 
@@ -521,7 +502,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
     try {
 
-      const url = currentUserId 
+      const url = currentUserId
 
         ? `/api/like?postId=${post.id}&userId=${currentUserId}`
 
@@ -580,7 +561,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
     if (!currentUserId || liking) return;
 
-    
+
 
     setLiking(true);
 
@@ -592,7 +573,7 @@ const [burstOrigin, setBurstOrigin] = useState(null);
 
     setLikes(previousLiked ? likes - 1 : likes + 1);
 
-    
+
 
     try {
 
@@ -621,12 +602,12 @@ const [burstOrigin, setBurstOrigin] = useState(null);
       const data = await response.json();
 
       if (data.success) {
-  setLikes(data.likeCount);
-  setIsLiked(data.isLiked);
-  if (data.isLiked) setBurstKey(k => k + 1); // re-triggers particles each like
-  if (onLikeUpdate) {
-    onLikeUpdate(post.id, data.likeCount, data.isLiked);
-  }
+        setLikes(data.likeCount);
+        setIsLiked(data.isLiked);
+        if (data.isLiked) setBurstKey(k => k + 1); // re-triggers particles each like
+        if (onLikeUpdate) {
+          onLikeUpdate(post.id, data.likeCount, data.isLiked);
+        }
 
       } else {
 
@@ -667,19 +648,19 @@ const [burstOrigin, setBurstOrigin] = useState(null);
     }
   };
 
-const [expand, setExpand] = useState(false);
-const words = post.content.split(' ');
-const isLongContent = words.length > 40;
-const shortText = words.slice(0,50).join(' ') + '...';
+  const [expand, setExpand] = useState(false);
+  const words = post.content.split(' ');
+  const isLongContent = words.length > 40;
+  const shortText = words.slice(0, 50).join(' ') + '...';
 
 
 
   return (
 
     <div className="relative bg-white dark:bg-gray-900 rounded-lg border border-neutral-200 dark:border-gray-700 shadow-sm overflow-hidden">
- <AnimatePresence>
+      {/* <AnimatePresence>
 
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       <div className="p-4">
 
@@ -689,7 +670,7 @@ const shortText = words.slice(0,50).join(' ') + '...';
 
             <Image
 
-              src={post.authorAvatar?post.authorAvatar:'/default.png'}
+              src={post.authorAvatar ? post.authorAvatar : '/default.png'}
 
               alt={post.authorName}
 
@@ -697,7 +678,7 @@ const shortText = words.slice(0,50).join(' ') + '...';
 
               height={40}
 
-              className="object-cover"  
+              className="object-cover"
 
             />
 
@@ -711,7 +692,7 @@ const shortText = words.slice(0,50).join(' ') + '...';
 
         </div>
 
-        
+
 
         {post.title && (
 
@@ -723,39 +704,39 @@ const shortText = words.slice(0,50).join(' ') + '...';
           {expand ? post.content : shortText}
         </p>
         {isLongContent && (
-          <button 
+          <button
             onClick={() => setExpand(!expand)}
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-3"
           >
             {expand ? 'Show less' : 'Show more'}
           </button>
         )}
-
+{console.log("Post media: ", post.media_url, " type: ", post.media_type)}
         {post.image && (
-
-          <div className="relative w-full h-64 rounded-lg overflow-hidden mb-3">
-
-            <Image
-
-              src={post.image}
-
-              alt="Post image"
-
-              fill
-
-              className="object-cover"
-
-            />
-
+          <div className="relative w-full h-88 rounded-lg overflow-hidden mb-3 bg-neutral-100 dark:bg-gray-800">
+            <div className="absolute inset-0 overflow-hidden">
+              <Image
+                src={post.image}
+                alt="Post image background"
+                fill
+                className="object-cover blur-sm scale-105"
+              />
+              <div className="absolute inset-0 bg-black/10" />
+            </div>
+            <div className="relative w-full h-full">
+              <Image
+                src={post.image}
+                alt="Post image"
+                fill
+                className="object-contain"
+              />
+            </div>
           </div>
-
         )}
-
-        
 
         {post.video && (
 
-          <div className="relative w-full h-64 rounded-lg overflow-hidden mb-3">
+          <div className="relative w-full h-88 rounded-lg overflow-hidden mb-3">
 
             <video
 
@@ -779,7 +760,7 @@ const shortText = words.slice(0,50).join(' ') + '...';
 
         )}
 
-        
+
 
         <div className="flex gap-2 mb-3">
 
@@ -795,64 +776,70 @@ const shortText = words.slice(0,50).join(' ') + '...';
 
         </div>
 
-        
+
 
         <div className="flex items-center justify-start gap-4 border-t border-b border-neutral-100 dark:border-gray-800 py-2">
 
-         <button
-  onClick={() => handleLike()}
-  disabled={!currentUserId || liking}
-  className={`
+          <InteractiveButton
+            type="button"
+            kind="social"
+            active={isLiked}
+            onClick={() => handleLike()}
+            disabled={!currentUserId || liking}
+            className={`
     inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
-    transition-all duration-150 active:scale-95
+    transition-colors duration-150
     disabled:opacity-40 disabled:cursor-not-allowed
     ${isLiked
-      ? 'text-red-500 border-red-300 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30'
-      : 'text-gray-500 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800/50'
-    }
+                ? 'text-red-500 border-red-300 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30'
+                : 'text-gray-500 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800/50'
+              }
   `}
->
-  {/* Icon + particles wrapper */}
-  <span className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
-    <LikeParticles trigger={isLiked} burstKey={burstKey} />
-    <motion.div
-      animate={isLiked ? { scale: [0.6, 1.3, 1] } : { scale: [0.8, 1] }}
-      transition={{ duration: 0.4, type: 'keyframes', ease: [0.34, 1.56, 0.64, 1] }}
-    >
-      <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-    </motion.div>
-  </span>
+          >
+            {/* Icon + particles wrapper */}
+            <span className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
+              <LikeParticles trigger={isLiked} burstKey={burstKey} />
+              <motion.div
+                animate={isLiked ? { scale: [0.6, 1.3, 1] } : { scale: [0.8, 1] }}
+                transition={{ duration: 0.4, type: 'keyframes', ease: [0.34, 1.56, 0.64, 1] }}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+              </motion.div>
+            </span>
 
-  {/* Label */}
-  <span>{isLiked ? 'Liked' : 'Like'}</span>
+            {/* Label */}
+            <span>{isLiked ? 'Liked' : 'Like'}</span>
 
-  {/* Animated like count */}
-  <AnimatePresence mode="popLayout">
-    <motion.span
-      key={likes}
-      initial={{ y: -8, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 8, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-      className={`
+            {/* Animated like count */}
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={likes}
+                initial={{ y: -8, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 8, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                className={`
         inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
         rounded-full text-[14px] font-semibold
         ${isLiked
-          ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300'
-          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-        }
+                    ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  }
       `}
-    >
-      {likes}
-    </motion.span>
-  </AnimatePresence>
-</button>
+              >
+                {likes}
+              </motion.span>
+            </AnimatePresence>
+          </InteractiveButton>
 
-          <motion.button 
+          <InteractiveButton
+            type="button"
+            kind="social"
+            active={isCommentActive}
             onClick={() => setShowComments(!showComments)}
             className={`
               inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
-              transition-all duration-150 active:scale-95
+              transition-colors duration-150
               ${isCommentActive
                 ? 'text-blue-700 border-blue-300 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30'
                 : 'text-gray-600 border-gray-200 bg-gray-50 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-800 dark:bg-gray-950/20 dark:hover:bg-gray-900/30'
@@ -867,7 +854,7 @@ const shortText = words.slice(0,50).join(' ') + '...';
             {/* Label */}
             <motion.span
 
-            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             >{showComments ? 'Commenting' : 'Comment'}</motion.span>
 
             {/* Animated comment count */}
@@ -890,16 +877,16 @@ const shortText = words.slice(0,50).join(' ') + '...';
                 {commentCount}
               </motion.span>
             </AnimatePresence>
-          </motion.button>
+          </InteractiveButton>
         </div>
 
       </div>
 
-      
+
 
       {showComments && (
 
-        <CommentSection 
+        <CommentSection
           postId={post.id}
           isOpen={showComments}
           currentUserId={currentUserId}
@@ -948,7 +935,7 @@ export default function SocialFeed() {
   const [currentUserId, setCurrentUserId] = useState(null);
 
   const router = useRouter();
- 
+
 
   // Get auth from localStorage (client-side only)
 
@@ -962,7 +949,7 @@ export default function SocialFeed() {
 
       const fullInfo = localStorage.getItem('fullInfo');
 
-      
+
 
       if (storedAuth) {
 
@@ -1004,7 +991,7 @@ export default function SocialFeed() {
 
       setError(null);
 
-      
+
 
       try {
 
@@ -1025,7 +1012,7 @@ export default function SocialFeed() {
 
               authorEmail: post.email || '',
 
-              authorAvatar: post.profile_image ||defaultAvatar,
+              authorAvatar: post.profile_image || defaultAvatar,
 
               content: post.content,
 
@@ -1069,7 +1056,7 @@ export default function SocialFeed() {
 
         const opportunitiesData = await opportunitiesResponse.json();
 
-        
+
 
         if (opportunitiesData.success && opportunitiesData.opportunities) {
 
@@ -1184,12 +1171,12 @@ export default function SocialFeed() {
   };
   const filteredPosts = posts
 
-    .filter(post => 
+    .filter(post =>
 
       post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
 
       post.authorUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.authorName.toLowerCase().includes(searchTerm.toLowerCase())||
+      post.authorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       post.title.toLowerCase().includes(searchTerm.toLowerCase())
 
     )
@@ -1220,7 +1207,7 @@ export default function SocialFeed() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
 
-          
+
 
           {/* Left Sidebar - Opportunities (formerly Trending Articles) */}
 
@@ -1252,7 +1239,7 @@ export default function SocialFeed() {
 
                 </div>
 
-                
+
 
                 <div className="max-h-96 overflow-y-auto">
 
@@ -1270,15 +1257,13 @@ export default function SocialFeed() {
 
                         <div className="flex items-start gap-3">
 
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${index === 0 ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white' :
 
-                            index === 0 ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white' :
+                              index === 1 ? 'bg-neutral-300 dark:bg-gray-700 text-neutral-700 dark:text-gray-300' :
 
-                            index === 1 ? 'bg-neutral-300 dark:bg-gray-700 text-neutral-700 dark:text-gray-300' :
+                                'bg-neutral-200 dark:bg-gray-800 text-neutral-600 dark:text-gray-400'
 
-                            'bg-neutral-200 dark:bg-gray-800 text-neutral-600 dark:text-gray-400'
-
-                          }`}>
+                            }`}>
 
                             {index + 1}
 
@@ -1384,7 +1369,7 @@ export default function SocialFeed() {
 
                 </div>
 
-                
+
 
                 <div className="p-3 border-t border-neutral-200 dark:border-gray-700">
 
@@ -1507,7 +1492,7 @@ export default function SocialFeed() {
 
               </div>
 
-                 <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={setSortBy}>
 
                 <SelectTrigger className="w-full sm:w-48 h-11">
 
@@ -1719,7 +1704,7 @@ export default function SocialFeed() {
 
                 </div>
 
-                
+
                 <div className="h-96 overflow-y-auto p-4 space-y-3">
 
                   {eventsLoading ? (
@@ -1736,79 +1721,79 @@ export default function SocialFeed() {
 
                     filteredVillageEvents.length > 0 ? (
 
-                    filteredVillageEvents.map((event, index) => {
+                      filteredVillageEvents.map((event, index) => {
 
-                      const eventDate = event.event_date 
-                        ? new Date(event.event_date).toLocaleDateString() 
-                        : 'TBD';
+                        const eventDate = event.event_date
+                          ? new Date(event.event_date).toLocaleDateString()
+                          : 'TBD';
 
-                      return (
+                        return (
 
-                        <div
-  key={`${event.title}-${index}`}
-  className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-transparent dark:hover:from-orange-900/10 dark:hover:to-transparent transition-all duration-200 cursor-pointer group bg-white dark:bg-gray-800/50"
-  onClick={() => handleEventClick(event.id)}
->
+                          <div
+                            key={`${event.title}-${index}`}
+                            className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:shadow-md hover:border-orange-300 dark:hover:border-orange-600 hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-transparent dark:hover:from-orange-900/10 dark:hover:to-transparent transition-all duration-200 cursor-pointer group bg-white dark:bg-gray-800/50"
+                            onClick={() => handleEventClick(event.id)}
+                          >
 
-                          <div className="flex gap-3">
-                            {/* Event Image */}
-                            <div className="flex-shrink-0">
-                              {event.image_url ? (
-                                <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                  <img
-                                    src={event.image_url}
-                                    alt={event.title}
-                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                      e.target.nextSibling.style.display = 'flex';
-                                    }}
-                                  />
-                                  {/* Fallback placeholder */}
-                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600" style={{display: 'none'}}>
+                            <div className="flex gap-3">
+                              {/* Event Image */}
+                              <div className="flex-shrink-0">
+                                {event.image_url ? (
+                                  <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                    <img
+                                      src={event.image_url}
+                                      alt={event.title}
+                                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    {/* Fallback placeholder */}
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600" style={{ display: 'none' }}>
+                                      <Calendar className="w-6 h-6 text-white" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
                                     <Calendar className="w-6 h-6 text-white" />
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                                  <Calendar className="w-6 h-6 text-white" />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Event Content */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-2 leading-tight">
-                                {event.title}
-                              </p>
-
-                              {event.description && (
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">
-                                  {event.description}
-                                </p>
-                              )}
-
-                              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-200 dark:border-green-800">
-                                  <Calendar className="w-3 h-3 mr-1" />
-                                  {eventDate}
-                                </span>
-
-                                {event.location && (
-                                  <span className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                    <MapPin className="w-3 h-3 mr-1" />
-                                    {event.location}
-                                  </span>
                                 )}
                               </div>
+
+                              {/* Event Content */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-green-700 dark:group-hover:text-green-400 transition-colors line-clamp-2 leading-tight">
+                                  {event.title}
+                                </p>
+
+                                {event.description && (
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">
+                                    {event.description}
+                                  </p>
+                                )}
+
+                                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                                  <span className="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full text-xs font-medium border border-green-200 dark:border-green-800">
+                                    <Calendar className="w-3 h-3 mr-1" />
+                                    {eventDate}
+                                  </span>
+
+                                  {event.location && (
+                                    <span className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                      <MapPin className="w-3 h-3 mr-1" />
+                                      {event.location}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
+
                           </div>
 
-                        </div>
+                        );
 
-                      );
-
-                    })
+                      })
 
                     ) : (
 

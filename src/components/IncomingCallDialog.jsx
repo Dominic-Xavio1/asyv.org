@@ -37,7 +37,7 @@ export default function IncomingCallDialog({ incomingCall, onAccept, onDecline }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onDecline?.()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="z-[100] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isAudio ? <Phone className="size-5 text-green-500" /> : <Video className="size-5 text-green-500" />}

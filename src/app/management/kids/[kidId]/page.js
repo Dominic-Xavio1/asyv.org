@@ -66,12 +66,16 @@ export default function KidDetailPage() {
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
   const [academicDialogOpen, setAcademicDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [isFEDialogOpen, setIsFEDialogOpen] = useState(false);
+  const [isEmploymentDialogOpen, setIsEmploymentDialogOpen] = useState(false);
 
   const [kidForm, setKidForm] = useState({});
   const [familyForm, setFamilyForm] = useState({});
   const [gradeForm, setGradeForm] = useState({});
   const [academicForm, setAcademicForm] = useState({});
   const [editingAcademic, setEditingAcademic] = useState(null);
+  const [editingFE, setEditingFE] = useState(null);
+  const [editingEmployment, setEditingEmployment] = useState(null);
   const [reportForm, setReportForm] = useState({
     title: '',
     description: '',
@@ -79,6 +83,24 @@ export default function KidDetailPage() {
     report_type: 'academic'
   });
   const [editingReport, setEditingReport] = useState(null);
+  const [feForm, setFeForm] = useState({
+    degree: '',
+    level: '',
+    status: 'Ongoing',
+    scholarship: '',
+    scholarship_details: '',
+    enrolled: false,
+    college_id: '',
+    college_name: '',
+    country: '',
+    city: ''
+  });
+  const [employmentForm, setEmploymentForm] = useState({
+    title: '',
+    industry: '',
+    company: '',
+    ongoing: false
+  });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
 
@@ -503,6 +525,178 @@ console.log("Returned information ",json);
     }
   };
 
+  // Further Education CRUD handlers
+  const handleAddFE = () => {
+    setEditingFE(null);
+    setFeForm({
+      degree: '',
+      level: '',
+      status: 'Ongoing',
+      scholarship: '',
+      scholarship_details: '',
+      enrolled: false,
+      college_id: '',
+      college_name: '',
+      country: '',
+      city: ''
+    });
+    setIsFEDialogOpen(true);
+  };
+
+  const handleEditFE = (fe) => {
+    setEditingFE(fe);
+    setFeForm({
+      degree: fe.degree || '',
+      level: fe.level || '',
+      status: fe.status || 'Ongoing',
+      scholarship: fe.scholarship || '',
+      scholarship_details: fe.scholarship_details || '',
+      enrolled: fe.enrolled || false,
+      college_id: fe.college_id || '',
+      college_name: fe.college_name || '',
+      country: fe.country || '',
+      city: fe.city || ''
+    });
+    setIsFEDialogOpen(true);
+  };
+
+  const handleDeleteFE = async (id) => {
+    const confirmed = await confirm({
+      title: 'Delete education record',
+      description: 'Are you sure you want to delete this further education record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      const response = await fetch(`/api/manage/furthereducation?id=${id}&requestingUserId=${requestingUserId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': requestingUserId }
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to delete record');
+      toast.success('Further education record deleted');
+      fetchDetails();
+    } catch (err) {
+      console.error('Error deleting further education:', err);
+      toast.error(err.message || 'Failed to delete further education');
+    }
+  };
+
+  const handleSubmitFE = async (e) => {
+    e.preventDefault();
+    
+    if (!feForm.degree || !feForm.level || !feForm.college_name || !feForm.country || !feForm.city || !feForm.status) {
+      toast.error("Please fill in all required fields: Degree, Level, College, Country, City, and Status.");
+      return;
+    }
+
+    try {
+      const url = '/api/manage/furthereducation';
+      const method = editingFE ? 'PUT' : 'POST';
+      const collegePayload = (feForm.college_id || feForm.college_name || feForm.country || feForm.city) ? {
+        college_id: feForm.college_id || undefined,
+        college: { college_name: feForm.college_name || undefined, country: feForm.country || undefined, city: feForm.city || undefined }
+      } : {};
+
+      const body = editingFE
+        ? { id: editingFE.id, degree: feForm.degree, level: feForm.level, status: feForm.status || null, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload }
+        : { kid_id: kidId, degree: feForm.degree, level: feForm.level, status: feForm.status || null, scholarship: feForm.scholarship, scholarship_details: feForm.scholarship_details, enrolled: feForm.enrolled, ...collegePayload };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'x-user-id': requestingUserId },
+        body: JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save further education');
+      toast.success(editingFE ? 'Further education updated' : 'Further education added');
+      setIsFEDialogOpen(false);
+      fetchDetails();
+    } catch (err) {
+      console.error('Error saving further education:', err);
+      toast.error(err.message || 'Failed to save further education');
+    }
+  };
+
+  // Employment CRUD handlers
+  const handleAddEmployment = () => {
+    setEditingEmployment(null);
+    setEmploymentForm({
+      title: '',
+      industry: '',
+      company: '',
+      ongoing: false
+    });
+    setIsEmploymentDialogOpen(true);
+  };
+
+  const handleEditEmployment = (emp) => {
+    setEditingEmployment(emp);
+    setEmploymentForm({
+      title: emp.title || emp.job_title || '',
+      industry: emp.industry || '',
+      company: emp.company || '',
+      ongoing: emp.ongoing ?? emp.on_going ?? emp.is_current_job ?? false
+    });
+    setIsEmploymentDialogOpen(true);
+  };
+
+  const handleDeleteEmployment = async (id) => {
+    const confirmed = await confirm({
+      title: 'Delete employment record',
+      description: 'Are you sure you want to delete this employment record?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      const response = await fetch(`/api/manage/employment?id=${id}&requestingUserId=${requestingUserId}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': requestingUserId }
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to delete employment');
+      toast.success('Employment record deleted successfully');
+      fetchDetails();
+    } catch (err) {
+      console.error('Error deleting employment:', err);
+      toast.error(err.message || 'Failed to delete employment');
+    }
+  };
+
+  const handleSubmitEmployment = async (e) => {
+    e.preventDefault();
+    if (!employmentForm.title || !employmentForm.industry || !employmentForm.company) {
+      toast.error("Please fill in all required fields: Title, Industry, and Company.");
+      return;
+    }
+
+    try {
+      const url = '/api/manage/employment';
+      const method = editingEmployment ? 'PUT' : 'POST';
+      const payload = editingEmployment
+        ? { id: editingEmployment.id, ...employmentForm }
+        : { kid_id: kidId, ...employmentForm };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'x-user-id': requestingUserId },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save employment');
+      toast.success(editingEmployment ? 'Employment updated successfully' : 'Employment added successfully');
+      setIsEmploymentDialogOpen(false);
+      fetchDetails();
+    } catch (err) {
+      console.error('Error saving employment:', err);
+      toast.error(err.message || 'Failed to save employment');
+    }
+  };
+
   if (loading && !data.kid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-gray-900">
@@ -540,12 +734,12 @@ console.log("Returned information ",json);
         </div>
       <div className="max-w-4xl mx-auto mt-5">
         
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-          {kid.user_first_name || kid.user_rwandan_name || 'Kid'} – Details{console.log("The information of the person ",kid)}
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+          Details for {kid.user_first_name || '-'} {kid.user_rwandan_name || '-'}{console.log("Kid details ", kid)}
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">
+        {/* <p className="text-gray-500 dark:text-gray-400 mb-8">
           User: {kid.user_email || kid.user_id || '-'} · Kid ID: {kid.id}
-        </p>
+        </p> */}
 
         <div className="space-y-6">
           {/* Kid */}
@@ -640,7 +834,7 @@ console.log("Returned information ",json);
           </Card>
 
           {/* Reports */}
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          {/* <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-gray-100">
@@ -704,7 +898,7 @@ console.log("Returned information ",json);
                 </ul>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Academics */}
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
@@ -770,90 +964,82 @@ console.log("Returned information ",json);
                   College, degree, and field of study
                 </CardDescription>
               </div>
+              <Button variant="outline" size="sm" onClick={handleAddFE}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
             </CardHeader>
             <CardContent>
               {furtherEducation.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No further education records found.</p>
               ) : (
-                <ul className="space-y-4">
+                <div className="space-y-4">
                   {furtherEducation.map((fe, index) => (
-                    <li
+                    <div
                       key={fe.id || index}
-                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg relative"
                     >
-                      <div className="space-y-2">
-                        {fe.scholarship_details && (
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Institution:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.scholarship_details}</span>
-                            </div>
-                          </div>
-                        )}
-                        {fe.degree && (
-                          <div className="flex items-start gap-2">
-                            <GraduationCap className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Degree:</span>
-                              {console.log("Big INformation ",fe)}
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.degree}</span>
-                            </div>
-                          </div>
-                        )}
+                      {/* {isSuperuser && ( */}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditFE(fe)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeleteFE(fe.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      {/* )} */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Degree</label>
+                          <p className="text-lg font-semibold">{fe.degree || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Level</label>
+                          <p className="text-lg">{fe.level || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Scholarship</label>
+                          <p className="text-lg">{fe.scholarship || '-'}{fe.scholarship_details ? ` - ${fe.scholarship_details}` : ''}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Enrolled</label>
+                          <p className="text-lg">{fe.enrolled ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                          <p className="text-lg font-medium text-orange-600 dark:text-orange-400">{fe.status || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">College</label>
+                          <p className="text-lg">{fe.college_name || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</label>
+                          <p className="text-lg">{(fe.city ? fe.city + ', ' : '') + (fe.country || '') || '-'}</p>
+                        </div>
                         {fe.field_of_study && (
-                          <div className="flex items-start gap-2">
-                            <BookOpen className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Field of Study:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.field_of_study}</span>
-                            </div>
-                          </div>
-                        )}
-                        {fe.college && (
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">College:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.college}</span>
-                            </div>
-                          </div>
-                        )}
-                        {fe.college_name && (
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">College Name:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{fe.college_name}</span>
-                            </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Field of Study</label>
+                            <p className="text-lg">{fe.field_of_study}</p>
                           </div>
                         )}
                         {fe.start_date && (
-                          <div className="flex items-start gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Start Date:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                {new Date(fe.start_date).toLocaleDateString()}
-                              </span>
-                            </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</label>
+                            <p className="text-lg">{new Date(fe.start_date).toLocaleDateString()}</p>
                           </div>
                         )}
                         {fe.end_date && (
-                          <div className="flex items-start gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">End Date:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                {new Date(fe.end_date).toLocaleDateString()}
-                              </span>
-                            </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</label>
+                            <p className="text-lg">{new Date(fe.end_date).toLocaleDateString()}</p>
                           </div>
                         )}
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -870,88 +1056,79 @@ console.log("Returned information ",json);
                   Job title, company, and location
                 </CardDescription>
               </div>
+              <Button variant="outline" size="sm" onClick={handleAddEmployment}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
             </CardHeader>
             <CardContent>
               {employment.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">No employment records found.</p>
               ) : (
-                <ul className="space-y-4">
+                <div className="space-y-4">
                   {employment.map((emp, index) => (
-                    <li
+                    <div
                       key={emp.id || index}
-                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg relative"
                     >
-                      <div className="space-y-2">
-                        {emp.job_title && (
-                          <div className="flex items-start gap-2">
-                            <Briefcase className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Job Title:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.job_title}</span>
-                            </div>
+                      {/* {isSuperuser && ( */}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditEmployment(emp)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeleteEmployment(emp.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      {/* )} */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Title</label>
+                          <p className="text-lg font-semibold">{emp.title || emp.job_title || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Industry</label>
+                          <p className="text-lg">{emp.industry || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            <Building className="h-4 w-4" />
+                            Company
+                          </label>
+                          <p className="text-lg">{emp.company || '-'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                          <div className="mt-1">
+                            {(emp.on_going || emp.ongoing) ? (
+                              <Badge className="bg-green-600">Ongoing</Badge>
+                            ) : (
+                              <Badge variant="outline">Past</Badge>
+                            )}
                           </div>
-                        )}
-                        {emp.company && (
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Company:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.company}</span>
-                            </div>
-                          </div>
-                        )}
+                        </div>
                         {emp.location && (
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Location:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.location}</span>
-                            </div>
-                          </div>
-                        )}
-                        {emp.industry && (
-                          <div className="flex items-start gap-2">
-                            <Building className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Industry:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">{emp.industry}</span>
-                            </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</label>
+                            <p className="text-lg">{emp.location}</p>
                           </div>
                         )}
                         {emp.start_date && (
-                          <div className="flex items-start gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">Start Date:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                {new Date(emp.start_date).toLocaleDateString()}
-                              </span>
-                            </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</label>
+                            <p className="text-lg">{new Date(emp.start_date).toLocaleDateString()}</p>
                           </div>
                         )}
                         {emp.end_date && (
-                          <div className="flex items-start gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-gray-200">End Date:</span>
-                              <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                {new Date(emp.end_date).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        {emp.is_current_job && (
-                          <div className="flex items-start gap-2">
-                            <div className="w-4 h-4 mt-0.5" />
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Current Position
-                            </Badge>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</label>
+                            <p className="text-lg">{new Date(emp.end_date).toLocaleDateString()}</p>
                           </div>
                         )}
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1240,6 +1417,201 @@ console.log("Returned information ",json);
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Further Education Add/Edit Dialog */}
+      <Dialog open={isFEDialogOpen} onOpenChange={setIsFEDialogOpen}>
+        <DialogContent className="max-w-2xl mt-10 mb-20 max-h-[600px] overflow-y-auto bg-white dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle>{editingFE ? 'Edit Further Education' : 'Add Further Education'}</DialogTitle>
+            <DialogDescription>
+              {editingFE ? 'Update further education information' : 'Add a new further education record'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitFE} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="degree">Degree *</Label>
+              <Input
+                id="degree"
+                required
+                value={feForm.degree}
+                onChange={(e) => setFeForm({ ...feForm, degree: e.target.value })}
+                placeholder="e.g., Bachelor of Science"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="level">Level *</Label>
+              <Select value={feForm.level ||"Select Level"} onValueChange={(value) => setFeForm({ ...feForm, level: value })}>
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue placeholder="Select level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A0">A0 - Foundation/Preparatory</SelectItem>
+                  <SelectItem value="A1">A1 - Advanced Level 1</SelectItem>
+                  <SelectItem value="A2">A2 - Advanced Level 2</SelectItem>
+                  <SelectItem value="A3">A3 - Advanced Level 3</SelectItem>
+                  <SelectItem value="A4">A4 - Advanced Level 4</SelectItem>
+                  <SelectItem value="A5">A5 - Advanced Level 5</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status *</Label>
+              <Select value={feForm.status || "Select Status"} onValueChange={(value) => setFeForm({ ...feForm, status: value })}>
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Ongoing">Ongoing</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Dropped">Dropped</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="scholarship">Scholarship Type</Label>
+              <Select value={feForm.scholarship || "Select Scholarship"} onValueChange={(value) => setFeForm({ ...feForm, scholarship: value })}>
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue placeholder="Select scholarship" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Full">Full Scholarship</SelectItem>
+                  <SelectItem value="Partial">Partial Scholarship</SelectItem>
+                  <SelectItem value="Self Sponsored">Self Sponsored</SelectItem>
+                  <SelectItem value="Government Sponsored">Government Sponsored</SelectItem>
+                  <SelectItem value="Employer Sponsored">Employer Sponsored</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="scholarship_details">Scholarship Details</Label>
+              <Input
+                id="scholarship_details"
+                value={feForm.scholarship_details}
+                onChange={(e) => setFeForm({ ...feForm, scholarship_details: e.target.value })}
+                placeholder="e.g., amount, duration"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="college_name">College Name *</Label>
+              <Input
+                id="college_name"
+                required
+                value={feForm.college_name}
+                onChange={(e) => setFeForm({ ...feForm, college_name: e.target.value })}
+                placeholder="e.g., University of Rwanda"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country *</Label>
+              <Input
+                id="country"
+                required
+                value={feForm.country}
+                onChange={(e) => setFeForm({ ...feForm, country: e.target.value })}
+                placeholder="e.g., Rwanda"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City *</Label>
+              <Input
+                id="city"
+                required
+                value={feForm.city}
+                onChange={(e) => setFeForm({ ...feForm, city: e.target.value })}
+                placeholder="e.g., Kigali"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={feForm.enrolled}
+                  onChange={(e) => setFeForm({ ...feForm, enrolled: e.target.checked })}
+                  className="rounded"
+                />
+                Currently Enrolled
+              </Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsFEDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-green-600 hover:bg-green-500">{editingFE ? 'Update' : 'Add'} Further Education</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employment Add/Edit Dialog */}
+      <Dialog open={isEmploymentDialogOpen} onOpenChange={setIsEmploymentDialogOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle>{editingEmployment ? 'Edit Employment' : 'Add Employment'}</DialogTitle>
+            <DialogDescription>
+              {editingEmployment ? 'Update employment information' : 'Add a new employment record'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitEmployment} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="emp_title">Job Title *</Label>
+              <Input
+                id="emp_title"
+                required
+                value={employmentForm.title}
+                onChange={(e) => setEmploymentForm({ ...employmentForm, title: e.target.value })}
+                placeholder="e.g., Software Engineer"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp_company">Company *</Label>
+              <Input
+                id="emp_company"
+                required
+                value={employmentForm.company}
+                onChange={(e) => setEmploymentForm({ ...employmentForm, company: e.target.value })}
+                placeholder="e.g., Tech Company Ltd"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp_industry">Industry *</Label>
+              <Input
+                id="emp_industry"
+                required
+                value={employmentForm.industry}
+                onChange={(e) => setEmploymentForm({ ...employmentForm, industry: e.target.value })}
+                placeholder="e.g., Information Technology"
+                className="bg-white dark:bg-gray-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={employmentForm.ongoing}
+                  onChange={(e) => setEmploymentForm({ ...employmentForm, ongoing: e.target.checked })}
+                  className="rounded"
+                />
+                Currently Working
+              </Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEmploymentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-green-600 hover:bg-green-500">{editingEmployment ? 'Update' : 'Add'} Employment</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {confirmDialog}
     </div>
   );
