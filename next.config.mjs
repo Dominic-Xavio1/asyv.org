@@ -16,6 +16,9 @@ const nextConfig = {
   },
   // Temporarily disabled React Compiler to fix hydration mismatch
   // reactCompiler: true,
+  serverActions: {
+    bodySizeLimit: "50mb",
+  },
 };
 /** @type {import('next').NextConfig} */
 export default nextConfig;
