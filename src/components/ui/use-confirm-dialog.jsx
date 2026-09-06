@@ -63,17 +63,25 @@ export function useConfirmDialog() {
             <AlertDialogDescription>{dialogState.description}</AlertDialogDescription>
           ) : null}
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <InteractiveButton type="button" kind="ghost" onClick={() => closeDialog(false)}>
+        <AlertDialogFooter className="gap-2 sm:gap-2">
+          <InteractiveButton
+            type="button"
+            kind="ghost"
+            variant="ghost"
+            size="default"
+            onClick={() => closeDialog(false)}
+          >
             {dialogState.cancelText}
           </InteractiveButton>
           <InteractiveButton
             type="button"
-            kind="destructive"
+            kind={dialogState.destructive ? "destructive" : "submit"}
+            variant={dialogState.destructive ? "destructive" : "default"}
+            size="default"
             onClick={() => closeDialog(true)}
             className={
               dialogState.destructive
-                ? "bg-destructive text-white hover:bg-destructive/90"
+                ? undefined
                 : "bg-green-600 text-white hover:bg-green-700"
             }
           >

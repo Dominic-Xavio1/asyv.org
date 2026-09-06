@@ -16,6 +16,8 @@ import {
   Loader2,
 } from "lucide-react"
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder"
+import toast from "react-hot-toast"
+import { detectChatFileType, FILE_TOO_HEAVY_MESSAGE, isFileTooHeavy } from "@/lib/chatMedia"
 
 // ─── Format seconds as M:SS ───
 function formatDuration(sec) {
@@ -173,7 +175,14 @@ function MediaPickerButton({ onFileSelect, onVoiceNoteClick, isDark }) {
     input.accept = accept
     input.onchange = (e) => {
       const file = e.target.files?.[0]
-      if (file) onFileSelect(file, type)
+      if (file) {
+        if (isFileTooHeavy(file)) {
+          toast.error(FILE_TOO_HEAVY_MESSAGE)
+          setOpen(false)
+          return
+        }
+        onFileSelect(file, type)
+      }
       setOpen(false)
     }
     input.click()
@@ -306,6 +315,11 @@ export default function GroupMessageInput({
 
   const handleUseVoiceRecording = () => {
     if (voiceRecordedFile) {
+      if (isFileTooHeavy(voiceRecordedFile)) {
+        toast.error(FILE_TOO_HEAVY_MESSAGE)
+        resetVoiceRecorder()
+        return
+      }
       setSelectedFile(voiceRecordedFile)
       setSelectedFileType("audio")
     }
@@ -366,13 +380,22 @@ export default function GroupMessageInput({
 
   // ── File selected from picker ──────────────────────────────────────────
   const handleFileSelect = (file, type) => {
+    if (isFileTooHeavy(file)) {
+      toast.error(FILE_TOO_HEAVY_MESSAGE)
+      return
+    }
     setSelectedFile(file)
-    setSelectedFileType(type)
+    setSelectedFileType(detectChatFileType(file, type))
   }
 
   // ── Send ───────────────────────────────────────────────────────────────
   const handleSend = () => {
     if (!messageInput.trim() && !selectedFile) return
+
+    if (selectedFile && isFileTooHeavy(selectedFile)) {
+      toast.error(FILE_TOO_HEAVY_MESSAGE)
+      return
+    }
 
     onSendMessage({
       text: messageInput,

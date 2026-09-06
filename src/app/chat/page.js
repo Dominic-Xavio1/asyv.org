@@ -37,6 +37,7 @@ import { useConfirmDialog } from '@/components/ui/use-confirm-dialog'
 
 
 import toast from "react-hot-toast"
+import { detectChatFileType, FILE_TOO_HEAVY_MESSAGE, isFileTooHeavy } from "@/lib/chatMedia"
 
 import {
 
@@ -297,7 +298,14 @@ function MediaPickerButton({ onSelect, isDark, borderColor }) {
 
       const file = e.target.files?.[0];
 
-      if (file) onSelect(file, type);
+      if (file) {
+        if (isFileTooHeavy(file)) {
+          toast.error(FILE_TOO_HEAVY_MESSAGE);
+          setOpen(false);
+          return;
+        }
+        onSelect(file, type);
+      }
 
       setOpen(false);
 
@@ -838,6 +846,8 @@ export default function ChatPage() {
         replyToText: parsed.replyToText,
 
         mediaUrl: message.media_url || null,
+
+        mediaType: message.media_type || null,
 
         timestamp: formatTime(message.created_at),
 
@@ -1663,17 +1673,23 @@ export default function ChatPage() {
 
     try {
 
+      if (isFileTooHeavy(file)) {
+        throw new Error(FILE_TOO_HEAVY_MESSAGE)
+      }
+
       const formData = new FormData()
 
-      formData.append('file', file)
-
+      formData.append('groupId', String(selectedChat?.id || ''))
       formData.append('fileType', fileType)
-
-      formData.append('groupId', selectedChat?.id)
+      formData.append('file', file)
 
       const res = await fetch('/api/upload/group-message', { method: 'POST', body: formData })
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+
+      if (res.status === 413 || data?.error === FILE_TOO_HEAVY_MESSAGE) {
+        throw new Error(FILE_TOO_HEAVY_MESSAGE)
+      }
 
       if (data?.success && data.mediaUrl) return { mediaUrl: data.mediaUrl, mediaType: fileType }
 
@@ -1712,7 +1728,7 @@ export default function ChatPage() {
 
       file = messageData.file || null
 
-      fileType = messageData.fileType || null
+      fileType = file ? detectChatFileType(file, messageData.fileType) : (messageData.fileType || null)
       replyMeta = messageData.replyTo || null
 
     } else {
@@ -1742,6 +1758,11 @@ export default function ChatPage() {
 
     if (file) {
 
+      if (isFileTooHeavy(file)) {
+        toast.error(FILE_TOO_HEAVY_MESSAGE)
+        return
+      }
+
       try {
 
         toast.loading('Uploading file...')
@@ -1756,7 +1777,9 @@ export default function ChatPage() {
 
       } catch (err) {
 
-        toast.error(`File upload failed: ${err.message}`)
+        toast.dismiss()
+
+        toast.error(err.message === FILE_TOO_HEAVY_MESSAGE ? FILE_TOO_HEAVY_MESSAGE : `File upload failed: ${err.message}`)
 
         return
 
@@ -1781,6 +1804,8 @@ export default function ChatPage() {
       replyToText: replyMeta?.text || null,
 
       mediaUrl: mediaUrl || null,
+
+      mediaType: mediaType || null,
 
       timestamp: formatTime(new Date().toISOString()),
 
@@ -2049,7 +2074,9 @@ export default function ChatPage() {
 
   const MediaMessage = ({ mediaUrl, mediaType, message, isOwn }) => {
 
-    const type = getMediaType(mediaUrl)
+    const type = mediaType === 'video' || mediaType === 'audio' || mediaType === 'image' || mediaType === 'document'
+      ? mediaType
+      : getMediaType(mediaUrl)
 
     const [isPlaying, setIsPlaying] = useState(false)
 
