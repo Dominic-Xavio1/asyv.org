@@ -20,7 +20,7 @@ import { useUserStore } from "../stores/userStore"
 
 import { signIn } from "next-auth/react";
 
-import { LoaderIcon } from "lucide-react"
+import { Eye, EyeOff, LoaderIcon } from "lucide-react"
 
 import { Spinner } from "@/components/ui/spinner"
 
@@ -65,6 +65,8 @@ export function LoginForm({
   const [mode, setMode] = useState("signin")
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
 
@@ -266,15 +268,7 @@ export function LoginForm({
 
                 </h1>
 
-                <p className="text-gray-600 dark:text-gray-400 text-balance text-xs sm:text-sm lg:text-base px-2">
-
-                  {mode === "signin" ? "Sign in to your ASYV Community account" : "Create your ASYV Community account"}
-
-                </p>
-
               </div>
-
-
 
               <AnimatePresence mode="wait">
 
@@ -327,28 +321,35 @@ export function LoginForm({
 
                       </div>
 
-                      <Input
+                      <div className="relative mb-3">
+                        <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          onChange={(e) => {
 
-                        id="password"
+                            setLoginCredentials({
+                              ...loginCredentails,
 
-                        type="password"
+                              password: e.target.value
 
-                        onChange={(e) => {
+                            })
 
-                          setLoginCredentials({
-                            ...loginCredentails,
+                          }}
+                          required
+                          className="bg-white dark:bg-gray-800 pr-10 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-orange-500 dark:focus:ring-orange-400 focus:border-orange-500 dark:focus:border-orange-400 text-sm sm:text-base h-10 sm:h-11"
 
-                            password: e.target.value
-
-                          })
-
-                        }}
-
-                        required
-
-                        className="bg-white dark:bg-gray-800 mb-3 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-orange-500 dark:focus:ring-orange-400 focus:border-orange-500 dark:focus:border-orange-400 text-sm sm:text-base h-10 sm:h-11"
-
-                      />
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowPassword((visible) => !visible)}
+                          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-gray-500 hover:bg-transparent hover:text-gray-700 dark:text-gray-400 dark:hover:bg-transparent dark:hover:text-gray-200"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
 
                     </Field>
 

@@ -370,7 +370,21 @@ export default function AlumniFormsPage() {
             </div>
             <div className="space-y-2">
               <Label>Marital Status</Label>
-              <Input value={kidForm.marital_status} onChange={(e) => setKidForm((f) => ({ ...f, marital_status: e.target.value }))} placeholder="e.g. Single, Married" className="bg-white dark:bg-gray-800" />
+              <Select
+                value={kidForm.marital_status}
+                onValueChange={(value) => setKidForm((f) => ({ ...f, marital_status: value }))}
+              >
+                <SelectTrigger className="bg-white dark:bg-gray-800">
+                  <SelectValue placeholder="Select marital status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Single">Single</SelectItem>
+                  <SelectItem value="Married">Married</SelectItem>
+                  <SelectItem value="Separated">Separated</SelectItem>
+                  <SelectItem value="Divorced">Divorced</SelectItem>
+                  <SelectItem value="Widowed">Widowed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setKidDialogOpen(false)}>Cancel</Button>

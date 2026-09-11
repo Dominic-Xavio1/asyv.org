@@ -8,7 +8,7 @@ import { MessageCircle, Share2, Heart, Search, Filter, Calendar, ChevronRight, C
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Image from 'next/image';
-
+import { toast } from 'react-hot-toast';
 import { Avatar, AvatarImage } from '@/components/ui/avatar'
 import {
   Card,
@@ -113,6 +113,7 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
       })
       const data = await res.json()
       if (data.success) {
+        toast.success('Comment deleted successfully')
         setComments(comments.filter(comment => comment.id !== id))
         setCommentCount(prev => prev - 1)
       } else {
@@ -209,6 +210,7 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
       const data = await response.json();
 
       if (data.success && data.comment) {
+        toast.success('Comment posted successfully');
 
         setComments([...comments, data.comment]);
 
@@ -292,7 +294,9 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
                       </p>
                       {currentUserId === comment.user_id && (
                         <InteractiveButton
-                         
+                          type="button"
+                          kind="icon"
+                          unstyled
                           onClick={async () => {
                             const confirmed = await confirm({
                               title: 'Delete comment',
@@ -304,7 +308,8 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
                             if (!confirmed) return;
                             deleteComment(comment.id);
                           }}
-                          className="ml-2 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                          className="ml-2 h-8 w-8 rounded-md border border-transparent text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:border-red-900/60 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                          aria-label="Delete comment"
                         >
                           <Trash2 className="w-4 h-4" />
                         </InteractiveButton>
@@ -382,13 +387,14 @@ const CommentSection = ({ postId, isOpen, comments: initialComments, currentUser
                   <InteractiveButton
                     type="button"
                     kind="icon"
+                    unstyled
                     active={showEmoji}
                     onClick={() => setShowEmoji((open) => !open)}
                     disabled={submitting}
-                    className="p-2 rounded-lg border border-neutral-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-700 transition-colors shrink-0"
+                    className="h-10 w-10 rounded-lg border border-neutral-200 bg-white text-gray-500 transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-orange-700 dark:hover:bg-orange-950/40 dark:hover:text-orange-300 shrink-0"
                     aria-label="Add emoji"
                   >
-                    <Smile className={`h-5 w-5 ${showEmoji ? 'text-orange-500' : 'text-gray-600'}`} />
+                    <Smile className={`h-5 w-5 ${showEmoji ? 'text-orange-500' : 'text-current'}`} />
                   </InteractiveButton>
 
                 </div>
@@ -468,6 +474,8 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
   const [liking, setLiking] = useState(false);
   const [hearts, setHearts] = useState([]);
+  const [mediaFocus, setMediaFocus] = useState(false);
+  const [mediaLocked, setMediaLocked] = useState(false);
 
   const triggerHeartRain = () => {
     const newHearts = Array.from({ length: 12 }).map((_, i) => ({
@@ -493,6 +501,20 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
     }
 
   }, [post.id, currentUserId]);
+
+  useEffect(() => {
+    if (!mediaFocus) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setMediaFocus(false);
+        setMediaLocked(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [mediaFocus]);
 
   const [burstOrigin, setBurstOrigin] = useState(null);
 
@@ -666,7 +688,13 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
         <div className="flex items-center gap-3 mb-3">
 
-          <div className="relative w-10 h-10 rounded-full overflow-auto">
+          <div
+           className="relative w-14 h-14 aspect-square flex-shrink-0 overflow-hidden"
+style={{
+  clipPath:
+    'polygon(50% 0%, 68% 37%, 100% 50%, 68% 63%, 50% 100%, 32% 63%, 0% 50%, 32% 37%)',
+}}
+          >
 
             <Image
 
@@ -674,9 +702,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
 
               alt={post.authorName}
 
-              width={40}
-
-              height={40}
+              fill
 
               className="object-cover"
 
@@ -713,7 +739,27 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
         )}
 {console.log("Post media: ", post.media_url, " type: ", post.media_type)}
         {post.image && (
-          <div className="relative w-full h-88 rounded-lg overflow-hidden mb-3 bg-neutral-100 dark:bg-gray-800">
+          <>
+            <motion.div
+              role="button"
+              tabIndex={0}
+              aria-label="Preview post image"
+              // onMouseEnter={() => setMediaFocus(true)}
+              onClick={() => {
+                setMediaLocked(true);
+                setMediaFocus(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setMediaLocked(true);
+                  setMediaFocus(true);
+                }
+              }}
+              className="group relative w-full h-88 rounded-lg overflow-hidden mb-3 cursor-zoom-in bg-neutral-100 outline-none ring-orange-400 focus-visible:ring-2 dark:bg-gray-800"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
             <div className="absolute inset-0 overflow-hidden">
               <Image
                 src={post.image}
@@ -731,7 +777,58 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
                 className="object-contain"
               />
             </div>
-          </div>
+              <div className="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/40 via-transparent to-transparent p-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <span className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-900 shadow-lg backdrop-blur-sm">
+                  Expand image
+                </span>
+              </div>
+            </motion.div>
+
+            <AnimatePresence>
+              {mediaFocus && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 sm:p-8 backdrop-blur-sm"
+                  onClick={() => {
+                    setMediaFocus(false);
+                    setMediaLocked(false);
+                  }}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92, y: 18 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    className="relative h-[min(78vh,560px)] w-full max-w-5xl overflow-hidden rounded-2xl border border-white/20 bg-gray-950/90 shadow-2xl"
+                    onMouseEnter={() => setMediaFocus(true)}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <Image
+                      src={post.image}
+                      alt={`Expanded image from ${post.authorName}`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 1024px"
+                      className="object-contain"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Close image preview"
+                      onClick={() => {
+                        setMediaFocus(false);
+                        setMediaLocked(false);
+                      }}
+                      className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1.5 text-sm text-white backdrop-blur transition-colors hover:bg-black/80"
+                    >
+                      Close
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
         )}
 
         {post.video && (
@@ -783,16 +880,17 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
           <InteractiveButton
             type="button"
             kind="social"
+            unstyled
             active={isLiked}
             onClick={() => handleLike()}
             disabled={!currentUserId || liking}
-            className={`
-    inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
-    transition-colors duration-150
+            className={`group
+    inline-flex items-center  gap-2 px-3.5 py-1.5 rounded-sm border text-[13px] font-medium
+    transition-colors duration-150 
     disabled:opacity-40 disabled:cursor-not-allowed
     ${isLiked
                 ? 'text-red-500 border-red-300 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30'
-                : 'text-gray-500 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800/50'
+                : 'text-gray-500 border-gray-200 bg-white hover:bg-orange-50 hover:text-orange-700 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-orange-950/40 dark:hover:text-orange-300'
               }
   `}
           >
@@ -803,7 +901,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
                 animate={isLiked ? { scale: [0.6, 1.3, 1] } : { scale: [0.8, 1] }}
                 transition={{ duration: 0.4, type: 'keyframes', ease: [0.34, 1.56, 0.64, 1] }}
               >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                <Heart className={`w-5 h-5 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-orange-600'}`} />
               </motion.div>
             </span>
 
@@ -835,6 +933,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
           <InteractiveButton
             type="button"
             kind="social"
+            unstyled
             active={isCommentActive}
             onClick={() => setShowComments(!showComments)}
             className={`
@@ -842,7 +941,7 @@ const SimplePostCard = ({ post, currentUserId, onLikeUpdate, onCommentUpdate }) 
               transition-colors duration-150
               ${isCommentActive
                 ? 'text-blue-700 border-blue-300 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/30'
-                : 'text-gray-600 border-gray-200 bg-gray-50 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-800 dark:bg-gray-950/20 dark:hover:bg-gray-900/30'
+                : 'text-gray-600 border-gray-200 bg-white hover:bg-green-50 hover:text-green-700 dark:text-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-green-950/40 dark:hover:text-green-300'
               }
             `}
           >
@@ -1683,10 +1782,10 @@ export default function SocialFeed() {
                       className="flex-1 min-w-0 text-xs py-1.5 px-2 border border-neutral-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-green-500"
 
                     >
+                      <option value="oldest">Newest</option>
+                      <option value="newest">Oldest</option>
 
-                      <option value="newest">Newest</option>
-
-                      <option value="oldest">Oldest</option>
+                      
 
                     </select>
 
@@ -1793,7 +1892,7 @@ export default function SocialFeed() {
 
                         );
 
-                      })
+                      })  
 
                     ) : (
 

@@ -37,7 +37,7 @@ export async function POST(req) {
 
     // 4. Send Context + Question to Groq using Llama 3.3 70B
     const response = await openai.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       temperature: 0.3,   // Lower temperature (0.3) forces factual accuracy and prevents hallucination
       max_tokens: 800,    // Controls output token volume safely
       messages: [
