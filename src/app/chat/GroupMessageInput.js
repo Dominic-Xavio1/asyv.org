@@ -9,7 +9,9 @@ import {
   ImageIcon,
   Mic,
   FileText,
+  Grid2X2Plus,
   Paperclip,
+  PlusCircle,
   Music,
   X,
   Square,
@@ -217,7 +219,7 @@ function MediaPickerButton({ onFileSelect, onVoiceNoteClick, isDark }) {
       >
         {open
           ? <X className="w-4 h-4" />
-          : <Paperclip className="w-4 h-4" />
+          : <Grid2X2Plus className="w-4 h-4" />
         }
       </button>
 

@@ -818,7 +818,13 @@ const ChatGroupForm = ({ onClose, onSubmit, userId, existingGroup = null }) => {
         {existingImage && !removeExistingImage && (
           <div className="flex items-center gap-3">
             <div className="w-24 h-24 rounded overflow-hidden border border-neutral-200 dark:border-gray-700">
-              <Image src={existingImage} alt="group" className="w-full h-full object-cover" />
+              <Image
+                src={existingImage}
+                alt="group"
+                width={96}
+                height={96}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <Button variant="outline" onClick={() => setRemoveExistingImage(true)} className="mr-2">Remove Image</Button>
@@ -1422,7 +1428,7 @@ const ChangePasswordForm = ({ onClose, userId }) => {
       </div>
     </form>
   );
-};
+};;
 
 // Content Card Component
 const ContentCard = ({ item, onDelete, onEdit }) => {
@@ -1490,12 +1496,13 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
             <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-900 rounded-lg shadow-lg dark:shadow-xl border border-neutral-200 dark:border-gray-700 py-1 z-10">
               {onEdit && (
                 <InteractiveButton
-                  kind="icon" 
+                  kind="ghost"
+                  size="sm"
                   onClick={() => {
                     onEdit(item);
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-neutral-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"
+                  className="w-full h-auto justify-start rounded-md px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"
                 >
                   <Edit2 className="w-4 h-4" />
                   Edit
@@ -1503,12 +1510,13 @@ const ContentCard = ({ item, onDelete, onEdit }) => {
               )}
               <InteractiveButton
                 type="button"
-                kind="destructive"
+                kind="ghost"
+                size="sm"
                 onClick={() => {
                   onDelete(item.id);
                   setShowMenu(false);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                className="w-full h-auto justify-start rounded-md px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors hover:text-red-700"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -3612,7 +3620,13 @@ console.log("Opening overview list for type:", overviewStats);
                         placeholder="Search groups by name or create new..."
                         className="w-full pl-3 pr-12 py-2 border border-neutral-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
                       />
-                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 text-white px-3 py-1 rounded text-xs">Search</button>
+                      <InteractiveButton
+                        type="submit"
+                        size="xs"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-3 rounded text-xs"
+                      >
+                        Search
+                      </InteractiveButton>
                     </div>
                   </form>
                 </div>

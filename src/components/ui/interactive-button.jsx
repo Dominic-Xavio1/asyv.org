@@ -56,6 +56,8 @@ export function InteractiveButton({
   const resolvedVariant =
     variant != null
       ? variant
+      : kind === 'icon'
+      ? 'ghost'
       : ['destructive', 'outline', 'ghost', 'secondary', 'link'].includes(kind)
       ? kind
       : 'default';

@@ -120,7 +120,16 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-
+      if (!loginCredentails.email.trim()) {
+        toast.error("Please enter your email");
+        setIsLoading(false);
+        return;
+      }
+      if (!loginCredentails.password.trim()) {
+        toast.error("Please enter your password");
+        setIsLoading(false);
+        return;
+      }
       const response = await fetch("/api/login", {
 
         method: "POST",

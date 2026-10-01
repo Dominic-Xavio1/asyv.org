@@ -704,6 +704,10 @@ style={{
 
               fill
 
+              sizes="56px"
+
+              unoptimized={post.authorAvatar?.includes('api.dicebear.com')}
+
               className="object-cover"
 
             />
@@ -765,6 +769,7 @@ style={{
                 src={post.image}
                 alt="Post image background"
                 fill
+                sizes="(max-width: 640px) calc(100vw - 2rem), 768px"
                 className="object-cover blur-sm scale-105"
               />
               <div className="absolute inset-0 bg-black/10" />
@@ -774,6 +779,7 @@ style={{
                 src={post.image}
                 alt="Post image"
                 fill
+                sizes="(max-width: 640px) calc(100vw - 2rem), 768px"
                 className="object-contain"
               />
             </div>
@@ -1847,6 +1853,8 @@ export default function SocialFeed() {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                       }}
+
+                                      unoptimized
                                     />
                                     {/* Fallback placeholder */}
                                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600" style={{ display: 'none' }}>

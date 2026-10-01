@@ -87,7 +87,7 @@ import {
   ChevronUp,
 
   Camera,
-
+ Sparkles,
   Music,
   User,
   Crown,
@@ -446,7 +446,7 @@ export default function ChatPage() {
   const [isLoadingChats, setIsLoadingChats] = useState(false)
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
-
+ const [searchInConversation, setSearchInConversation] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [replyToMessage, setReplyToMessage] = useState(null)
   const [confirm, confirmDialog] = useConfirmDialog()
@@ -2713,6 +2713,10 @@ export default function ChatPage() {
 
                     setSearchQuery={setSearchQuery}
 
+                    searchInConversation={searchInConversation}
+
+                    setSearchInConversation={setSearchInConversation}
+
                     clearSearch={clearSearch}
 
                     showConversation={showConversation}
@@ -3028,6 +3032,8 @@ export default function ChatPage() {
                     typingUsers={typingUsers}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
+                    searchInConversation={searchInConversation}
+                    setSearchInConversation={setSearchInConversation}
                     clearSearch={clearSearch}
                     showConversation={showConversation}
                     handleBackToChats={handleBackToChats}
@@ -3092,7 +3098,7 @@ function MobileChatContent({
 
   selectedChat, messages, filteredMessages, isLoadingMessages, typingUsers,
 
-  searchQuery, setSearchQuery, clearSearch, showConversation,
+  searchQuery, setSearchQuery, searchInConversation, setSearchInConversation, clearSearch, showConversation,
 
   handleBackToChats, handleDeleteMessage, onReplyToMessage, handleSendMessage,
   onStartCall,
@@ -3203,6 +3209,21 @@ function MobileChatContent({
           </div>
 
           <div className="flex items-center gap-0.5 flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-9 w-9 ${searchInConversation ? (isDark ? 'bg-gray-700' : 'bg-gray-100') : ''} ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              onClick={() => {
+                setSearchInConversation((isOpen) => {
+                  if (isOpen) clearSearch()
+                  return !isOpen
+                })
+              }}
+              aria-label={searchInConversation ? "Close conversation search" : "Search in conversation"}
+              title={searchInConversation ? "Close conversation search" : "Search in conversation"}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
 
             <Button variant="ghost" size="icon" className={`h-9 w-9 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
               onClick={() => onStartCall?.("audio")}
@@ -3319,47 +3340,51 @@ function MobileChatContent({
 
       {/* In-conversation search */}
 
-      <div className="px-3 py-2 border-b flex-shrink-0 ">
+      <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${searchInConversation ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"}`}>
+        <div className="overflow-hidden">
+          <div className="px-3 py-2 border-b flex-shrink-0">
 
-        <div className="relative">
+            <div className="relative">
 
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 ${textMuted}`} />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 ${textMuted}`} />
 
-          <Input placeholder="Search in conversation..."
+              <Input placeholder="Search in conversation..."
 
-            className={`pl-8 h-8 text-xs ${inputBg} ${borderColor} ${textColor}`}
+                className={`pl-8 h-8 text-xs ${inputBg} ${borderColor} ${textColor}`}
 
-            value={searchQuery}
+                value={searchQuery}
 
-            onChange={(e) => setSearchQuery(e.target.value)} />
+                onChange={(e) => setSearchQuery(e.target.value)} />
 
-          {searchQuery && (
+              {searchQuery && (
 
-            <button onClick={clearSearch}
+                <button onClick={clearSearch}
 
-              className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}
+                  aria-label="Clear conversation search"
+                  title="Clear conversation search">
 
-              <X className="h-3.5 w-3.5" />
+                  <X className="h-3.5 w-3.5" />
 
-            </button>
+                </button>
 
-          )}
+              )}
 
+            </div>
+
+            {searchQuery && showConversation && (
+
+              <p className={`text-[10px] ${textMuted} mt-1 text-center`}>
+
+                {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''} found
+
+              </p>
+            )}
+          </div>
         </div>
-
-        {searchQuery && showConversation && (
-
-          <p className={`text-[10px] ${textMuted} mt-1 text-center`}>
-
-            {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''} found
-
-          </p>
-
-        )}
-
       </div>
 
-
+                
 
       {/* Messages */}
 
