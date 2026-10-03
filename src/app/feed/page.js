@@ -1845,16 +1845,17 @@ export default function SocialFeed() {
                               <div className="flex-shrink-0">
                                 {event.image_url ? (
                                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                    <img
+                                    <Image
                                       src={event.image_url}
                                       alt={event.title}
+                                      fill
+                                      sizes="64px"
+                                      unoptimized={!event.image_url.startsWith('/uploads/')}
                                       className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                                       onError={(e) => {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                       }}
-
-                                      unoptimized
                                     />
                                     {/* Fallback placeholder */}
                                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600" style={{ display: 'none' }}>

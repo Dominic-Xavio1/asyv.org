@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-   images: {
+  output: 'standalone', // 🚀 Added: Optimizes project structure for cloud build workers
+  images: {
     remotePatterns: [
       {
         protocol: 'https',
@@ -20,5 +21,5 @@ const nextConfig = {
     bodySizeLimit: "50mb",
   },
 };
-/** @type {import('next').NextConfig} */
+
 export default nextConfig;
